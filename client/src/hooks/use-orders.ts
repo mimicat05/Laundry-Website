@@ -95,3 +95,38 @@ export function useDeleteOrder() {
     },
   });
 }
+
+// POST /api/orders/:id/restore
+export function useRestoreOrder() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: number) => {
+      const url = buildUrl(api.orders.restore.path, { id });
+      const res = await fetch(url, {
+        method: api.orders.restore.method,
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Failed to restore order");
+      const data = await res.json();
+      return api.orders.restore.responses[200].parse(data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [api.orders.list.path] });
+      queryClient.invalidateQueries({ queryKey: [api.orders.listDeleted.path] });
+    },
+  });
+}
+
+// GET /api/orders/deleted
+export function useDeletedOrders() {
+  return useQuery({
+    queryKey: [api.orders.listDeleted.path],
+    queryFn: async () => {
+      const res = await fetch(api.orders.listDeleted.path, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch deleted orders");
+      const data = await res.json();
+      return api.orders.listDeleted.responses[200].parse(data);
+    },
+  });
+}

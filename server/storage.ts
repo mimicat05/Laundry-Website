@@ -5,7 +5,7 @@ import {
   type Order,
   type UpdateOrderRequest
 } from "@shared/schema";
-import { eq } from "drizzle-orm";
+import { eq, isNull, isNotNull } from "drizzle-orm";
 
 export interface IStorage {
   getOrders(): Promise<Order[]>;
@@ -20,13 +20,13 @@ export interface IStorage {
 export class DatabaseStorage implements IStorage {
   async getOrders(): Promise<Order[]> {
     return await db.select().from(orders)
-      .where(eq(orders.deletedAt, null))
+      .where(isNull(orders.deletedAt))
       .orderBy(orders.id);
   }
 
   async getDeletedOrders(): Promise<Order[]> {
     return await db.select().from(orders)
-      .where(orders.deletedAt !== null)
+      .where(isNotNull(orders.deletedAt))
       .orderBy(orders.deletedAt);
   }
 
