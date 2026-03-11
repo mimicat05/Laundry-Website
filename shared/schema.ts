@@ -14,6 +14,7 @@ export const orders = pgTable("orders", {
   total: numeric("total", { precision: 10, scale: 2 }).notNull(),
   status: text("status").notNull().default("pending"), // pending, washed, ready_for_pickup, completed
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  deletedAt: timestamp("deleted_at"),
 });
 
 export const insertOrderSchema = createInsertSchema(orders).omit({ id: true, createdAt: true });

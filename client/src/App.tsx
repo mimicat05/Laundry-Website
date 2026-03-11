@@ -11,6 +11,7 @@ import { Layout } from "@/components/layout";
 import { Login } from "@/pages/login";
 import { Dashboard } from "@/pages/dashboard";
 import { OrdersView } from "@/pages/orders-view";
+import { RecentlyDeleted } from "@/pages/recently-deleted";
 
 // Protected Route Wrapper
 const ProtectedRoute = ({ component: Component, ...rest }: any) => {
@@ -80,6 +81,10 @@ function Router() {
             description="Completed and collected orders." 
           />
         )} />}
+      </Route>
+
+      <Route path="/deleted">
+        {() => <ProtectedRoute component={RecentlyDeleted} />}
       </Route>
 
       {/* Fallback to 404 */}

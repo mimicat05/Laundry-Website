@@ -23,6 +23,13 @@ export const api = {
         200: z.array(z.custom<typeof orders.$inferSelect>()),
       },
     },
+    listDeleted: {
+      method: 'GET' as const,
+      path: '/api/orders/deleted' as const,
+      responses: {
+        200: z.array(z.custom<typeof orders.$inferSelect>()),
+      },
+    },
     get: {
       method: 'GET' as const,
       path: '/api/orders/:id' as const,
@@ -55,6 +62,14 @@ export const api = {
       path: '/api/orders/:id' as const,
       responses: {
         204: z.void(),
+        404: errorSchemas.notFound,
+      },
+    },
+    restore: {
+      method: 'POST' as const,
+      path: '/api/orders/:id/restore' as const,
+      responses: {
+        200: z.custom<typeof orders.$inferSelect>(),
         404: errorSchemas.notFound,
       },
     },

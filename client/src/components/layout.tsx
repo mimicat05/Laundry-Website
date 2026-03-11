@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { LayoutDashboard, Clock, CheckCircle2, PackageCheck, Archive, LogOut, Menu, Droplets } from "lucide-react";
+import { LayoutDashboard, Clock, CheckCircle2, PackageCheck, Archive, LogOut, Menu, Droplets, Trash2 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -11,6 +11,7 @@ const navItems = [
   { href: "/washed", label: "Washed", icon: Droplets },
   { href: "/pickup", label: "Pickup", icon: PackageCheck },
   { href: "/history", label: "History", icon: Archive },
+  { href: "/deleted", label: "Recently Deleted", icon: Trash2 },
 ];
 
 export function Layout({ children }: { children: React.ReactNode }) {

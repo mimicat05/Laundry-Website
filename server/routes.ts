@@ -73,6 +73,15 @@ export async function registerRoutes(
     }
   });
 
+  app.get(api.orders.listDeleted.path, async (req, res) => {
+    try {
+      const orders = await storage.getDeletedOrders();
+      res.json(orders);
+    } catch (err) {
+      res.status(500).json({ message: "Failed to fetch deleted orders" });
+    }
+  });
+
   app.get(api.orders.get.path, async (req, res) => {
     try {
       const id = Number(req.params.id);
@@ -157,6 +166,20 @@ export async function registerRoutes(
       res.status(204).send();
     } catch (err) {
       res.status(500).json({ message: "Failed to delete order" });
+    }
+  });
+
+  app.post(api.orders.restore.path, async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      const existing = await storage.getOrder(id);
+      if (!existing) {
+        return res.status(404).json({ message: "Order not found" });
+      }
+      const restored = await storage.restoreOrder(id);
+      res.json(restored);
+    } catch (err) {
+      res.status(500).json({ message: "Failed to restore order" });
     }
   });
 
