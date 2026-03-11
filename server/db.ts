@@ -8,8 +8,8 @@ if (!process.env.DATABASE_URL) {
   );
 }
 
-const poolConnection = await mysql.createPool({
+const poolConnection = mysql.createPool({
   uri: process.env.DATABASE_URL,
 });
 
-export const db = drizzle(poolConnection, { schema });
+export const db = drizzle(poolConnection, { schema, mode: "default" });

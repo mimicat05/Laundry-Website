@@ -2,6 +2,7 @@ import type { Express } from "express";
 import type { Server } from "http";
 import { storage } from "./storage";
 import { api, errorSchemas } from "@shared/routes";
+import { sendOrderStatusEmail } from "./email";
 import { z } from "zod";
 
 async function seedDatabase() {
@@ -129,18 +130,14 @@ export async function registerRoutes(
       
       const order = await storage.updateOrder(id, input);
       
-      // Automatic mock email sending logic based on status change
+      // Send email notification when status changes
       if (input.status && input.status !== existing.status) {
-        const statuses: Record<string, string> = {
-          pending: "Order Accepted",
-          washed: "Laundry Washed",
-          ready_for_pickup: "Laundry Ready for Pickup",
-          completed: "Order Completed"
-        };
-        
-        console.log(`[Mock Email] To: ${order.email}`);
-        console.log(`[Mock Email] Subject: ${statuses[order.status]}`);
-        console.log(`[Mock Email] Message: Hello ${order.customerName}, your laundry order status has been updated to: ${order.status}`);
+        await sendOrderStatusEmail(
+          order.email,
+          order.customerName,
+          order.orderId,
+          order.status
+        );
       }
 
       res.json(order);
