@@ -1,16 +1,164 @@
 import type { Express } from "express";
-import { createServer, type Server } from "http";
+import type { Server } from "http";
 import { storage } from "./storage";
+import { api, errorSchemas } from "@shared/routes";
+import { z } from "zod";
+
+async function seedDatabase() {
+  const existingOrders = await storage.getOrders();
+  if (existingOrders.length === 0) {
+    await storage.createOrder({
+      orderId: "ORD001",
+      customerName: "John Cruz",
+      address: "123 Street",
+      contactNumber: "098765435667",
+      email: "john@gmail.com",
+      service: "Wash & Hang",
+      weight: "3.00",
+      total: "360.00",
+      status: "pending"
+    });
+    
+    await storage.createOrder({
+      orderId: "ORD002",
+      customerName: "Jane Doe",
+      address: "456 Avenue",
+      contactNumber: "09123456789",
+      email: "jane@gmail.com",
+      service: "Dry Cleaning",
+      weight: "2.50",
+      total: "500.00",
+      status: "washed"
+    });
+
+    await storage.createOrder({
+      orderId: "ORD003",
+      customerName: "Alice Smith",
+      address: "789 Boulevard",
+      contactNumber: "09988776655",
+      email: "alice@gmail.com",
+      service: "Wash & Hang",
+      weight: "5.00",
+      total: "600.00",
+      status: "ready_for_pickup"
+    });
+    
+    await storage.createOrder({
+      orderId: "ORD004",
+      customerName: "Bob Johnson",
+      address: "321 Road",
+      contactNumber: "09223344556",
+      email: "bob@gmail.com",
+      service: "Dry Cleaning",
+      weight: "1.50",
+      total: "300.00",
+      status: "completed"
+    });
+  }
+}
 
 export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
-  // put application routes here
-  // prefix all routes with /api
+  // Seed the database with initial examples
+  seedDatabase().catch(console.error);
 
-  // use storage to perform CRUD operations on the storage interface
-  // e.g. storage.insertUser(user) or storage.getUserByUsername(username)
+  app.get(api.orders.list.path, async (req, res) => {
+    try {
+      const orders = await storage.getOrders();
+      res.json(orders);
+    } catch (err) {
+      res.status(500).json({ message: "Failed to fetch orders" });
+    }
+  });
+
+  app.get(api.orders.get.path, async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      const order = await storage.getOrder(id);
+      if (!order) {
+        return res.status(404).json({ message: "Order not found" });
+      }
+      res.json(order);
+    } catch (err) {
+      res.status(500).json({ message: "Failed to fetch order" });
+    }
+  });
+
+  app.post(api.orders.create.path, async (req, res) => {
+    try {
+      // Coerce numeric fields from strings if necessary
+      const bodySchema = api.orders.create.input.extend({
+        weight: z.coerce.string(),
+        total: z.coerce.string(),
+      });
+      const input = bodySchema.parse(req.body);
+      const order = await storage.createOrder(input);
+      res.status(201).json(order);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({
+          message: err.errors[0].message,
+          field: err.errors[0].path.join('.'),
+        });
+      }
+      res.status(500).json({ message: "Failed to create order" });
+    }
+  });
+
+  app.put(api.orders.update.path, async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      const existing = await storage.getOrder(id);
+      if (!existing) {
+        return res.status(404).json({ message: "Order not found" });
+      }
+
+      const bodySchema = api.orders.update.input;
+      const input = bodySchema.parse(req.body);
+      
+      const order = await storage.updateOrder(id, input);
+      
+      // Automatic mock email sending logic based on status change
+      if (input.status && input.status !== existing.status) {
+        const statuses: Record<string, string> = {
+          pending: "Order Accepted",
+          washed: "Laundry Washed",
+          ready_for_pickup: "Laundry Ready for Pickup",
+          completed: "Order Completed"
+        };
+        
+        console.log(`[Mock Email] To: ${order.email}`);
+        console.log(`[Mock Email] Subject: ${statuses[order.status]}`);
+        console.log(`[Mock Email] Message: Hello ${order.customerName}, your laundry order status has been updated to: ${order.status}`);
+      }
+
+      res.json(order);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({
+          message: err.errors[0].message,
+          field: err.errors[0].path.join('.'),
+        });
+      }
+      res.status(500).json({ message: "Failed to update order" });
+    }
+  });
+
+  app.delete(api.orders.delete.path, async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      const existing = await storage.getOrder(id);
+      if (!existing) {
+        return res.status(404).json({ message: "Order not found" });
+      }
+      await storage.deleteOrder(id);
+      res.status(204).send();
+    } catch (err) {
+      res.status(500).json({ message: "Failed to delete order" });
+    }
+  });
 
   return httpServer;
 }
