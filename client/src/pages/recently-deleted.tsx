@@ -1,35 +1,14 @@
-import { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
 import { Trash2, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { apiRequest, queryClient } from "@/lib/queryClient";
-import { api } from "@shared/routes";
+import { useDeletedOrders, useRestoreOrder } from "@/hooks/use-orders";
 import { type Order } from "@shared/schema";
 import { format } from "date-fns";
 
 export function RecentlyDeleted() {
-  const { data: orders, isLoading } = useQuery({
-    queryKey: ["/api/orders/deleted"],
-    queryFn: async () => {
-      const res = await fetch(api.orders.listDeleted.path);
-      return res.json();
-    },
-  });
-
-  const restoreMutation = useMutation({
-    mutationFn: async (id: number) => {
-      return apiRequest({
-        method: "POST",
-        url: `/api/orders/${id}/restore`,
-      });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/orders/deleted"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
-    },
-  });
+  const { data: orders, isLoading } = useDeletedOrders();
+  const { mutate: restoreOrder, isPending } = useRestoreOrder();
 
   if (isLoading) {
     return (
@@ -80,12 +59,12 @@ export function RecentlyDeleted() {
                 </div>
 
                 <Button
-                  onClick={() => restoreMutation.mutate(order.id)}
-                  disabled={restoreMutation.isPending}
+                  onClick={() => restoreOrder(order.id)}
+                  disabled={isPending}
                   className="gap-2 rounded-xl"
                 >
                   <RotateCcw className="w-4 h-4" />
-                  {restoreMutation.isPending ? "Restoring..." : "Restore"}
+                  {isPending ? "Restoring..." : "Restore"}
                 </Button>
               </div>
             </Card>
