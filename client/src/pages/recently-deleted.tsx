@@ -2,13 +2,14 @@ import { Trash2, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useDeletedOrders, useRestoreOrder } from "@/hooks/use-orders";
+import { useDeletedOrders, useRestoreOrder, usePermanentDeleteOrder } from "@/hooks/use-orders";
 import { type Order } from "@shared/schema";
 import { format } from "date-fns";
 
 export function RecentlyDeleted() {
   const { data: orders, isLoading } = useDeletedOrders();
-  const { mutate: restoreOrder, isPending } = useRestoreOrder();
+  const { mutate: restoreOrder, isPending: isRestoring } = useRestoreOrder();
+  const { mutate: permanentDelete, isPending: isDeleting } = usePermanentDeleteOrder();
 
   if (isLoading) {
     return (
@@ -58,14 +59,29 @@ export function RecentlyDeleted() {
                   </p>
                 </div>
 
-                <Button
-                  onClick={() => restoreOrder(order.id)}
-                  disabled={isPending}
-                  className="gap-2 rounded-xl"
-                >
-                  <RotateCcw className="w-4 h-4" />
-                  {isPending ? "Restoring..." : "Restore"}
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    variant="destructive"
+                    onClick={() => {
+                      if (confirm("Permanently delete this order? This cannot be undone.")) {
+                        permanentDelete(order.id);
+                      }
+                    }}
+                    disabled={isDeleting || isRestoring}
+                    className="gap-2 rounded-xl"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    {isDeleting ? "Deleting..." : "Delete Permanently"}
+                  </Button>
+                  <Button
+                    onClick={() => restoreOrder(order.id)}
+                    disabled={isRestoring || isDeleting}
+                    className="gap-2 rounded-xl"
+                  >
+                    <RotateCcw className="w-4 h-4" />
+                    {isRestoring ? "Restoring..." : "Restore"}
+                  </Button>
+                </div>
               </div>
             </Card>
           ))}

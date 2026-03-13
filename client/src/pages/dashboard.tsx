@@ -1,6 +1,5 @@
 import { useState } from "react";
-import { Link } from "wouter";
-import { Package, Clock, PackageCheck, ArrowRight } from "lucide-react";
+import { Package, Clock, PackageCheck } from "lucide-react";
 import { useOrders } from "@/hooks/use-orders";
 import { CreateOrderDialog } from "@/components/create-order-dialog";
 import { OrderDetailsDialog } from "@/components/order-details-dialog";
@@ -88,9 +87,6 @@ export function Dashboard() {
       <div className="space-y-4 pt-4">
         <div className="flex justify-between items-center px-1">
           <h2 className="font-display text-xl font-bold text-foreground">Recent Orders</h2>
-          <Link href="/history" className="text-sm font-medium text-primary hover:underline flex items-center">
-            View All <ArrowRight className="w-4 h-4 ml-1" />
-          </Link>
         </div>
         <OrdersTable 
           orders={recentOrders} 

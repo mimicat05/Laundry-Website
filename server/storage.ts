@@ -15,6 +15,7 @@ export interface IStorage {
   updateOrder(id: number, updates: UpdateOrderRequest): Promise<Order>;
   deleteOrder(id: number): Promise<void>;
   restoreOrder(id: number): Promise<Order>;
+  permanentDeleteOrder(id: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -60,6 +61,10 @@ export class DatabaseStorage implements IStorage {
       .where(eq(orders.id, id))
       .returning();
     return restored;
+  }
+
+  async permanentDeleteOrder(id: number): Promise<void> {
+    await db.delete(orders).where(eq(orders.id, id));
   }
 }
 

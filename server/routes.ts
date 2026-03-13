@@ -180,5 +180,19 @@ export async function registerRoutes(
     }
   });
 
+  app.delete("/api/orders/:id/permanent", async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      const existing = await storage.getOrder(id);
+      if (!existing) {
+        return res.status(404).json({ message: "Order not found" });
+      }
+      await storage.permanentDeleteOrder(id);
+      res.status(204).send();
+    } catch (err) {
+      res.status(500).json({ message: "Failed to permanently delete order" });
+    }
+  });
+
   return httpServer;
 }

@@ -118,6 +118,24 @@ export function useRestoreOrder() {
   });
 }
 
+// DELETE /api/orders/:id/permanent
+export function usePermanentDeleteOrder() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: number) => {
+      const res = await fetch(`/api/orders/${id}/permanent`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Failed to permanently delete order");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [api.orders.listDeleted.path] });
+      queryClient.invalidateQueries({ queryKey: [api.orders.list.path] });
+    },
+  });
+}
+
 // GET /api/orders/deleted
 export function useDeletedOrders() {
   return useQuery({
