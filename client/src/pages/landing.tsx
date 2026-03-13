@@ -94,12 +94,15 @@ export function Landing() {
           <p className="text-lg text-muted-foreground max-w-xl mx-auto mb-10">
             Professional laundry services done with care. Drop off your clothes and pick them up clean, fresh, and ready to wear.
           </p>
-          <a href="#contact">
-            <Button size="lg" className="rounded-xl h-13 px-8 gap-2 shadow-lg shadow-primary/20 hover:shadow-xl hover:-translate-y-0.5 transition-all" data-testid="button-contact-us">
-              Contact Us
-              <ArrowRight className="w-4 h-4" />
-            </Button>
-          </a>
+          <Button
+            size="lg"
+            className="rounded-xl h-13 px-8 gap-2 shadow-lg shadow-primary/20 hover:shadow-xl hover:-translate-y-0.5 transition-all"
+            data-testid="button-contact-us"
+            onClick={() => document.getElementById("contact")?.scrollIntoView({ behavior: "smooth" })}
+          >
+            Contact Us
+            <ArrowRight className="w-4 h-4" />
+          </Button>
         </div>
       </section>
 
