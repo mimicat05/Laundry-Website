@@ -1,0 +1,19 @@
+
+> rest-express@1.0.0 dev
+> NODE_ENV=development tsx server/index.ts
+
+[1G[0KIgnoring invalid configuration option passed to Connection: sslmode. This is currently a warning, but in future versions of MySQL2, an error will be thrown if you pass an invalid configuration option to a Connection
+/home/runner/workspace/node_modules/src/mysql2/driver.ts:76
+			throw new DrizzleError({
+			      ^
+
+
+DrizzleError: You need to specify "mode": "planetscale" or "default" when providing a schema. Read more: https://orm.drizzle.team/docs/rqb#modes
+    at construct [90m(/home/runner/workspace/[39mnode_modules/[4msrc[24m/mysql2/driver.ts:76:10[90m)[39m
+    at drizzle [90m(/home/runner/workspace/[39mnode_modules/[4msrc[24m/mysql2/driver.ts:161:9[90m)[39m
+    at <anonymous> [90m(/home/runner/workspace/[39mserver/db.ts:15:19[90m)[39m {
+  cause: [90mundefined[39m
+}
+
+Node.js v20.20.0
+[1G[0K⠙[1G[0K
