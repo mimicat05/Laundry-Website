@@ -183,7 +183,7 @@ export function Landing() {
           <p className="text-sm text-muted-foreground">© 2025 Lumiere. All rights reserved.</p>
           <Link href="/staff">
             <span className="text-sm text-muted-foreground hover:text-primary transition-colors cursor-pointer" data-testid="link-staff-footer">
-              Staff Portal →
+              Staff Portal
             </span>
           </Link>
         </div>
