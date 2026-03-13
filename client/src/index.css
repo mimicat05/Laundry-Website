@@ -9,36 +9,36 @@
     --font-sans: 'DM Sans', sans-serif;
     --font-display: 'Outfit', sans-serif;
 
-    /* Light Beige Sleek & Minimalist Palette */
-    --background: 40 33% 98%;
-    --foreground: 20 15% 15%;
+    /* Pastel Blue Palette */
+    --background: 210 40% 98%;
+    --foreground: 215 30% 15%;
     
     --card: 0 0% 100%;
-    --card-foreground: 20 15% 15%;
+    --card-foreground: 215 30% 15%;
     
     --popover: 0 0% 100%;
-    --popover-foreground: 20 15% 15%;
+    --popover-foreground: 215 30% 15%;
     
-    /* Warm Camel/Beige as primary */
-    --primary: 35 25% 45%;
-    --primary-foreground: 40 33% 98%;
+    /* Pastel Blue as primary */
+    --primary: 210 65% 62%;
+    --primary-foreground: 0 0% 100%;
     
-    /* Soft contrasting secondary */
-    --secondary: 40 15% 92%;
-    --secondary-foreground: 35 25% 45%;
+    /* Soft blue secondary */
+    --secondary: 210 30% 93%;
+    --secondary-foreground: 210 50% 35%;
     
-    --muted: 40 20% 95%;
-    --muted-foreground: 30 10% 45%;
+    --muted: 210 25% 95%;
+    --muted-foreground: 210 15% 48%;
     
-    --accent: 35 30% 85%;
-    --accent-foreground: 35 30% 30%;
+    --accent: 210 50% 90%;
+    --accent-foreground: 210 50% 28%;
     
     --destructive: 0 70% 50%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 40 15% 90%;
-    --input: 40 15% 90%;
-    --ring: 35 25% 45%;
+    --border: 210 25% 88%;
+    --input: 210 25% 88%;
+    --ring: 210 65% 62%;
 
     --radius: 1rem;
   }
