@@ -101,7 +101,6 @@ export function Landing() {
             onClick={() => document.getElementById("contact")?.scrollIntoView({ behavior: "smooth" })}
           >
             Contact Us
-            <ArrowRight className="w-4 h-4" />
           </Button>
         </div>
       </section>
