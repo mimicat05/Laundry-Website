@@ -173,21 +173,6 @@ export function Landing() {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t border-border/50 py-8 px-6">
-        <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <Droplets className="w-4 h-4 text-primary" />
-            <span className="font-display font-semibold text-foreground">Lumiere Laundry</span>
-          </div>
-          <p className="text-sm text-muted-foreground">© 2025 Lumiere. All rights reserved.</p>
-          <Link href="/staff">
-            <span className="text-sm text-muted-foreground hover:text-primary transition-colors cursor-pointer" data-testid="link-staff-footer">
-              Staff Portal
-            </span>
-          </Link>
-        </div>
-      </footer>
     </div>
   );
 }
