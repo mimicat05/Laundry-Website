@@ -38,7 +38,6 @@ export function Dashboard() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="font-display text-3xl font-bold text-foreground">Overview</h1>
-          <p className="text-muted-foreground mt-1">Welcome back. Here's what's happening today.</p>
         </div>
         <CreateOrderDialog />
       </div>

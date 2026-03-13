@@ -36,7 +36,6 @@ export function OrdersView({ status, title, description }: OrdersViewProps) {
     <div className="space-y-8 animate-in fade-in duration-500 pb-12">
       <div>
         <h1 className="font-display text-3xl font-bold text-foreground">{title}</h1>
-        <p className="text-muted-foreground mt-1">{description}</p>
       </div>
 
       <OrdersTable 

@@ -30,7 +30,6 @@ export function RecentlyDeleted() {
     <div className="space-y-8 animate-in fade-in duration-500 pb-12">
       <div>
         <h1 className="font-display text-3xl font-bold text-foreground">Recently Deleted</h1>
-        <p className="text-muted-foreground mt-1">Orders that have been deleted. You can restore them if needed.</p>
       </div>
 
       {deletedOrders.length === 0 ? (

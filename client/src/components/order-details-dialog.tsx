@@ -1,8 +1,22 @@
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { format } from "date-fns";
-import { Loader2, Trash2, ArrowRight, User, MapPin, Phone, Mail, Scale, DollarSign, Tag, CalendarClock } from "lucide-react";
+import { Loader2, Trash2, ArrowRight, User, MapPin, Phone, Mail, Scale, DollarSign, Tag, CalendarClock, Pencil, X } from "lucide-react";
 import { useUpdateOrder, useDeleteOrder } from "@/hooks/use-orders";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import {
   Dialog,
   DialogContent,
@@ -12,6 +26,18 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { type Order } from "@shared/schema";
 
+const editSchema = z.object({
+  customerName: z.string().min(2, "Name is required"),
+  address: z.string().min(2, "Address is required"),
+  contactNumber: z.string().min(5, "Contact number is required"),
+  email: z.string().email("Invalid email"),
+  service: z.string().min(1, "Please select a service"),
+  weight: z.string().min(1, "Weight is required"),
+  total: z.string().min(1, "Total is required"),
+});
+
+type EditValues = z.infer<typeof editSchema>;
+
 interface OrderDetailsProps {
   order: Order | null;
   open: boolean;
@@ -19,9 +45,23 @@ interface OrderDetailsProps {
 }
 
 export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsProps) {
+  const [isEditing, setIsEditing] = useState(false);
   const { mutate: updateOrder, isPending: isUpdating } = useUpdateOrder();
   const { mutate: deleteOrder, isPending: isDeleting } = useDeleteOrder();
   const { toast } = useToast();
+
+  const form = useForm<EditValues>({
+    resolver: zodResolver(editSchema),
+    values: order ? {
+      customerName: order.customerName,
+      address: order.address,
+      contactNumber: order.contactNumber,
+      email: order.email,
+      service: order.service,
+      weight: String(order.weight),
+      total: String(order.total),
+    } : undefined,
+  });
 
   if (!order) return null;
 
@@ -50,16 +90,25 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsPr
     }
   };
 
+  const handleSaveEdit = (data: EditValues) => {
+    updateOrder(
+      { id: order.id, ...data },
+      {
+        onSuccess: () => {
+          toast({ title: "Updated", description: "Order details have been saved." });
+          setIsEditing(false);
+        },
+        onError: (err) => toast({ title: "Error", description: err.message, variant: "destructive" }),
+      }
+    );
+  };
+
   const getNextStatusAction = () => {
     switch (order.status) {
-      case "pending":
-        return { label: "Mark as Washed", next: "washed" };
-      case "washed":
-        return { label: "Ready for Pickup", next: "ready_for_pickup" };
-      case "ready_for_pickup":
-        return { label: "Complete Order", next: "completed" };
-      default:
-        return null;
+      case "pending": return { label: "Mark as Washed", next: "washed" };
+      case "washed": return { label: "Ready for Pickup", next: "ready_for_pickup" };
+      case "ready_for_pickup": return { label: "Complete Order", next: "completed" };
+      default: return null;
     }
   };
 
@@ -76,7 +125,7 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsPr
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(o) => { onOpenChange(o); if (!o) setIsEditing(false); }}>
       <DialogContent className="sm:max-w-[600px] rounded-3xl border-border/50 sleek-shadow bg-card/95 backdrop-blur-xl">
         <DialogHeader className="mb-2">
           <div className="flex items-center justify-between pr-8">
@@ -89,89 +138,172 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsPr
           </div>
         </DialogHeader>
 
-        <div className="grid gap-6 py-4">
-          {/* Customer Info Card */}
-          <div className="bg-background/50 rounded-2xl p-5 border border-border/50">
-            <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">Customer Details</h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="flex items-start gap-3">
-                <User className="w-4 h-4 mt-0.5 text-primary" />
-                <div>
-                  <p className="text-sm font-medium text-foreground">{order.customerName}</p>
+        {isEditing ? (
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(handleSaveEdit)} className="space-y-4 py-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField control={form.control} name="customerName" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Customer Name</FormLabel>
+                    <FormControl><Input className="rounded-xl bg-background/50 border-border/50" {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField control={form.control} name="contactNumber" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Contact Number</FormLabel>
+                    <FormControl><Input className="rounded-xl bg-background/50 border-border/50" {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField control={form.control} name="email" render={({ field }) => (
+                  <FormItem className="md:col-span-2">
+                    <FormLabel>Email</FormLabel>
+                    <FormControl><Input type="email" className="rounded-xl bg-background/50 border-border/50" {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField control={form.control} name="address" render={({ field }) => (
+                  <FormItem className="md:col-span-2">
+                    <FormLabel>Address</FormLabel>
+                    <FormControl><Input className="rounded-xl bg-background/50 border-border/50" {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField control={form.control} name="service" render={({ field }) => (
+                  <FormItem className="md:col-span-2">
+                    <FormLabel>Service</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger className="rounded-xl bg-background/50 border-border/50">
+                          <SelectValue />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent className="rounded-xl border-border/50">
+                        <SelectItem value="Wash & Hang">Wash & Hang</SelectItem>
+                        <SelectItem value="Wash & Fold">Wash & Fold</SelectItem>
+                        <SelectItem value="Dry Cleaning">Dry Cleaning</SelectItem>
+                        <SelectItem value="Ironing Only">Ironing Only</SelectItem>
+                        <SelectItem value="Premium Care">Premium Care</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField control={form.control} name="weight" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Weight (KG)</FormLabel>
+                    <FormControl><Input type="number" step="0.1" className="rounded-xl bg-background/50 border-border/50" {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField control={form.control} name="total" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Total Amount (₱)</FormLabel>
+                    <FormControl><Input type="number" step="0.01" className="rounded-xl bg-background/50 border-border/50" {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+              </div>
+              <div className="flex justify-end gap-3 pt-4 border-t border-border/50">
+                <Button type="button" variant="ghost" className="rounded-xl gap-2" onClick={() => setIsEditing(false)}>
+                  <X className="w-4 h-4" /> Cancel
+                </Button>
+                <Button type="submit" className="rounded-xl px-6" disabled={isUpdating}>
+                  {isUpdating ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                  Save Changes
+                </Button>
+              </div>
+            </form>
+          </Form>
+        ) : (
+          <>
+            <div className="grid gap-6 py-4">
+              <div className="bg-background/50 rounded-2xl p-5 border border-border/50">
+                <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">Customer Details</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="flex items-start gap-3">
+                    <User className="w-4 h-4 mt-0.5 text-primary" />
+                    <p className="text-sm font-medium text-foreground">{order.customerName}</p>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <Phone className="w-4 h-4 mt-0.5 text-primary" />
+                    <p className="text-sm text-foreground">{order.contactNumber}</p>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <Mail className="w-4 h-4 mt-0.5 text-primary" />
+                    <p className="text-sm text-foreground truncate max-w-[200px]" title={order.email}>{order.email}</p>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <MapPin className="w-4 h-4 mt-0.5 text-primary" />
+                    <p className="text-sm text-foreground">{order.address}</p>
+                  </div>
                 </div>
               </div>
-              <div className="flex items-start gap-3">
-                <Phone className="w-4 h-4 mt-0.5 text-primary" />
-                <div>
-                  <p className="text-sm text-foreground">{order.contactNumber}</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <Mail className="w-4 h-4 mt-0.5 text-primary" />
-                <div>
-                  <p className="text-sm text-foreground truncate max-w-[200px]" title={order.email}>{order.email}</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <MapPin className="w-4 h-4 mt-0.5 text-primary" />
-                <div>
-                  <p className="text-sm text-foreground">{order.address}</p>
+
+              <div className="bg-background/50 rounded-2xl p-5 border border-border/50">
+                <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">Service Details</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="flex items-center gap-3">
+                    <Tag className="w-4 h-4 text-primary" />
+                    <span className="text-sm text-foreground">{order.service}</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Scale className="w-4 h-4 text-primary" />
+                    <span className="text-sm text-foreground">{order.weight} kg</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <DollarSign className="w-4 h-4 text-primary" />
+                    <span className="text-sm font-semibold text-foreground">₱{order.total}</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <CalendarClock className="w-4 h-4 text-primary" />
+                    <span className="text-sm text-foreground">{format(new Date(order.createdAt), "MMM dd, yyyy h:mm a")}</span>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
 
-          {/* Service Details Card */}
-          <div className="bg-background/50 rounded-2xl p-5 border border-border/50">
-            <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">Service Details</h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="flex items-center gap-3">
-                <Tag className="w-4 h-4 text-primary" />
-                <span className="text-sm text-foreground">{order.service}</span>
+            <div className="flex items-center justify-between pt-4 border-t border-border/50 mt-2">
+              <div className="flex gap-2">
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  className="rounded-xl bg-destructive/10 text-destructive hover:bg-destructive hover:text-destructive-foreground transition-colors"
+                  onClick={handleDelete}
+                  disabled={isDeleting}
+                >
+                  {isDeleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4 mr-2" />}
+                  Delete
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="rounded-xl gap-2"
+                  onClick={() => setIsEditing(true)}
+                >
+                  <Pencil className="w-4 h-4" />
+                  Edit
+                </Button>
               </div>
-              <div className="flex items-center gap-3">
-                <Scale className="w-4 h-4 text-primary" />
-                <span className="text-sm text-foreground">{order.weight} kg</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <DollarSign className="w-4 h-4 text-primary" />
-                <span className="text-sm font-semibold text-foreground">${order.total}</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <CalendarClock className="w-4 h-4 text-primary" />
-                <span className="text-sm text-foreground">{format(new Date(order.createdAt), "MMM dd, yyyy h:mm a")}</span>
+
+              <div className="flex gap-3">
+                <Button variant="outline" className="rounded-xl" onClick={() => onOpenChange(false)}>Close</Button>
+                {action && (
+                  <Button
+                    className="rounded-xl shadow-lg shadow-primary/20"
+                    onClick={() => handleStatusChange(action.next)}
+                    disabled={isUpdating}
+                  >
+                    {isUpdating ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                    {action.label}
+                    {!isUpdating && <ArrowRight className="w-4 h-4 ml-2" />}
+                  </Button>
+                )}
               </div>
             </div>
-          </div>
-        </div>
-
-        <div className="flex items-center justify-between pt-4 border-t border-border/50 mt-2">
-          <Button 
-            variant="destructive" 
-            size="sm" 
-            className="rounded-xl bg-destructive/10 text-destructive hover:bg-destructive hover:text-destructive-foreground transition-colors"
-            onClick={handleDelete}
-            disabled={isDeleting}
-          >
-            {isDeleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4 mr-2" />}
-            Delete
-          </Button>
-
-          <div className="flex gap-3">
-            <Button variant="outline" className="rounded-xl" onClick={() => onOpenChange(false)}>Close</Button>
-            {action && (
-              <Button 
-                className="rounded-xl shadow-lg shadow-primary/20"
-                onClick={() => handleStatusChange(action.next)}
-                disabled={isUpdating}
-              >
-                {isUpdating ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                {action.label}
-                {!isUpdating && <ArrowRight className="w-4 h-4 ml-2" />}
-              </Button>
-            )}
-          </div>
-        </div>
+          </>
+        )}
       </DialogContent>
     </Dialog>
   );
