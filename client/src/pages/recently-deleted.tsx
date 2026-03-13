@@ -61,25 +61,22 @@ export function RecentlyDeleted() {
 
                 <div className="flex gap-2">
                   <Button
-                    variant="destructive"
-                    onClick={() => {
-                      if (confirm("Permanently delete this order? This cannot be undone.")) {
-                        permanentDelete(order.id);
-                      }
-                    }}
-                    disabled={isDeleting || isRestoring}
-                    className="gap-2 rounded-xl"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                    {isDeleting ? "Deleting..." : "Delete Permanently"}
-                  </Button>
-                  <Button
+                    variant="outline"
                     onClick={() => restoreOrder(order.id)}
                     disabled={isRestoring || isDeleting}
                     className="gap-2 rounded-xl"
                   >
                     <RotateCcw className="w-4 h-4" />
                     {isRestoring ? "Restoring..." : "Restore"}
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    onClick={() => permanentDelete(order.id)}
+                    disabled={isDeleting || isRestoring}
+                    className="gap-2 rounded-xl"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    {isDeleting ? "Deleting..." : "Delete"}
                   </Button>
                 </div>
               </div>
