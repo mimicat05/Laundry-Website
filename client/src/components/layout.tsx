@@ -48,7 +48,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <aside className="hidden lg:flex flex-col w-72 border-r border-border/50 bg-card/50 backdrop-blur-xl p-6 sleek-shadow z-10">
         <div className="flex items-center gap-3 px-2 mb-10 text-primary">
           <Droplets className="w-8 h-8" />
-          <h1 className="font-display text-2xl font-bold text-foreground">Lumiere</h1>
+          <h1 className="font-display text-2xl font-bold text-foreground">Lavanderia Sunrise</h1>
         </div>
         
         <nav className="flex-1">
@@ -73,7 +73,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <header className="lg:hidden flex items-center justify-between p-4 border-b border-border/50 bg-card/80 backdrop-blur-md sticky top-0 z-20">
           <div className="flex items-center gap-2 text-primary">
             <Droplets className="w-6 h-6" />
-            <span className="font-display font-bold text-xl text-foreground">Lumiere</span>
+            <span className="font-display font-bold text-xl text-foreground">Lavanderia Sunrise</span>
           </div>
           
           <Sheet open={open} onOpenChange={setOpen}>
@@ -85,7 +85,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             <SheetContent side="left" className="w-72 bg-background border-r-0 p-6 flex flex-col">
               <div className="flex items-center gap-3 px-2 mb-10 mt-4 text-primary">
                 <Droplets className="w-8 h-8" />
-                <h1 className="font-display text-2xl font-bold text-foreground">Lumiere</h1>
+                <h1 className="font-display text-2xl font-bold text-foreground">Lavanderia Sunrise</h1>
               </div>
               <nav className="flex-1">
                 <NavLinks />

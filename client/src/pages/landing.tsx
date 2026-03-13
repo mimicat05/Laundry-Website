@@ -34,19 +34,19 @@ const contactInfo = [
   {
     icon: Phone,
     label: "Phone",
-    value: "+1 (555) 123-4567",
-    href: "tel:+15551234567",
+    value: "0955 921 8921",
+    href: "tel:+639559218921",
   },
   {
     icon: Mail,
     label: "Email",
-    value: "hello@lumiere-laundry.com",
-    href: "mailto:hello@lumiere-laundry.com",
+    value: "zareenans09@gmail.com",
+    href: "mailto:zareenans09@gmail.com",
   },
   {
     icon: MapPin,
     label: "Address",
-    value: "123 Clean Street, Freshville, FL 10001",
+    value: "Dacanlao, Calaca, Philippines, 4212",
     href: "#",
   },
   {
@@ -67,7 +67,7 @@ export function Landing() {
             <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
               <Droplets className="w-5 h-5" />
             </div>
-            <span className="font-display font-bold text-xl text-foreground">Lumiere</span>
+            <span className="font-display font-bold text-xl text-foreground">Lavanderia Sunrise</span>
           </div>
           <Link href="/staff">
             <Button variant="outline" className="rounded-xl gap-2" data-testid="link-staff-login">

@@ -35,7 +35,7 @@ export function Login() {
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 text-primary mb-6">
             <Droplets className="w-8 h-8" />
           </div>
-          <h1 className="font-display text-4xl font-bold text-foreground tracking-tight mb-2">Lumiere</h1>
+          <h1 className="font-display text-4xl font-bold text-foreground tracking-tight mb-2">Lavanderia Sunrise</h1>
           <p className="text-muted-foreground">Staff Portal Authentication</p>
         </div>
 
