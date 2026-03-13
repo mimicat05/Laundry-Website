@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { useLocation } from "wouter";
-import { Droplets, ArrowRight } from "lucide-react";
+import { Link, useLocation } from "wouter";
+import { Droplets, ArrowRight, ArrowLeft } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,12 +14,11 @@ export function Login() {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    // Simple mock logic for presentation
-    if (pin === "1234" || pin.length > 0) {
+    if (pin === "1234") {
       login();
-      setLocation("/");
+      setLocation("/dashboard");
     } else {
-      setError("Please enter a valid staff PIN.");
+      setError("Incorrect PIN. Please try again.");
     }
   };
 
@@ -47,7 +46,7 @@ export function Login() {
               <Input 
                 id="pin" 
                 type="password" 
-                placeholder="Enter your PIN (e.g. 1234)" 
+                placeholder="Enter your 4-digit PIN" 
                 className="rounded-xl h-12 bg-background/50 border-border/50 focus:bg-background transition-all text-center text-xl tracking-widest"
                 value={pin}
                 onChange={(e) => {
@@ -64,9 +63,14 @@ export function Login() {
           </form>
         </div>
         
-        <p className="text-center mt-8 text-sm text-muted-foreground">
-          For demo purposes, enter any PIN to continue.
-        </p>
+        <div className="text-center mt-8">
+          <Link href="/">
+            <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary transition-colors cursor-pointer" data-testid="link-back-home">
+              <ArrowLeft className="w-3.5 h-3.5" />
+              Back to Home
+            </span>
+          </Link>
+        </div>
       </div>
     </div>
   );

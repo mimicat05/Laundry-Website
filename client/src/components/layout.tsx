@@ -1,12 +1,12 @@
 import { Link, useLocation } from "wouter";
-import { LayoutDashboard, Clock, CheckCircle2, PackageCheck, Archive, LogOut, Menu, Droplets, Trash2 } from "lucide-react";
+import { LayoutDashboard, Clock, PackageCheck, Archive, LogOut, Menu, Droplets, Trash2 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useState } from "react";
 
 const navItems = [
-  { href: "/", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/pending", label: "Orders", icon: Clock },
   { href: "/washed", label: "Washed", icon: Droplets },
   { href: "/pickup", label: "Pickup", icon: PackageCheck },
