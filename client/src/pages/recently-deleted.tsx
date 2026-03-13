@@ -29,12 +29,16 @@ export function RecentlyDeleted() {
   }
 
   const query = search.toLowerCase();
-  const deletedOrders: Order[] = (orders || []).filter(o =>
-    !query ||
-    o.customerName.toLowerCase().includes(query) ||
-    o.orderId.toLowerCase().includes(query) ||
-    o.email.toLowerCase().includes(query)
-  );
+  const deletedOrders: Order[] = (orders || []).filter(o => {
+    if (!query) return true;
+    const dateStr = format(new Date(o.createdAt), "MMM dd yyyy").toLowerCase();
+    return (
+      o.customerName.toLowerCase().includes(query) ||
+      o.orderId.toLowerCase().includes(query) ||
+      o.email.toLowerCase().includes(query) ||
+      dateStr.includes(query)
+    );
+  });
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500 pb-12">

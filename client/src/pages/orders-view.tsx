@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Search } from "lucide-react";
+import { format } from "date-fns";
 import { useOrders } from "@/hooks/use-orders";
 import { OrderDetailsDialog } from "@/components/order-details-dialog";
 import { OrdersTable } from "@/components/orders-table";
@@ -33,13 +34,17 @@ export function OrdersView({ status, title }: OrdersViewProps) {
   const query = search.toLowerCase();
   const filteredOrders = (orders || [])
     .filter(o => status === 'all' ? true : o.status === status)
-    .filter(o =>
-      !query ||
-      o.customerName.toLowerCase().includes(query) ||
-      o.orderId.toLowerCase().includes(query) ||
-      o.email.toLowerCase().includes(query) ||
-      o.service.toLowerCase().includes(query)
-    )
+    .filter(o => {
+      if (!query) return true;
+      const dateStr = format(new Date(o.createdAt), "MMM dd yyyy").toLowerCase();
+      return (
+        o.customerName.toLowerCase().includes(query) ||
+        o.orderId.toLowerCase().includes(query) ||
+        o.email.toLowerCase().includes(query) ||
+        o.service.toLowerCase().includes(query) ||
+        dateStr.includes(query)
+      );
+    })
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
   return (
