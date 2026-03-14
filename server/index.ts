@@ -1,7 +1,12 @@
+import { config } from "dotenv";
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
+
+// Load environment variables from .env.local (and fall back to .env)
+config({ path: ".env.local", override: false });
+config({ path: ".env", override: false });
 
 const app = express();
 const httpServer = createServer(app);
