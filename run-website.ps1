@@ -4,6 +4,8 @@ Write-Host "Setting up Laundry Website..." -ForegroundColor Green
 # Set environment variables
 $env:DATABASE_URL = 'postgresql://postgres:02091981zen@localhost:5432/laundry_shop_db'
 $env:NODE_ENV = 'development'
+$env:GMAIL_USER = 'zeninmaejalique05@gmail.com'
+$env:GMAIL_PASSWORD = 'ncjdrcglunldzptc'
 
 # Pick an available port so the script can run even if 5000 is already in use
 function Get-FreePort {
