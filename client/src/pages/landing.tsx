@@ -1,5 +1,5 @@
 import { Link } from "wouter";
-import { Droplets, Phone, Mail, MapPin, Clock, Shirt, Sparkles, ArrowRight } from "lucide-react";
+import { Droplets, Phone, Mail, MapPin, Clock, Shirt, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 
@@ -58,9 +58,8 @@ export function Landing() {
             <span className="font-display font-bold text-xl text-foreground">Lavanderia Sunrise</span>
           </div>
           <Link href="/staff">
-            <Button variant="outline" className="rounded-xl gap-2" data-testid="link-staff-login">
+            <Button variant="outline" className="rounded-xl" data-testid="link-staff-login">
               Staff Login
-              <ArrowRight className="w-4 h-4" />
             </Button>
           </Link>
         </div>
@@ -82,10 +81,9 @@ export function Landing() {
             <Link href="/order">
               <Button
                 size="lg"
-                className="rounded-xl h-13 px-8 gap-2 shadow-lg shadow-primary/20 hover:shadow-xl hover:-translate-y-0.5 transition-all"
+                className="rounded-xl h-13 px-8 shadow-lg shadow-primary/20 hover:shadow-xl hover:-translate-y-0.5 transition-all"
               >
                 Place an Order
-                <ArrowRight className="w-4 h-4" />
               </Button>
             </Link>
           </div>
