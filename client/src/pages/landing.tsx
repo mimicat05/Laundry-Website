@@ -1,32 +1,20 @@
 import { Link } from "wouter";
-import { Droplets, Phone, Mail, MapPin, Clock, Shirt, Wind, Sparkles, Package, ArrowRight, Star } from "lucide-react";
+import { Droplets, Phone, Mail, MapPin, Clock, Shirt, Sparkles, ArrowRight, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 
 const services = [
   {
     icon: Shirt,
-    title: "Wash & Fold",
-    description: "Full laundry service — we wash, dry, and fold your clothes neatly.",
-    price: "From $3/kg",
-  },
-  {
-    icon: Wind,
-    title: "Dry Cleaning",
-    description: "Professional dry cleaning for delicate fabrics, suits, and formal wear.",
-    price: "From $8/item",
+    title: "Wash & Hang",
+    description: "We wash and hang your clothes so they come back fresh and ready to wear.",
+    price: "₱30/kg",
   },
   {
     icon: Sparkles,
-    title: "Ironing & Pressing",
-    description: "Crisp, wrinkle-free results for shirts, pants, uniforms, and more.",
-    price: "From $2/item",
-  },
-  {
-    icon: Package,
-    title: "Bulk Orders",
-    description: "Special rates for hotels, restaurants, and businesses with large volumes.",
-    price: "Custom pricing",
+    title: "Dry-cleaning",
+    description: "Professional dry cleaning for delicate fabrics, suits, and formal wear.",
+    price: "₱60/kg",
   },
 ];
 

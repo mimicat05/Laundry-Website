@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -25,6 +25,11 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { type Order } from "@shared/schema";
+
+const SERVICES: Record<string, number> = {
+  "Wash & Hang": 30,
+  "Dry-cleaning": 60,
+};
 
 const editSchema = z.object({
   customerName: z.string().min(2, "Name is required"),
@@ -62,6 +67,18 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsPr
       total: String(order.total),
     } : undefined,
   });
+
+  const watchedService = form.watch("service");
+  const watchedWeight = form.watch("weight");
+
+  useEffect(() => {
+    if (!isEditing) return;
+    const pricePerKg = SERVICES[watchedService] ?? 0;
+    const kg = parseFloat(watchedWeight);
+    if (pricePerKg > 0 && !isNaN(kg) && kg > 0) {
+      form.setValue("total", (pricePerKg * kg).toFixed(2), { shouldValidate: true });
+    }
+  }, [watchedService, watchedWeight, isEditing, form]);
 
   if (!order) return null;
 
@@ -183,11 +200,8 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsPr
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent className="rounded-xl border-border/50">
-                        <SelectItem value="Wash & Hang">Wash & Hang</SelectItem>
-                        <SelectItem value="Wash & Fold">Wash & Fold</SelectItem>
-                        <SelectItem value="Dry Cleaning">Dry Cleaning</SelectItem>
-                        <SelectItem value="Ironing Only">Ironing Only</SelectItem>
-                        <SelectItem value="Premium Care">Premium Care</SelectItem>
+                        <SelectItem value="Wash & Hang">Wash &amp; Hang — ₱30/kg</SelectItem>
+                        <SelectItem value="Dry-cleaning">Dry-cleaning — ₱60/kg</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -202,8 +216,8 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsPr
                 )} />
                 <FormField control={form.control} name="total" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Total Amount (₱)</FormLabel>
-                    <FormControl><Input type="number" step="0.01" className="rounded-xl bg-background/50 border-border/50" {...field} /></FormControl>
+                    <FormLabel>Total Amount (₱) <span className="text-xs text-muted-foreground font-normal">Auto-computed</span></FormLabel>
+                    <FormControl><Input type="number" step="0.01" readOnly className="rounded-xl bg-muted/40 border-border/50 cursor-not-allowed" {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -25,7 +25,11 @@ import {
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-// Form schema with coercion for numeric fields since HTML inputs return strings
+const SERVICES: Record<string, number> = {
+  "Wash & Hang": 30,
+  "Dry-cleaning": 60,
+};
+
 const formSchema = z.object({
   customerName: z.string().min(2, "Name is required"),
   address: z.string().min(5, "Address is required"),
@@ -56,16 +60,23 @@ export function CreateOrderDialog() {
     },
   });
 
+  const watchedService = form.watch("service");
+  const watchedWeight = form.watch("weight");
+
+  useEffect(() => {
+    const pricePerKg = SERVICES[watchedService] ?? 0;
+    const kg = parseFloat(watchedWeight);
+    if (pricePerKg > 0 && !isNaN(kg) && kg > 0) {
+      form.setValue("total", (pricePerKg * kg).toFixed(2), { shouldValidate: true });
+    } else {
+      form.setValue("total", "", { shouldValidate: false });
+    }
+  }, [watchedService, watchedWeight, form]);
+
   const onSubmit = (data: FormValues) => {
-    // Generate a simple Order ID
     const orderId = `ORD${Math.floor(1000 + Math.random() * 9000)}`;
-    
     createOrder(
-      {
-        ...data,
-        orderId,
-        status: "pending",
-      },
+      { ...data, orderId, status: "pending" },
       {
         onSuccess: () => {
           toast({ title: "Success", description: "Order created successfully." });
@@ -78,6 +89,8 @@ export function CreateOrderDialog() {
       }
     );
   };
+
+  const selectedPricePerKg = SERVICES[watchedService];
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -105,7 +118,7 @@ export function CreateOrderDialog() {
                   <FormItem>
                     <FormLabel className="text-foreground/80">Customer Name</FormLabel>
                     <FormControl>
-                      <Input placeholder="John Doe" className="rounded-xl bg-background/50 border-border/50 focus:bg-background transition-all" {...field} />
+                      <Input placeholder="Juan dela Cruz" className="rounded-xl bg-background/50 border-border/50 focus:bg-background transition-all" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -118,7 +131,7 @@ export function CreateOrderDialog() {
                   <FormItem>
                     <FormLabel className="text-foreground/80">Contact Number</FormLabel>
                     <FormControl>
-                      <Input placeholder="+1 234 567 890" className="rounded-xl bg-background/50 border-border/50 focus:bg-background transition-all" {...field} />
+                      <Input placeholder="09XX XXX XXXX" className="rounded-xl bg-background/50 border-border/50 focus:bg-background transition-all" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -131,7 +144,7 @@ export function CreateOrderDialog() {
                   <FormItem className="md:col-span-2">
                     <FormLabel className="text-foreground/80">Email Address</FormLabel>
                     <FormControl>
-                      <Input type="email" placeholder="john@example.com" className="rounded-xl bg-background/50 border-border/50 focus:bg-background transition-all" {...field} />
+                      <Input type="email" placeholder="juan@example.com" className="rounded-xl bg-background/50 border-border/50 focus:bg-background transition-all" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -144,7 +157,7 @@ export function CreateOrderDialog() {
                   <FormItem className="md:col-span-2">
                     <FormLabel className="text-foreground/80">Full Address</FormLabel>
                     <FormControl>
-                      <Input placeholder="123 Main St, City" className="rounded-xl bg-background/50 border-border/50 focus:bg-background transition-all" {...field} />
+                      <Input placeholder="123 Rizal St, Barangay, City" className="rounded-xl bg-background/50 border-border/50 focus:bg-background transition-all" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -156,18 +169,15 @@ export function CreateOrderDialog() {
                 render={({ field }) => (
                   <FormItem className="md:col-span-2">
                     <FormLabel className="text-foreground/80">Service Type</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger className="rounded-xl bg-background/50 border-border/50">
                           <SelectValue placeholder="Select a service" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent className="rounded-xl border-border/50">
-                        <SelectItem value="Wash & Hang">Wash & Hang</SelectItem>
-                        <SelectItem value="Wash & Fold">Wash & Fold</SelectItem>
-                        <SelectItem value="Dry Cleaning">Dry Cleaning</SelectItem>
-                        <SelectItem value="Ironing Only">Ironing Only</SelectItem>
-                        <SelectItem value="Premium Care">Premium Care</SelectItem>
+                        <SelectItem value="Wash & Hang">Wash &amp; Hang — ₱30/kg</SelectItem>
+                        <SelectItem value="Dry-cleaning">Dry-cleaning — ₱60/kg</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -179,9 +189,16 @@ export function CreateOrderDialog() {
                 name="weight"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-foreground/80">Weight (KG)</FormLabel>
+                    <FormLabel className="text-foreground/80">Weight (kg)</FormLabel>
                     <FormControl>
-                      <Input type="number" step="0.1" placeholder="5.5" className="rounded-xl bg-background/50 border-border/50 focus:bg-background transition-all" {...field} />
+                      <Input
+                        type="number"
+                        step="0.1"
+                        min="0"
+                        placeholder="5.5"
+                        className="rounded-xl bg-background/50 border-border/50 focus:bg-background transition-all"
+                        {...field}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -192,16 +209,30 @@ export function CreateOrderDialog() {
                 name="total"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-foreground/80">Total Amount ($)</FormLabel>
+                    <FormLabel className="text-foreground/80">
+                      Total (₱)
+                      {selectedPricePerKg && (
+                        <span className="ml-2 text-xs text-muted-foreground font-normal">
+                          ₱{selectedPricePerKg}/kg
+                        </span>
+                      )}
+                    </FormLabel>
                     <FormControl>
-                      <Input type="number" step="0.01" placeholder="25.00" className="rounded-xl bg-background/50 border-border/50 focus:bg-background transition-all" {...field} />
+                      <Input
+                        type="number"
+                        step="0.01"
+                        placeholder="Auto-computed"
+                        className="rounded-xl bg-muted/40 border-border/50 text-foreground font-medium cursor-not-allowed"
+                        readOnly
+                        {...field}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
             </div>
-            
+
             <div className="flex justify-end gap-3 pt-6 border-t border-border/50">
               <Button type="button" variant="ghost" className="rounded-xl" onClick={() => setOpen(false)}>
                 Cancel
