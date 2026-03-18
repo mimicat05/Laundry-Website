@@ -1,5 +1,5 @@
 import { Link } from "wouter";
-import { Droplets, Phone, Mail, MapPin, Clock, Shirt, Sparkles, ArrowRight, Star } from "lucide-react";
+import { Droplets, Phone, Mail, MapPin, Clock, Shirt, Sparkles, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 
@@ -71,10 +71,6 @@ export function Landing() {
         <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[120px] -z-10" />
         <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-accent/30 rounded-full blur-[100px] -z-10" />
         <div className="max-w-5xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 bg-primary/10 text-primary text-sm font-medium px-4 py-1.5 rounded-full mb-6">
-            <Star className="w-3.5 h-3.5 fill-primary" />
-            Trusted by hundreds of happy customers
-          </div>
           <h1 className="font-display text-5xl md:text-6xl font-bold text-foreground mb-6 leading-tight">
             Fresh Clothes,<br />
             <span className="text-primary">Zero Hassle.</span>
@@ -92,15 +88,6 @@ export function Landing() {
                 <ArrowRight className="w-4 h-4" />
               </Button>
             </Link>
-            <Button
-              size="lg"
-              variant="outline"
-              className="rounded-xl h-13 px-8 gap-2"
-              data-testid="button-contact-us"
-              onClick={() => document.getElementById("contact")?.scrollIntoView({ behavior: "smooth" })}
-            >
-              Contact Us
-            </Button>
           </div>
         </div>
       </section>
