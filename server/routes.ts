@@ -105,14 +105,20 @@ export async function registerRoutes(
         contactNumber: z.string().min(5),
         email: z.string().email(),
         service: z.string().min(1),
+        weight: z.coerce.string().optional(),
+        total: z.coerce.string().optional(),
       });
       const input = bodySchema.parse(req.body);
       const orderId = `ORD${Math.floor(1000 + Math.random() * 9000)}`;
       const order = await storage.createOrder({
-        ...input,
+        customerName: input.customerName,
+        address: input.address,
+        contactNumber: input.contactNumber,
+        email: input.email,
+        service: input.service,
         orderId,
-        weight: "0",
-        total: "0",
+        weight: input.weight || "0",
+        total: input.total || "0",
         status: "requested",
       });
       await sendOrderStatusEmail(order.email, order.customerName, order.orderId, "requested");

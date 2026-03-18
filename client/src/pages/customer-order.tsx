@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -17,12 +17,18 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 
+const SERVICES: Record<string, number> = {
+  "Wash & Hang": 30,
+  "Dry-cleaning": 60,
+};
+
 const formSchema = z.object({
   customerName: z.string().min(2, "Name is required"),
   address: z.string().min(5, "Address is required"),
   contactNumber: z.string().min(5, "Contact number is required"),
   email: z.string().email("Invalid email address"),
   service: z.string().min(1, "Please select a service"),
+  weight: z.string().min(1, "Weight is required"),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -41,8 +47,21 @@ export function CustomerOrder() {
       contactNumber: "",
       email: "",
       service: "",
+      weight: "",
     },
   });
+
+  const watchedService = form.watch("service");
+  const watchedWeight = form.watch("weight");
+
+  const computedTotal = (() => {
+    const pricePerKg = SERVICES[watchedService] ?? 0;
+    const kg = parseFloat(watchedWeight);
+    if (pricePerKg > 0 && !isNaN(kg) && kg > 0) {
+      return (pricePerKg * kg).toFixed(2);
+    }
+    return null;
+  })();
 
   const onSubmit = async (data: FormValues) => {
     setIsPending(true);
@@ -50,7 +69,10 @@ export function CustomerOrder() {
       const res = await fetch("/api/orders/request", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: JSON.stringify({
+          ...data,
+          total: computedTotal || "0",
+        }),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({ message: "Failed to submit" }));
@@ -198,11 +220,41 @@ export function CustomerOrder() {
                     </FormItem>
                   )}
                 />
+                <FormField
+                  control={form.control}
+                  name="weight"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Estimated Weight (kg)</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          step="0.1"
+                          min="0"
+                          placeholder="e.g. 3.5"
+                          className="rounded-xl"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <div className="flex flex-col justify-end">
+                  <p className="text-sm font-medium mb-2 text-foreground/80">Estimated Total</p>
+                  <div className="h-10 rounded-xl bg-muted/50 border border-border/50 flex items-center px-4">
+                    {computedTotal ? (
+                      <span className="font-semibold text-foreground text-lg">₱{computedTotal}</span>
+                    ) : (
+                      <span className="text-muted-foreground text-sm">Select service &amp; enter weight</span>
+                    )}
+                  </div>
+                </div>
               </div>
 
               <div className="pt-2 border-t border-border/50">
                 <p className="text-xs text-muted-foreground mb-4">
-                  By submitting, you'll receive a confirmation email once our staff accepts your order. Weight and pricing will be determined upon drop-off.
+                  By submitting, you'll receive a confirmation email once our staff accepts your order.
                 </p>
                 <Button type="submit" className="w-full rounded-xl py-6 text-base" disabled={isPending}>
                   {isPending ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : null}
