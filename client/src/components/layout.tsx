@@ -1,13 +1,17 @@
 import { Link, useLocation } from "wouter";
-import { LayoutDashboard, Clock, PackageCheck, Archive, LogOut, Menu, Droplets, Trash2 } from "lucide-react";
+import { LayoutDashboard, Clock, PackageCheck, Archive, LogOut, Menu, Droplets, Trash2, InboxIcon, ShirtIcon } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
+import { useOrders } from "@/hooks/use-orders";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useState } from "react";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/pending", label: "Orders", icon: Clock },
+  { href: "/requests", label: "Requests", icon: InboxIcon, showBadge: true },
+  { href: "/pending", label: "Accepted Orders", icon: Clock },
+  { href: "/received", label: "Received", icon: ShirtIcon },
   { href: "/washed", label: "Washed", icon: Droplets },
   { href: "/pickup", label: "Pickup", icon: PackageCheck },
   { href: "/history", label: "History", icon: Archive },
@@ -18,11 +22,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const { logout } = useAuth();
   const [open, setOpen] = useState(false);
+  const { data: orders } = useOrders();
+  const requestCount = (orders || []).filter((o) => o.status === "requested").length;
 
   const NavLinks = () => (
     <div className="space-y-2">
       {navItems.map((item) => {
         const isActive = location === item.href;
+        const count = item.showBadge ? requestCount : 0;
         return (
           <Link
             key={item.href}
@@ -35,7 +42,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
             }`}
           >
             <item.icon className="w-5 h-5" />
-            <span className="font-medium">{item.label}</span>
+            <span className="font-medium flex-1">{item.label}</span>
+            {count > 0 && (
+              <Badge className="bg-red-500 text-white text-xs px-1.5 py-0 min-w-[20px] h-5 flex items-center justify-center rounded-full">
+                {count}
+              </Badge>
+            )}
           </Link>
         );
       })}

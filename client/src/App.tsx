@@ -13,6 +13,8 @@ import { Login } from "@/pages/login";
 import { Dashboard } from "@/pages/dashboard";
 import { OrdersView } from "@/pages/orders-view";
 import { RecentlyDeleted } from "@/pages/recently-deleted";
+import { CustomerOrder } from "@/pages/customer-order";
+import { RequestsView } from "@/pages/requests-view";
 
 const ProtectedRoute = ({ component: Component, ...rest }: any) => {
   const { isAuthenticated } = useAuth();
@@ -39,6 +41,9 @@ function Router() {
       {/* Public landing page */}
       <Route path="/" component={Landing} />
 
+      {/* Public customer order form */}
+      <Route path="/order" component={CustomerOrder} />
+
       {/* Staff login */}
       <Route path="/staff" component={Login} />
 
@@ -47,12 +52,26 @@ function Router() {
         {() => <ProtectedRoute component={Dashboard} />}
       </Route>
 
+      <Route path="/requests">
+        {() => <ProtectedRoute component={RequestsView} />}
+      </Route>
+
       <Route path="/pending">
         {() => <ProtectedRoute component={() => (
           <OrdersView
             status="pending"
-            title="Pending Orders"
-            description="Orders waiting to be washed."
+            title="Accepted Orders"
+            description="Orders accepted and waiting for clothes drop-off."
+          />
+        )} />}
+      </Route>
+
+      <Route path="/received">
+        {() => <ProtectedRoute component={() => (
+          <OrdersView
+            status="received"
+            title="Received"
+            description="Clothes received at the shop, ready for washing."
           />
         )} />}
       </Route>

@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Package, Clock, PackageCheck } from "lucide-react";
+import { Package, Clock, PackageCheck, InboxIcon } from "lucide-react";
+import { Link } from "wouter";
 import { useOrders } from "@/hooks/use-orders";
 import { CreateOrderDialog } from "@/components/create-order-dialog";
 import { OrderDetailsDialog } from "@/components/order-details-dialog";
@@ -27,6 +28,7 @@ export function Dashboard() {
   }
 
   const allOrders = orders || [];
+  const requestCount = allOrders.filter(o => o.status === 'requested').length;
   const pendingCount = allOrders.filter(o => o.status === 'pending').length;
   const pickupCount = allOrders.filter(o => o.status === 'ready_for_pickup').length;
   const recentOrders = allOrders
@@ -42,7 +44,22 @@ export function Dashboard() {
         <CreateOrderDialog />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
+        <Link href="/requests">
+          <div className="bg-gradient-to-br from-card to-card/50 border border-border/50 rounded-3xl p-6 sleek-shadow relative overflow-hidden group cursor-pointer hover:border-purple-300 transition-colors">
+            <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:opacity-10 transition-opacity">
+              <InboxIcon className="w-24 h-24" />
+            </div>
+            <div className="flex items-center gap-4 mb-4">
+              <div className="w-12 h-12 rounded-2xl bg-purple-500/10 text-purple-600 flex items-center justify-center">
+                <InboxIcon className="w-6 h-6" />
+              </div>
+              <h3 className="font-medium text-muted-foreground">New Requests</h3>
+            </div>
+            <p className="text-4xl font-display font-bold text-foreground">{requestCount}</p>
+          </div>
+        </Link>
+
         <div className="bg-gradient-to-br from-card to-card/50 border border-border/50 rounded-3xl p-6 sleek-shadow relative overflow-hidden group">
           <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:opacity-10 transition-opacity">
             <Package className="w-24 h-24" />

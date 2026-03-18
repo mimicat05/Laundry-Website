@@ -96,6 +96,35 @@ export async function registerRoutes(
     }
   });
 
+  // Public endpoint for customer order requests (no auth needed)
+  app.post("/api/orders/request", async (req, res) => {
+    try {
+      const bodySchema = z.object({
+        customerName: z.string().min(2),
+        address: z.string().min(2),
+        contactNumber: z.string().min(5),
+        email: z.string().email(),
+        service: z.string().min(1),
+      });
+      const input = bodySchema.parse(req.body);
+      const orderId = `ORD${Math.floor(1000 + Math.random() * 9000)}`;
+      const order = await storage.createOrder({
+        ...input,
+        orderId,
+        weight: "0",
+        total: "0",
+        status: "requested",
+      });
+      await sendOrderStatusEmail(order.email, order.customerName, order.orderId, "requested");
+      res.status(201).json(order);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors[0].message, field: err.errors[0].path.join('.') });
+      }
+      res.status(500).json({ message: "Failed to submit order request" });
+    }
+  });
+
   app.post(api.orders.create.path, async (req, res) => {
     try {
       // Coerce numeric fields from strings if necessary

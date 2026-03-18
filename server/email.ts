@@ -37,9 +37,17 @@ export async function sendOrderStatusEmail(
   }
 
   const statusMessages: Record<string, { subject: string; message: string }> = {
+    requested: {
+      subject: "Order Request Received",
+      message: `We received your laundry order request ${orderId}. Our staff will review it shortly and you'll receive a confirmation email once it's accepted.`,
+    },
     pending: {
       subject: "Order Accepted",
-      message: `Your laundry order ${orderId} has been accepted and is pending processing.`,
+      message: `Your laundry order ${orderId} has been accepted! You may now drop off your clothes at our shop.`,
+    },
+    received: {
+      subject: "Clothes Received",
+      message: `Great news! We have received your clothes for order ${orderId}. We'll get started on your laundry right away.`,
     },
     washed: {
       subject: "Laundry Washed",
