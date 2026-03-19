@@ -9,12 +9,12 @@ import { useState } from "react";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/requests", label: "Requests", icon: InboxIcon, showBadge: true },
-  { href: "/pending", label: "Accepted Orders", icon: Clock },
-  { href: "/received", label: "Received", icon: ShirtIcon },
-  { href: "/washed", label: "Washed", icon: Droplets },
-  { href: "/pickup", label: "Pickup", icon: PackageCheck },
-  { href: "/history", label: "History", icon: Archive },
+  { href: "/requests", label: "New Requests", icon: InboxIcon, showBadge: true },
+  { href: "/pending", label: "Accepted", icon: Clock },
+  { href: "/received", label: "Received Items", icon: ShirtIcon },
+  { href: "/washed", label: "In Progress", icon: Droplets },
+  { href: "/pickup", label: "Ready for Pickup", icon: PackageCheck },
+  { href: "/history", label: "Completed", icon: Archive },
   { href: "/deleted", label: "Recently Deleted", icon: Trash2 },
 ];
 

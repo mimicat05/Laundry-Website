@@ -70,7 +70,7 @@ function Router() {
         {() => <ProtectedRoute component={() => (
           <OrdersView
             status="received"
-            title="Received"
+            title="Received Items"
             description="Clothes received at the shop, ready for washing."
           />
         )} />}
@@ -80,7 +80,7 @@ function Router() {
         {() => <ProtectedRoute component={() => (
           <OrdersView
             status="washed"
-            title="Washed Orders"
+            title="Orders in Progress"
             description="Orders that have been processed and need to be packed."
           />
         )} />}
@@ -100,7 +100,7 @@ function Router() {
         {() => <ProtectedRoute component={() => (
           <OrdersView
             status="completed"
-            title="Order History"
+            title="Completed Orders"
             description="Completed and collected orders."
           />
         )} />}

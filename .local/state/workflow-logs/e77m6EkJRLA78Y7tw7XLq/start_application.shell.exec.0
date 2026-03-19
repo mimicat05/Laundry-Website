@@ -1,0 +1,6 @@
+
+> rest-express@1.0.0 dev
+> cross-env NODE_ENV=development DATABASE_URL="postgresql://postgres:02091981zen@localhost:5432/laundry_shop_db" GMAIL_USER="zeninmaejalique05@gmail.com" GMAIL_PASSWORD="ncjdrcglunldzptc" tsx server/index.ts
+
+[1G[0Ksh: 1: cross-env: not found
+[1G[0K⠙[1G[0K

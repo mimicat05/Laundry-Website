@@ -39,7 +39,7 @@ export function Dashboard() {
     <div className="space-y-8 animate-in fade-in duration-500 pb-12">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="font-display text-3xl font-bold text-foreground">Overview</h1>
+          <h1 className="font-display text-3xl font-bold text-foreground">Dashboard</h1>
         </div>
         <CreateOrderDialog />
       </div>

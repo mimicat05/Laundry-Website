@@ -131,8 +131,7 @@ export function RequestsView() {
     <div className="space-y-6 animate-in fade-in duration-500 pb-12">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="font-display text-3xl font-bold text-foreground">Order Requests</h1>
-          <p className="text-muted-foreground mt-1">Review and accept or decline incoming customer requests.</p>
+          <h1 className="font-display text-3xl font-bold text-foreground">New Requests</h1>
         </div>
         <div className="relative w-full sm:w-72">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />

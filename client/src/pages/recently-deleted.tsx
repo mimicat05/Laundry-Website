@@ -43,7 +43,7 @@ export function RecentlyDeleted() {
   return (
     <div className="space-y-6 animate-in fade-in duration-500 pb-12">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <h1 className="font-display text-3xl font-bold text-foreground">Recently Deleted</h1>
+        <h1 className="font-display text-3xl font-bold text-foreground">Recently Deleted Orders</h1>
         <div className="relative w-full sm:w-72">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
