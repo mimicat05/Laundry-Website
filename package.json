@@ -4,11 +4,11 @@
   "type": "module",
   "license": "MIT",
   "scripts": {
-    "dev": "cross-env NODE_ENV=development DATABASE_URL=\"postgresql://postgres:02091981zen@localhost:5432/laundry_shop_db\" GMAIL_USER=\"zeninmaejalique05@gmail.com\" GMAIL_PASSWORD=\"ncjdrcglunldzptc\" tsx server/index.ts",
+    "dev": "NODE_ENV=development tsx server/index.ts",
     "build": "tsx script/build.ts",
-    "start": "cross-env NODE_ENV=production node dist/index.cjs",
+    "start": "NODE_ENV=production node dist/index.cjs",
     "check": "tsc",
-    "db:push": "cross-env DATABASE_URL=\"postgresql://postgres:02091981zen@localhost:5432/laundry_shop_db\" drizzle-kit push"
+    "db:push": "drizzle-kit push"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
