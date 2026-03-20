@@ -7,17 +7,42 @@ import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useState } from "react";
 
-const navItems = [
-  { href: "/dashboard", label: "Dashboard",       icon: LayoutDashboard },
-  { href: "/requests",  label: "New Requests",    icon: InboxIcon,    showBadge: true },
-  { href: "/pending",   label: "Accepted",        icon: Clock },
-  { href: "/received",  label: "Received",        icon: ShirtIcon },
-  { href: "/washing",   label: "Washing",         icon: Droplets },
-  { href: "/drying",    label: "Drying",          icon: Wind },
-  { href: "/folding",   label: "Folding",         icon: Layers },
-  { href: "/pickup",    label: "Ready for Pickup", icon: PackageCheck },
-  { href: "/history",   label: "Completed",       icon: Archive },
-  { href: "/deleted",   label: "Recently Deleted", icon: Trash2 },
+const navGroups = [
+  {
+    group: null,
+    items: [
+      { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+    ],
+  },
+  {
+    group: "Input",
+    items: [
+      { href: "/requests",  label: "New Requests", icon: InboxIcon,  showBadge: true },
+      { href: "/pending",   label: "Accepted",     icon: Clock },
+      { href: "/received",  label: "Received",     icon: ShirtIcon },
+    ],
+  },
+  {
+    group: "Processing",
+    items: [
+      { href: "/washing", label: "Washing", icon: Droplets },
+      { href: "/drying",  label: "Drying",  icon: Wind },
+      { href: "/folding", label: "Folding", icon: Layers },
+    ],
+  },
+  {
+    group: "Output",
+    items: [
+      { href: "/pickup",  label: "Ready for Pickup", icon: PackageCheck },
+      { href: "/history", label: "Completed",        icon: Archive },
+    ],
+  },
+  {
+    group: null,
+    items: [
+      { href: "/deleted", label: "Recently Deleted", icon: Trash2 },
+    ],
+  },
 ];
 
 export function Layout({ children }: { children: React.ReactNode }) {
@@ -28,31 +53,42 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const requestCount = (orders || []).filter((o) => o.status === "requested").length;
 
   const NavLinks = () => (
-    <div className="space-y-1">
-      {navItems.map((item) => {
-        const isActive = location === item.href;
-        const count = item.showBadge ? requestCount : 0;
-        return (
-          <Link
-            key={item.href}
-            href={item.href}
-            onClick={() => setOpen(false)}
-            className={`flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-200 ${
-              isActive
-                ? "bg-primary text-primary-foreground shadow-md"
-                : "text-muted-foreground hover:bg-secondary hover:text-foreground"
-            }`}
-          >
-            <item.icon className="w-5 h-5 shrink-0" />
-            <span className="font-medium flex-1">{item.label}</span>
-            {count > 0 && (
-              <Badge className="bg-red-500 text-white text-xs px-1.5 py-0 min-w-[20px] h-5 flex items-center justify-center rounded-full">
-                {count}
-              </Badge>
-            )}
-          </Link>
-        );
-      })}
+    <div className="space-y-4">
+      {navGroups.map((section, si) => (
+        <div key={si}>
+          {section.group && (
+            <p className="px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">
+              {section.group}
+            </p>
+          )}
+          <div className="space-y-1">
+            {section.items.map((item) => {
+              const isActive = location === item.href;
+              const count = item.showBadge ? requestCount : 0;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setOpen(false)}
+                  className={`flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-200 ${
+                    isActive
+                      ? "bg-primary text-primary-foreground shadow-md"
+                      : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+                  }`}
+                >
+                  <item.icon className="w-5 h-5 shrink-0" />
+                  <span className="font-medium flex-1">{item.label}</span>
+                  {count > 0 && (
+                    <Badge className="bg-red-500 text-white text-xs px-1.5 py-0 min-w-[20px] h-5 flex items-center justify-center rounded-full">
+                      {count}
+                    </Badge>
+                  )}
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      ))}
     </div>
   );
 
@@ -64,15 +100,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <Droplets className="w-8 h-8" />
           <h1 className="font-display text-2xl font-bold text-foreground">Lavanderia Sunrise</h1>
         </div>
-        
+
         <nav className="flex-1 overflow-y-auto">
-          <h2 className="px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Menu</h2>
           <NavLinks />
         </nav>
 
         <div className="pt-6 border-t border-border/50 mt-auto">
-          <Button 
-            variant="ghost" 
+          <Button
+            variant="ghost"
             className="w-full justify-start gap-3 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-xl py-6"
             onClick={logout}
           >
@@ -89,7 +124,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             <Droplets className="w-6 h-6" />
             <span className="font-display font-bold text-xl text-foreground">Lavanderia Sunrise</span>
           </div>
-          
+
           <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger asChild>
               <Button variant="ghost" size="icon" className="rounded-full">
@@ -104,8 +139,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
               <nav className="flex-1 overflow-y-auto">
                 <NavLinks />
               </nav>
-              <Button 
-                variant="ghost" 
+              <Button
+                variant="ghost"
                 className="w-full justify-start gap-3 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-xl mt-4"
                 onClick={logout}
               >
