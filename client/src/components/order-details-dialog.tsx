@@ -26,6 +26,19 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { type Order } from "@shared/schema";
 
+const STATUS_LABELS: Record<string, string> = {
+  requested: "New Request",
+  pending: "Accepted",
+  received: "Received",
+  washed: "In Progress",
+  ready_for_pickup: "Ready for Pickup",
+  completed: "Completed",
+};
+
+export function statusLabel(status: string) {
+  return STATUS_LABELS[status] ?? status.replace(/_/g, " ");
+}
+
 const SERVICES: Record<string, number> = {
   "Wash & Hang": 30,
   "Dry-cleaning": 60,
@@ -87,7 +100,7 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsPr
       { id: order.id, status: newStatus },
       {
         onSuccess: () => {
-          toast({ title: "Status Updated", description: `Order moved to ${newStatus.replace('_', ' ')}.` });
+          toast({ title: "Status Updated", description: `Order moved to ${statusLabel(newStatus)}.` });
           onOpenChange(false);
         },
         onError: (err) => toast({ title: "Error", description: err.message, variant: "destructive" }),
@@ -123,8 +136,8 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsPr
   const getNextStatusAction = () => {
     switch (order.status) {
       case "pending": return { label: "Mark as Received", next: "received" };
-      case "received": return { label: "Mark as Washed", next: "washed" };
-      case "washed": return { label: "Ready for Pickup", next: "ready_for_pickup" };
+      case "received": return { label: "Mark as In Progress", next: "washed" };
+      case "washed": return { label: "Mark as Ready for Pickup", next: "ready_for_pickup" };
       case "ready_for_pickup": return { label: "Complete Order", next: "completed" };
       default: return null;
     }
@@ -152,7 +165,7 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsPr
             <DialogTitle className="font-display text-2xl flex items-center gap-3">
               {order.orderId}
               <Badge variant="outline" className={`capitalize rounded-full px-3 py-1 text-xs font-semibold ${getStatusColor(order.status)}`}>
-                {order.status.replace('_', ' ')}
+                {statusLabel(order.status)}
               </Badge>
             </DialogTitle>
           </div>

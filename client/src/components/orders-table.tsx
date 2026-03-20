@@ -3,6 +3,7 @@ import { Eye } from "lucide-react";
 import { type Order } from "@shared/schema";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { statusLabel } from "@/components/order-details-dialog";
 import {
   Table,
   TableCell,
@@ -72,8 +73,8 @@ export function OrdersTable({ orders, onRowClick, emptyMessage = "No orders foun
                   {format(new Date(order.createdAt), "MMM dd")}
                 </TableCell>
                 <TableCell>
-                  <Badge variant="outline" className={`capitalize rounded-full font-medium border ${getStatusColor(order.status)}`}>
-                    {order.status.replace('_', ' ')}
+                  <Badge variant="outline" className={`rounded-full font-medium border ${getStatusColor(order.status)}`}>
+                    {statusLabel(order.status)}
                   </Badge>
                 </TableCell>
                 <TableCell className="text-right">
