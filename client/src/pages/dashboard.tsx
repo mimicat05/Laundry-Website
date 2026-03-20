@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Clock, PackageCheck, InboxIcon, ShirtIcon, Droplets } from "lucide-react";
+import { Clock, PackageCheck, InboxIcon, ShirtIcon, Droplets, Wind, Layers } from "lucide-react";
 import { Link } from "wouter";
 import { useOrders } from "@/hooks/use-orders";
 import { CreateOrderDialog } from "@/components/create-order-dialog";
@@ -19,8 +19,8 @@ export function Dashboard() {
           <Skeleton className="h-10 w-48 rounded-xl" />
           <Skeleton className="h-10 w-32 rounded-xl" />
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-6">
-          {[1, 2, 3, 4, 5].map((i) => <Skeleton key={i} className="h-32 rounded-3xl" />)}
+        <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-4">
+          {[1, 2, 3, 4, 5, 6, 7].map((i) => <Skeleton key={i} className="h-32 rounded-3xl" />)}
         </div>
         <Skeleton className="h-[400px] rounded-3xl" />
       </div>
@@ -28,30 +28,29 @@ export function Dashboard() {
   }
 
   const allOrders = orders || [];
-  const requestCount = allOrders.filter(o => o.status === 'requested').length;
-  const acceptedCount = allOrders.filter(o => o.status === 'pending').length;
-  const receivedCount = allOrders.filter(o => o.status === 'received').length;
-  const inProgressCount = allOrders.filter(o => o.status === 'washed').length;
-  const pickupCount = allOrders.filter(o => o.status === 'ready_for_pickup').length;
-  const recentOrders = allOrders
+  const counts = {
+    requested:        allOrders.filter(o => o.status === 'requested').length,
+    pending:          allOrders.filter(o => o.status === 'pending').length,
+    received:         allOrders.filter(o => o.status === 'received').length,
+    washing:          allOrders.filter(o => o.status === 'washing').length,
+    drying:           allOrders.filter(o => o.status === 'drying').length,
+    folding:          allOrders.filter(o => o.status === 'folding').length,
+    ready_for_pickup: allOrders.filter(o => o.status === 'ready_for_pickup').length,
+  };
+
+  const recentOrders = [...allOrders]
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
     .slice(0, 5);
 
   const statBoxes = [
-    { href: "/requests",  label: "New Requests",     count: requestCount,    icon: InboxIcon,    color: "purple" },
-    { href: "/pending",   label: "Accepted",          count: acceptedCount,   icon: Clock,        color: "blue" },
-    { href: "/received",  label: "Received Items",    count: receivedCount,   icon: ShirtIcon,    color: "amber" },
-    { href: "/washed",    label: "In Progress",       count: inProgressCount, icon: Droplets,     color: "cyan" },
-    { href: "/pickup",    label: "Ready for Pickup",  count: pickupCount,     icon: PackageCheck, color: "indigo" },
+    { href: "/requests", label: "New Requests",    count: counts.requested,        icon: InboxIcon,    bg: "bg-purple-500/10", text: "text-purple-600", hover: "hover:border-purple-300" },
+    { href: "/pending",  label: "Accepted",         count: counts.pending,          icon: Clock,        bg: "bg-amber-500/10",  text: "text-amber-600",  hover: "hover:border-amber-300" },
+    { href: "/received", label: "Received",         count: counts.received,         icon: ShirtIcon,    bg: "bg-cyan-500/10",   text: "text-cyan-600",   hover: "hover:border-cyan-300" },
+    { href: "/washing",  label: "Washing",          count: counts.washing,          icon: Droplets,     bg: "bg-blue-500/10",   text: "text-blue-600",   hover: "hover:border-blue-300" },
+    { href: "/drying",   label: "Drying",           count: counts.drying,           icon: Wind,         bg: "bg-sky-500/10",    text: "text-sky-600",    hover: "hover:border-sky-300" },
+    { href: "/folding",  label: "Folding",          count: counts.folding,          icon: Layers,       bg: "bg-violet-500/10", text: "text-violet-600", hover: "hover:border-violet-300" },
+    { href: "/pickup",   label: "Ready for Pickup", count: counts.ready_for_pickup, icon: PackageCheck, bg: "bg-indigo-500/10", text: "text-indigo-600", hover: "hover:border-indigo-300" },
   ];
-
-  const colorMap: Record<string, string> = {
-    purple: "bg-purple-500/10 text-purple-600 hover:border-purple-300",
-    blue:   "bg-blue-500/10 text-blue-600 hover:border-blue-300",
-    amber:  "bg-amber-500/10 text-amber-600 hover:border-amber-300",
-    cyan:   "bg-cyan-500/10 text-cyan-600 hover:border-cyan-300",
-    indigo: "bg-indigo-500/10 text-indigo-600 hover:border-indigo-300",
-  };
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500 pb-12">
@@ -62,18 +61,18 @@ export function Dashboard() {
         <CreateOrderDialog />
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-6">
-        {statBoxes.map(({ href, label, count, icon: Icon, color }) => (
+      <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-4">
+        {statBoxes.map(({ href, label, count, icon: Icon, bg, text, hover }) => (
           <Link key={href} href={href}>
-            <div className={`bg-gradient-to-br from-card to-card/50 border border-border/50 rounded-3xl p-6 sleek-shadow relative overflow-hidden group cursor-pointer transition-colors ${colorMap[color].split(" ").slice(2).join(" ")}`}>
-              <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:opacity-10 transition-opacity">
-                <Icon className="w-24 h-24" />
+            <div className={`bg-gradient-to-br from-card to-card/50 border border-border/50 rounded-3xl p-5 sleek-shadow relative overflow-hidden group cursor-pointer transition-colors ${hover}`}>
+              <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
+                <Icon className="w-20 h-20" />
               </div>
-              <div className="flex items-center gap-4 mb-4">
-                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${colorMap[color].split(" ").slice(0, 2).join(" ")}`}>
-                  <Icon className="w-6 h-6" />
+              <div className="flex items-center gap-3 mb-4">
+                <div className={`w-10 h-10 rounded-2xl flex items-center justify-center ${bg} ${text}`}>
+                  <Icon className="w-5 h-5" />
                 </div>
-                <h3 className="font-medium text-muted-foreground text-sm leading-tight">{label}</h3>
+                <h3 className={`font-medium text-sm leading-tight ${text}`}>{label}</h3>
               </div>
               <p className="text-4xl font-display font-bold text-foreground">{count}</p>
             </div>

@@ -70,18 +70,38 @@ function Router() {
         {() => <ProtectedRoute component={() => (
           <OrdersView
             status="received"
-            title="Received Items"
+            title="Received"
             description="Clothes received at the shop, ready for washing."
           />
         )} />}
       </Route>
 
-      <Route path="/washed">
+      <Route path="/washing">
         {() => <ProtectedRoute component={() => (
           <OrdersView
-            status="washed"
-            title="Orders in Progress"
-            description="Orders that have been processed and need to be packed."
+            status="washing"
+            title="Washing"
+            description="Orders currently being washed."
+          />
+        )} />}
+      </Route>
+
+      <Route path="/drying">
+        {() => <ProtectedRoute component={() => (
+          <OrdersView
+            status="drying"
+            title="Drying"
+            description="Orders currently being dried."
+          />
+        )} />}
+      </Route>
+
+      <Route path="/folding">
+        {() => <ProtectedRoute component={() => (
+          <OrdersView
+            status="folding"
+            title="Folding"
+            description="Orders being folded and packed."
           />
         )} />}
       </Route>
