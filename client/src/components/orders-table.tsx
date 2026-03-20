@@ -17,9 +17,19 @@ interface OrdersTableProps {
   orders: Order[];
   onRowClick: (order: Order) => void;
   emptyMessage?: string;
+  selectable?: boolean;
+  selectedIds?: Set<number>;
+  onSelectionChange?: (ids: Set<number>) => void;
 }
 
-export function OrdersTable({ orders, onRowClick, emptyMessage = "No orders found." }: OrdersTableProps) {
+export function OrdersTable({
+  orders,
+  onRowClick,
+  emptyMessage = "No orders found.",
+  selectable = false,
+  selectedIds = new Set(),
+  onSelectionChange,
+}: OrdersTableProps) {
   if (orders.length === 0) {
     return (
       <div className="py-16 text-center border border-dashed border-border/60 rounded-2xl bg-background/50">
@@ -27,6 +37,30 @@ export function OrdersTable({ orders, onRowClick, emptyMessage = "No orders foun
       </div>
     );
   }
+
+  const allSelected = orders.length > 0 && orders.every((o) => selectedIds.has(o.id));
+  const someSelected = orders.some((o) => selectedIds.has(o.id));
+
+  const toggleAll = () => {
+    if (!onSelectionChange) return;
+    if (allSelected) {
+      const next = new Set(selectedIds);
+      orders.forEach((o) => next.delete(o.id));
+      onSelectionChange(next);
+    } else {
+      const next = new Set(selectedIds);
+      orders.forEach((o) => next.add(o.id));
+      onSelectionChange(next);
+    }
+  };
+
+  const toggleOne = (id: number) => {
+    if (!onSelectionChange) return;
+    const next = new Set(selectedIds);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    onSelectionChange(next);
+  };
 
   const getStatusColor = (status: string) => {
     switch(status) {
@@ -49,6 +83,18 @@ export function OrdersTable({ orders, onRowClick, emptyMessage = "No orders foun
         <Table>
           <TableHeader className="bg-muted/50">
             <TableRow className="hover:bg-transparent border-border/50">
+              {selectable && (
+                <TableHead className="w-10 pl-4">
+                  <input
+                    type="checkbox"
+                    checked={allSelected}
+                    ref={(el) => { if (el) el.indeterminate = someSelected && !allSelected; }}
+                    onChange={toggleAll}
+                    className="w-4 h-4 rounded border-border accent-primary cursor-pointer"
+                    aria-label="Select all"
+                  />
+                </TableHead>
+              )}
               <TableHead className="font-semibold text-foreground">Order ID</TableHead>
               <TableHead className="font-semibold text-foreground">Customer</TableHead>
               <TableHead className="font-semibold text-foreground">Service</TableHead>
@@ -58,35 +104,49 @@ export function OrdersTable({ orders, onRowClick, emptyMessage = "No orders foun
             </TableRow>
           </TableHeader>
           <TableBody>
-            {orders.map((order) => (
-              <TableRow 
-                key={order.id} 
-                className="hover:bg-muted/30 transition-colors cursor-pointer border-border/50"
-                onClick={() => onRowClick(order)}
-              >
-                <TableCell className="font-medium text-foreground">{order.orderId}</TableCell>
-                <TableCell>
-                  <div className="flex flex-col">
-                    <span className="font-medium text-foreground">{order.customerName}</span>
-                    <span className="text-xs text-muted-foreground">{order.contactNumber}</span>
-                  </div>
-                </TableCell>
-                <TableCell className="text-muted-foreground">{order.service}</TableCell>
-                <TableCell className="text-muted-foreground">
-                  {format(new Date(order.createdAt), "MMM dd")}
-                </TableCell>
-                <TableCell>
-                  <Badge variant="outline" className={`rounded-full font-medium border ${getStatusColor(order.status)}`}>
-                    {statusLabel(order.status)}
-                  </Badge>
-                </TableCell>
-                <TableCell className="text-right">
-                  <Button variant="ghost" size="icon" className="rounded-full hover:bg-primary/10 hover:text-primary">
-                    <Eye className="w-4 h-4" />
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ))}
+            {orders.map((order) => {
+              const isSelected = selectedIds.has(order.id);
+              return (
+                <TableRow
+                  key={order.id}
+                  className={`hover:bg-muted/30 transition-colors cursor-pointer border-border/50 ${isSelected ? "bg-primary/5" : ""}`}
+                  onClick={() => onRowClick(order)}
+                >
+                  {selectable && (
+                    <TableCell className="pl-4" onClick={(e) => { e.stopPropagation(); toggleOne(order.id); }}>
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => toggleOne(order.id)}
+                        className="w-4 h-4 rounded border-border accent-primary cursor-pointer"
+                        aria-label={`Select ${order.orderId}`}
+                      />
+                    </TableCell>
+                  )}
+                  <TableCell className="font-medium text-foreground">{order.orderId}</TableCell>
+                  <TableCell>
+                    <div className="flex flex-col">
+                      <span className="font-medium text-foreground">{order.customerName}</span>
+                      <span className="text-xs text-muted-foreground">{order.contactNumber}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">{order.service}</TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {format(new Date(order.createdAt), "MMM dd")}
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="outline" className={`rounded-full font-medium border ${getStatusColor(order.status)}`}>
+                      {statusLabel(order.status)}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button variant="ghost" size="icon" className="rounded-full hover:bg-primary/10 hover:text-primary">
+                      <Eye className="w-4 h-4" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
       </div>
