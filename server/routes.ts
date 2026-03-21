@@ -100,11 +100,21 @@ export async function registerRoutes(
   app.post("/api/orders/request", async (req, res) => {
     try {
       const bodySchema = z.object({
-        customerName: z.string().min(2),
-        address: z.string().min(2),
-        contactNumber: z.string().min(5),
-        email: z.string().email(),
-        service: z.string().min(1),
+        customerName: z.string().min(2, "Full name must be at least 2 characters"),
+        address: z.string().min(5, "Please enter your full address"),
+        contactNumber: z
+          .string()
+          .regex(
+            /^(09|\+639)\d{9}$/,
+            "Enter a valid Philippine mobile number (e.g. 09171234567 or +639171234567)"
+          ),
+        email: z
+          .string()
+          .regex(
+            /^[a-zA-Z0-9._%+\-]+@gmail\.com$/,
+            "Only Gmail addresses are accepted (e.g. yourname@gmail.com)"
+          ),
+        service: z.string().min(1, "Please select a service"),
         weight: z.coerce.string().optional(),
         total: z.coerce.string().optional(),
       });
