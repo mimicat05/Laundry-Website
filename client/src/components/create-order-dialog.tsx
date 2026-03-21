@@ -17,6 +17,7 @@ import {
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -31,10 +32,20 @@ const SERVICES: Record<string, number> = {
 };
 
 const formSchema = z.object({
-  customerName: z.string().min(2, "Name is required"),
-  address: z.string().min(5, "Address is required"),
-  contactNumber: z.string().min(5, "Contact number is required"),
-  email: z.string().email("Invalid email"),
+  customerName: z.string().min(2, "Full name must be at least 2 characters"),
+  address: z.string().min(5, "Please enter the full address"),
+  contactNumber: z
+    .string()
+    .regex(
+      /^(09|\+639)\d{9}$/,
+      "Enter a valid Philippine mobile number (e.g. 09171234567 or +639171234567)"
+    ),
+  email: z
+    .string()
+    .regex(
+      /^[a-zA-Z0-9._%+\-]+@gmail\.com$/,
+      "Only Gmail addresses are accepted (e.g. yourname@gmail.com)"
+    ),
   service: z.string().min(1, "Please select a service"),
   weight: z.string().min(1, "Weight is required"),
   total: z.string().min(1, "Total is required"),
@@ -49,6 +60,7 @@ export function CreateOrderDialog() {
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
+    mode: "onTouched",
     defaultValues: {
       customerName: "",
       address: "",
@@ -131,8 +143,24 @@ export function CreateOrderDialog() {
                   <FormItem>
                     <FormLabel className="text-foreground/80">Contact Number</FormLabel>
                     <FormControl>
-                      <Input placeholder="09XX XXX XXXX" className="rounded-xl bg-background/50 border-border/50 focus:bg-background transition-all" {...field} />
+                      <Input
+                        placeholder="09171234567"
+                        className="rounded-xl bg-background/50 border-border/50 focus:bg-background transition-all"
+                        inputMode="tel"
+                        maxLength={13}
+                        {...field}
+                        onChange={(e) => {
+                          const raw = e.target.value;
+                          const cleaned = raw.startsWith("+")
+                            ? "+" + raw.slice(1).replace(/\D/g, "")
+                            : raw.replace(/\D/g, "");
+                          field.onChange(cleaned);
+                        }}
+                      />
                     </FormControl>
+                    <FormDescription className="text-xs">
+                      Philippine mobile number — 09XXXXXXXXX or +639XXXXXXXXX
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -142,10 +170,18 @@ export function CreateOrderDialog() {
                 name="email"
                 render={({ field }) => (
                   <FormItem className="md:col-span-2">
-                    <FormLabel className="text-foreground/80">Email Address</FormLabel>
+                    <FormLabel className="text-foreground/80">Gmail Address</FormLabel>
                     <FormControl>
-                      <Input type="email" placeholder="juan@example.com" className="rounded-xl bg-background/50 border-border/50 focus:bg-background transition-all" {...field} />
+                      <Input
+                        type="email"
+                        placeholder="yourname@gmail.com"
+                        className="rounded-xl bg-background/50 border-border/50 focus:bg-background transition-all"
+                        {...field}
+                      />
                     </FormControl>
+                    <FormDescription className="text-xs">
+                      We only accept Gmail addresses ending in @gmail.com
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
