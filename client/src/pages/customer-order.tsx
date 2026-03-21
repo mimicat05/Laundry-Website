@@ -22,33 +22,11 @@ const SERVICES: Record<string, number> = {
   "Dry-cleaning": 60,
 };
 
-const BLOCKED_EMAIL_DOMAINS = [
-  "gmail.com", "yahoo.com", "hotmail.com", "outlook.com", "live.com",
-  "icloud.com", "me.com", "mac.com", "protonmail.com", "proton.me",
-  "aol.com", "msn.com", "ymail.com", "googlemail.com",
-];
-
-const REAL_PH_PHONE = /^(\+?63|0)9\d{9}$/;
-
 const formSchema = z.object({
   customerName: z.string().min(2, "Name is required"),
   address: z.string().min(5, "Address is required"),
-  contactNumber: z
-    .string()
-    .min(3, "Contact number is required")
-    .refine((v) => !REAL_PH_PHONE.test(v.replace(/\s/g, "")), {
-      message: "Real phone numbers are not accepted. Use a test number (e.g. 12345).",
-    }),
-  email: z
-    .string()
-    .email("Invalid email address")
-    .refine(
-      (v) => {
-        const domain = v.split("@")[1]?.toLowerCase();
-        return !BLOCKED_EMAIL_DOMAINS.includes(domain);
-      },
-      { message: "Real email providers are not accepted. Use a test email (e.g. test@example.com)." }
-    ),
+  contactNumber: z.string().min(5, "Contact number is required"),
+  email: z.string().email("Invalid email address"),
   service: z.string().min(1, "Please select a service"),
   weight: z.string().min(1, "Weight is required"),
 });
@@ -202,7 +180,7 @@ export function CustomerOrder() {
                     <FormItem className="md:col-span-2">
                       <FormLabel>Email Address</FormLabel>
                       <FormControl>
-                        <Input type="email" placeholder="test@example.com" className="rounded-xl" {...field} />
+                        <Input type="email" placeholder="juan@example.com" className="rounded-xl" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

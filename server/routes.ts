@@ -96,32 +96,14 @@ export async function registerRoutes(
     }
   });
 
-  const BLOCKED_EMAIL_DOMAINS = [
-    "gmail.com", "yahoo.com", "hotmail.com", "outlook.com", "live.com",
-    "icloud.com", "me.com", "mac.com", "protonmail.com", "proton.me",
-    "aol.com", "msn.com", "ymail.com", "googlemail.com",
-  ];
-  const REAL_PH_PHONE = /^(\+?63|0)9\d{9}$/;
-
   // Public endpoint for customer order requests (no auth needed)
   app.post("/api/orders/request", async (req, res) => {
     try {
       const bodySchema = z.object({
         customerName: z.string().min(2),
         address: z.string().min(2),
-        contactNumber: z
-          .string()
-          .min(3)
-          .refine((v) => !REAL_PH_PHONE.test(v.replace(/\s/g, "")), {
-            message: "Real phone numbers are not accepted.",
-          }),
-        email: z
-          .string()
-          .email()
-          .refine(
-            (v) => !BLOCKED_EMAIL_DOMAINS.includes(v.split("@")[1]?.toLowerCase()),
-            { message: "Real email providers are not accepted." }
-          ),
+        contactNumber: z.string().min(5),
+        email: z.string().email(),
         service: z.string().min(1),
         weight: z.coerce.string().optional(),
         total: z.coerce.string().optional(),
