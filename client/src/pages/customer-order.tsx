@@ -181,9 +181,17 @@ export function CustomerOrder() {
                         <Input
                           placeholder="09171234567"
                           className="rounded-xl"
+                          inputMode="tel"
                           maxLength={13}
                           data-testid="input-contact-number"
                           {...field}
+                          onChange={(e) => {
+                            const raw = e.target.value;
+                            const cleaned = raw.startsWith("+")
+                              ? "+" + raw.slice(1).replace(/\D/g, "")
+                              : raw.replace(/\D/g, "");
+                            field.onChange(cleaned);
+                          }}
                         />
                       </FormControl>
                       <FormDescription className="text-xs">
