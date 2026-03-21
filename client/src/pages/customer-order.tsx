@@ -52,6 +52,7 @@ export function CustomerOrder() {
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
+    mode: "onTouched",
     defaultValues: {
       customerName: "",
       address: "",
