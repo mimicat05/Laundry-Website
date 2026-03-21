@@ -49,6 +49,7 @@ const formSchema = z.object({
   service: z.string().min(1, "Please select a service"),
   weight: z.string().min(1, "Weight is required"),
   total: z.string().min(1, "Total is required"),
+  notes: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -69,6 +70,7 @@ export function CreateOrderDialog() {
       service: "",
       weight: "",
       total: "",
+      notes: "",
     },
   });
 
@@ -194,6 +196,27 @@ export function CreateOrderDialog() {
                     <FormLabel className="text-foreground/80">Full Address</FormLabel>
                     <FormControl>
                       <Input placeholder="123 Rizal St, Barangay, City" className="rounded-xl bg-background/50 border-border/50 focus:bg-background transition-all" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="notes"
+                render={({ field }) => (
+                  <FormItem className="md:col-span-2">
+                    <FormLabel className="text-foreground/80">
+                      Special Instructions{" "}
+                      <span className="text-muted-foreground font-normal">(Optional)</span>
+                    </FormLabel>
+                    <FormControl>
+                      <textarea
+                        placeholder="e.g. No fabric softener, handle delicates gently, separate whites..."
+                        rows={3}
+                        className="w-full rounded-xl border border-input bg-background/50 px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 resize-none transition-all"
+                        {...field}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

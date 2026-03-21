@@ -13,6 +13,7 @@ export const orders = pgTable("orders", {
   weight: numeric("weight", { precision: 10, scale: 2 }).notNull(),
   total: numeric("total", { precision: 10, scale: 2 }).notNull(),
   status: text("status").notNull().default("pending"), // pending, washed, ready_for_pickup, completed
+  notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   deletedAt: timestamp("deleted_at"),
 });

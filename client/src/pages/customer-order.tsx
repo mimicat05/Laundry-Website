@@ -40,6 +40,7 @@ const formSchema = z.object({
     ),
   service: z.string().min(1, "Please select a service"),
   weight: z.string().min(1, "Weight is required"),
+  notes: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -60,6 +61,7 @@ export function CustomerOrder() {
       email: "",
       service: "",
       weight: "",
+      notes: "",
     },
   });
 
@@ -232,6 +234,27 @@ export function CustomerOrder() {
                       <FormLabel>Full Address</FormLabel>
                       <FormControl>
                         <Input placeholder="123 Mabini St, Calaca, Batangas" className="rounded-xl" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="notes"
+                  render={({ field }) => (
+                    <FormItem className="md:col-span-2">
+                      <FormLabel>
+                        Special Instructions{" "}
+                        <span className="text-muted-foreground font-normal">(Optional)</span>
+                      </FormLabel>
+                      <FormControl>
+                        <textarea
+                          placeholder="e.g. No fabric softener, handle delicates gently, separate whites..."
+                          rows={3}
+                          className="w-full rounded-xl border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 resize-none"
+                          {...field}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

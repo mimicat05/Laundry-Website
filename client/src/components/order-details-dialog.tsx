@@ -55,6 +55,7 @@ const editSchema = z.object({
   service: z.string().min(1, "Please select a service"),
   weight: z.string().min(1, "Weight is required"),
   total: z.string().min(1, "Total is required"),
+  notes: z.string().optional(),
 });
 
 type EditValues = z.infer<typeof editSchema>;
@@ -81,6 +82,7 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsPr
       service: order.service,
       weight: String(order.weight),
       total: String(order.total),
+      notes: order.notes ?? "",
     } : undefined,
   });
 
@@ -211,6 +213,23 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsPr
                     <FormMessage />
                   </FormItem>
                 )} />
+                <FormField control={form.control} name="notes" render={({ field }) => (
+                  <FormItem className="md:col-span-2">
+                    <FormLabel>
+                      Special Instructions{" "}
+                      <span className="text-muted-foreground font-normal">(Optional)</span>
+                    </FormLabel>
+                    <FormControl>
+                      <textarea
+                        rows={2}
+                        placeholder="e.g. No fabric softener, separate whites..."
+                        className="w-full rounded-xl border border-input bg-background/50 px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 resize-none"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
                 <FormField control={form.control} name="service" render={({ field }) => (
                   <FormItem className="md:col-span-2">
                     <FormLabel>Service</FormLabel>
@@ -300,6 +319,12 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsPr
                   </div>
                 </div>
               </div>
+              {order.notes && (
+                <div className="bg-amber-50 dark:bg-amber-950/30 rounded-2xl p-5 border border-amber-200/60 dark:border-amber-800/40">
+                  <h4 className="text-xs font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wider mb-2">Special Instructions</h4>
+                  <p className="text-sm text-foreground whitespace-pre-wrap">{order.notes}</p>
+                </div>
+              )}
             </div>
 
             <div className="flex items-center justify-between pt-4 border-t border-border/50 mt-2">

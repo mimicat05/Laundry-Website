@@ -115,6 +115,7 @@ export async function registerRoutes(
             "Only Gmail addresses are accepted (e.g. yourname@gmail.com)"
           ),
         service: z.string().min(1, "Please select a service"),
+        notes: z.string().optional(),
         weight: z.coerce.string().optional(),
         total: z.coerce.string().optional(),
       });
@@ -126,6 +127,7 @@ export async function registerRoutes(
         contactNumber: input.contactNumber,
         email: input.email,
         service: input.service,
+        notes: input.notes || null,
         orderId,
         weight: input.weight || "0",
         total: input.total || "0",
