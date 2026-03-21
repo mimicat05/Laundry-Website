@@ -9,19 +9,21 @@ import { useState } from "react";
 
 const navGroups = [
   {
-    group: "Input",
-    color: "bg-blue-500",
-    border: "border-blue-200",
+    group: null,
     items: [
-      { href: "/requests", label: "New Requests", icon: InboxIcon, showBadge: true },
-      { href: "/pending",  label: "Accepted",     icon: Clock },
-      { href: "/received", label: "Received",     icon: ShirtIcon },
+      { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+    ],
+  },
+  {
+    group: "Input",
+    items: [
+      { href: "/requests",  label: "New Requests", icon: InboxIcon,  showBadge: true },
+      { href: "/pending",   label: "Accepted",     icon: Clock },
+      { href: "/received",  label: "Received",     icon: ShirtIcon },
     ],
   },
   {
     group: "Processing",
-    color: "bg-amber-500",
-    border: "border-amber-200",
     items: [
       { href: "/washing", label: "Washing", icon: Droplets },
       { href: "/drying",  label: "Drying",  icon: Wind },
@@ -30,11 +32,15 @@ const navGroups = [
   },
   {
     group: "Output",
-    color: "bg-emerald-500",
-    border: "border-emerald-200",
     items: [
       { href: "/pickup",  label: "Ready for Pickup", icon: PackageCheck },
       { href: "/history", label: "Completed",        icon: Archive },
+    ],
+  },
+  {
+    group: null,
+    items: [
+      { href: "/deleted", label: "Recently Deleted", icon: Trash2 },
     ],
   },
 ];
@@ -47,36 +53,15 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const requestCount = (orders || []).filter((o) => o.status === "requested").length;
 
   const NavLinks = () => (
-    <div className="flex flex-col gap-1">
-      {/* Dashboard */}
-      <Link
-        href="/dashboard"
-        onClick={() => setOpen(false)}
-        className={`flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-200 mb-2 ${
-          location === "/dashboard"
-            ? "bg-primary text-primary-foreground shadow-md"
-            : "text-muted-foreground hover:bg-secondary hover:text-foreground"
-        }`}
-      >
-        <LayoutDashboard className="w-5 h-5 shrink-0" />
-        <span className="font-medium">Dashboard</span>
-      </Link>
-
-      <div className="h-px bg-border/50 mb-2" />
-
-      {/* Grouped sections */}
-      {navGroups.map((section) => (
-        <div key={section.group} className="mb-3">
-          {/* Section header */}
-          <div className="flex items-center gap-2 px-3 mb-1.5">
-            <span className={`w-2 h-2 rounded-full shrink-0 ${section.color}`} />
-            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+    <div className="space-y-4">
+      {navGroups.map((section, si) => (
+        <div key={si}>
+          {section.group && (
+            <p className="px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">
               {section.group}
-            </span>
-          </div>
-
-          {/* Items with left border accent */}
-          <div className={`ml-3 pl-3 border-l-2 ${section.border} space-y-0.5`}>
+            </p>
+          )}
+          <div className="space-y-1">
             {section.items.map((item) => {
               const isActive = location === item.href;
               const count = item.showBadge ? requestCount : 0;
@@ -85,14 +70,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   key={item.href}
                   href={item.href}
                   onClick={() => setOpen(false)}
-                  className={`flex items-center gap-3 px-3 py-2 rounded-xl transition-all duration-200 ${
+                  className={`flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-200 ${
                     isActive
                       ? "bg-primary text-primary-foreground shadow-md"
                       : "text-muted-foreground hover:bg-secondary hover:text-foreground"
                   }`}
                 >
-                  <item.icon className="w-4 h-4 shrink-0" />
-                  <span className="font-medium text-sm flex-1">{item.label}</span>
+                  <item.icon className="w-5 h-5 shrink-0" />
+                  <span className="font-medium flex-1">{item.label}</span>
                   {count > 0 && (
                     <Badge className="bg-red-500 text-white text-xs px-1.5 py-0 min-w-[20px] h-5 flex items-center justify-center rounded-full">
                       {count}
@@ -104,51 +89,30 @@ export function Layout({ children }: { children: React.ReactNode }) {
           </div>
         </div>
       ))}
-
-      {/* Recently Deleted — separated at bottom */}
-      <div className="h-px bg-border/50 mt-1 mb-2" />
-      <Link
-        href="/deleted"
-        onClick={() => setOpen(false)}
-        className={`flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-200 ${
-          location === "/deleted"
-            ? "bg-destructive/10 text-destructive"
-            : "text-muted-foreground hover:bg-destructive/5 hover:text-destructive/80"
-        }`}
-      >
-        <Trash2 className="w-4 h-4 shrink-0" />
-        <span className="font-medium text-sm">Recently Deleted</span>
-      </Link>
     </div>
   );
 
   return (
     <div className="min-h-screen bg-background flex">
       {/* Desktop Sidebar */}
-      <aside className="hidden lg:flex flex-col w-64 border-r border-border/50 bg-card/50 backdrop-blur-xl px-4 py-6 sleek-shadow z-10">
-        {/* Logo */}
-        <div className="flex items-center gap-2.5 px-2 mb-6 text-primary">
-          <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center">
-            <Droplets className="w-5 h-5" />
-          </div>
-          <div>
-            <h1 className="font-display text-base font-bold text-foreground leading-tight">Lavanderia</h1>
-            <p className="text-xs text-muted-foreground leading-tight">Sunrise</p>
-          </div>
+      <aside className="hidden lg:flex flex-col w-72 border-r border-border/50 bg-card/50 backdrop-blur-xl p-6 sleek-shadow z-10">
+        <div className="flex items-center gap-3 px-2 mb-8 text-primary">
+          <Droplets className="w-8 h-8" />
+          <h1 className="font-display text-2xl font-bold text-foreground">Lavanderia Sunrise</h1>
         </div>
 
         <nav className="flex-1 overflow-y-auto">
           <NavLinks />
         </nav>
 
-        <div className="pt-4 border-t border-border/50 mt-auto">
+        <div className="pt-6 border-t border-border/50 mt-auto">
           <Button
             variant="ghost"
-            className="w-full justify-start gap-3 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-xl"
+            className="w-full justify-start gap-3 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-xl py-6"
             onClick={logout}
           >
-            <LogOut className="w-4 h-4" />
-            <span className="font-medium text-sm">Sign Out</span>
+            <LogOut className="w-5 h-5" />
+            <span className="font-medium">Sign Out</span>
           </Button>
         </div>
       </aside>
@@ -167,15 +131,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 <Menu className="w-6 h-6" />
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="w-64 bg-background border-r-0 px-4 py-6 flex flex-col">
-              <div className="flex items-center gap-2.5 px-2 mb-6 mt-2 text-primary">
-                <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center">
-                  <Droplets className="w-5 h-5" />
-                </div>
-                <div>
-                  <h1 className="font-display text-base font-bold text-foreground leading-tight">Lavanderia</h1>
-                  <p className="text-xs text-muted-foreground leading-tight">Sunrise</p>
-                </div>
+            <SheetContent side="left" className="w-72 bg-background border-r-0 p-6 flex flex-col">
+              <div className="flex items-center gap-3 px-2 mb-8 mt-4 text-primary">
+                <Droplets className="w-8 h-8" />
+                <h1 className="font-display text-2xl font-bold text-foreground">Lavanderia Sunrise</h1>
               </div>
               <nav className="flex-1 overflow-y-auto">
                 <NavLinks />
@@ -185,8 +144,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 className="w-full justify-start gap-3 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-xl mt-4"
                 onClick={logout}
               >
-                <LogOut className="w-4 h-4" />
-                <span className="font-medium text-sm">Sign Out</span>
+                <LogOut className="w-5 h-5" />
+                <span className="font-medium">Sign Out</span>
               </Button>
             </SheetContent>
           </Sheet>
