@@ -240,8 +240,8 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsPr
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent className="rounded-xl border-border/50">
-                        <SelectItem value="Wash & Hang">Wash &amp; Hang — ₱30/kg</SelectItem>
-                        <SelectItem value="Dry-cleaning">Dry-cleaning — ₱60/kg</SelectItem>
+                        <SelectItem value="Wash & Hang">Wash &amp; Hang (₱30/kg)</SelectItem>
+                        <SelectItem value="Dry-cleaning">Dry Cleaning (₱60/kg)</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />

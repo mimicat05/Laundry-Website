@@ -197,9 +197,7 @@ export function CustomerOrder() {
                           }}
                         />
                       </FormControl>
-                      <FormDescription className="text-xs">
-                        Philippine mobile number — 09XXXXXXXXX or +639XXXXXXXXX
-                      </FormDescription>
+                      
                       <FormMessage />
                     </FormItem>
                   )}
@@ -219,9 +217,7 @@ export function CustomerOrder() {
                           {...field}
                         />
                       </FormControl>
-                      <FormDescription className="text-xs">
-                        We only accept Gmail addresses ending in @gmail.com
-                      </FormDescription>
+                      
                       <FormMessage />
                     </FormItem>
                   )}
@@ -250,7 +246,7 @@ export function CustomerOrder() {
                       </FormLabel>
                       <FormControl>
                         <textarea
-                          placeholder="e.g. No fabric softener, handle delicates gently, separate whites..."
+                          placeholder=" No fabric softener, handle delicates gently, separate whites..."
                           rows={3}
                           className="w-full rounded-xl border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 resize-none"
                           {...field}
@@ -273,8 +269,8 @@ export function CustomerOrder() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent className="rounded-xl">
-                          <SelectItem value="Wash & Hang">Wash &amp; Hang — ₱30/kg</SelectItem>
-                          <SelectItem value="Dry-cleaning">Dry-cleaning — ₱60/kg</SelectItem>
+                          <SelectItem value="Wash & Hang">Wash &amp; Hang (₱30/kg)</SelectItem>
+                          <SelectItem value="Dry-cleaning">Dry Cleaning (₱60/kg)</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />
