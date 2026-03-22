@@ -53,7 +53,11 @@ const editSchema = z.object({
   contactNumber: z.string().min(5, "Contact number is required"),
   email: z.string().email("Invalid email"),
   service: z.string().min(1, "Please select a service"),
-  weight: z.string().min(1, "Weight is required"),
+  weight: z
+  .string()
+  .refine((val) => parseFloat(val) > 0, {
+    message: "Weight must be greater than 0",
+  }),
   total: z.string().min(1, "Total is required"),
   notes: z.string().optional(),
 });
@@ -169,7 +173,7 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsPr
 
   return (
     <Dialog open={open} onOpenChange={(o) => { onOpenChange(o); if (!o) setIsEditing(false); }}>
-      <DialogContent className="sm:max-w-[600px] rounded-3xl border-border/50 sleek-shadow bg-card/95 backdrop-blur-xl">
+      <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto rounded-3xl border-border/50 sleek-shadow bg-card/95 backdrop-blur-xl p-6">
         <DialogHeader className="mb-2">
           <div className="flex items-center justify-between pr-8">
             <DialogTitle className="font-display text-2xl flex items-center gap-3">

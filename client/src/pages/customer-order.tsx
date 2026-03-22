@@ -39,7 +39,11 @@ const formSchema = z.object({
       "Enter a valid Gmail address"
     ),
   service: z.string().min(1, "Please select a service"),
-  weight: z.string().min(1, "Weight is required"),
+  weight: z
+  .string()
+  .refine((val) => parseFloat(val) > 0, {
+    message: "Weight must be greater than 0",
+  }),
   notes: z.string().optional(),
 });
 

@@ -47,7 +47,11 @@ const formSchema = z.object({
       "Enter a valid Gmail address"
     ),
   service: z.string().min(1, "Please select a service"),
-  weight: z.string().min(1, "Weight is required"),
+ weight: z
+  .string()
+  .refine((val) => parseFloat(val) > 0, {
+    message: "Weight must be greater than 0",
+  }),
   total: z.string().min(1, "Total is required"),
   notes: z.string().optional(),
 });
@@ -114,7 +118,7 @@ export function CreateOrderDialog() {
           New Order
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[600px] rounded-3xl border-border/50 sleek-shadow bg-card/95 backdrop-blur-xl">
+      <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto rounded-3xl border-border/50 sleek-shadow bg-card/95 backdrop-blur-xl p-6">
         <DialogHeader className="mb-4">
           <DialogTitle className="font-display text-2xl">Create New Order</DialogTitle>
           <DialogDescription className="text-muted-foreground">
@@ -240,25 +244,25 @@ export function CreateOrderDialog() {
                 )}
               />
               <FormField
-                control={form.control}
-                name="weight"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-foreground/80">Weight (kg)</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        step="0.1"
-                        min="0"
-                        placeholder="5.5"
-                        className="rounded-xl bg-background/50 border-border/50 focus:bg-background transition-all"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              control={form.control}
+              name="weight"
+              render={({ field }) => (
+              <FormItem>
+                <FormLabel>Estimated Weight (kg)</FormLabel>
+                <FormControl>
+                  <Input
+                  type="number"
+                  step="0.1"
+                  min="0.1"
+                  placeholder="e.g. 3.5"
+                  className="rounded-xl"
+                  {...field}
+                  />
+      </FormControl>
+      <FormMessage />
+    </FormItem>
+  )}
+/>
               <FormField
                 control={form.control}
                 name="total"
