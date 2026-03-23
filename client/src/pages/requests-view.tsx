@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { Search, CheckCircle, XCircle, Eye, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { useOrders, useUpdateOrder, useDeleteOrder } from "@/hooks/use-orders";
 import { OrderDetailsDialog } from "@/components/order-details-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -18,7 +18,17 @@ import {
 } from "@/components/ui/table";
 import { type Order } from "@shared/schema";
 
-function RequestRow({ order, onView }: { order: Order; onView: (o: Order) => void }) {
+function RequestRow({
+  order,
+  onView,
+  selected,
+  onToggle,
+}: {
+  order: Order;
+  onView: (o: Order) => void;
+  selected: boolean;
+  onToggle: (id: number) => void;
+}) {
   const { mutate: updateOrder, isPending: isAccepting } = useUpdateOrder();
   const { mutate: deleteOrder, isPending: isDeclining } = useDeleteOrder();
   const { toast } = useToast();
@@ -47,7 +57,15 @@ function RequestRow({ order, onView }: { order: Order; onView: (o: Order) => voi
     <TableRow
       className="hover:bg-muted/30 transition-colors cursor-pointer border-border/50"
       onClick={() => onView(order)}
+      data-testid={`row-request-${order.id}`}
     >
+      <TableCell onClick={(e) => e.stopPropagation()} className="w-10">
+        <Checkbox
+          checked={selected}
+          onCheckedChange={() => onToggle(order.id)}
+          data-testid={`checkbox-request-${order.id}`}
+        />
+      </TableCell>
       <TableCell className="font-medium text-foreground">{order.orderId}</TableCell>
       <TableCell>
         <div className="flex flex-col">
@@ -67,6 +85,7 @@ function RequestRow({ order, onView }: { order: Order; onView: (o: Order) => voi
             size="icon"
             className="rounded-full hover:bg-primary/10 hover:text-primary"
             onClick={() => onView(order)}
+            data-testid={`button-view-${order.id}`}
           >
             <Eye className="w-4 h-4" />
           </Button>
@@ -76,6 +95,7 @@ function RequestRow({ order, onView }: { order: Order; onView: (o: Order) => voi
             className="rounded-xl gap-1.5 text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700"
             onClick={handleAccept}
             disabled={isAccepting || isDeclining}
+            data-testid={`button-accept-${order.id}`}
           >
             {isAccepting ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
             Accept
@@ -86,6 +106,7 @@ function RequestRow({ order, onView }: { order: Order; onView: (o: Order) => voi
             className="rounded-xl gap-1.5 text-red-500 hover:bg-red-50 hover:text-red-600"
             onClick={handleDecline}
             disabled={isAccepting || isDeclining}
+            data-testid={`button-decline-${order.id}`}
           >
             {isDeclining ? <Loader2 className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4" />}
             Decline
@@ -100,18 +121,10 @@ export function RequestsView() {
   const { data: orders, isLoading } = useOrders();
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [search, setSearch] = useState("");
-
-  if (isLoading) {
-    return (
-      <div className="space-y-8 animate-in fade-in duration-500">
-        <div className="flex items-center justify-between">
-          <Skeleton className="h-10 w-48 rounded-xl" />
-          <Skeleton className="h-10 w-64 rounded-xl" />
-        </div>
-        <Skeleton className="h-[500px] rounded-3xl" />
-      </div>
-    );
-  }
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const { mutate: updateOrder } = useUpdateOrder();
+  const { mutate: deleteOrder } = useDeleteOrder();
+  const { toast } = useToast();
 
   const query = search.toLowerCase();
   const requests = (orders || [])
@@ -127,6 +140,85 @@ export function RequestsView() {
     })
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
+  const allSelected = requests.length > 0 && requests.every((o) => selectedIds.has(o.id));
+  const someSelected = requests.some((o) => selectedIds.has(o.id));
+  const visibleSelectedIds = requests.filter((o) => selectedIds.has(o.id)).map((o) => o.id);
+
+  const handleSelectAll = useCallback(() => {
+    if (allSelected) {
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        requests.forEach((o) => next.delete(o.id));
+        return next;
+      });
+    } else {
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        requests.forEach((o) => next.add(o.id));
+        return next;
+      });
+    }
+  }, [allSelected, requests]);
+
+  const handleToggle = useCallback((id: number) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const handleBulkAccept = () => {
+    let completed = 0;
+    const total = visibleSelectedIds.length;
+    visibleSelectedIds.forEach((id) => {
+      updateOrder(
+        { id, status: "pending" },
+        {
+          onSuccess: () => {
+            completed++;
+            if (completed === total) {
+              toast({ title: "Orders Accepted", description: `${total} order${total > 1 ? "s" : ""} have been accepted.` });
+              setSelectedIds(new Set());
+            }
+          },
+          onError: (err) => toast({ title: "Error", description: err.message, variant: "destructive" }),
+        }
+      );
+    });
+  };
+
+  const handleBulkDecline = () => {
+    const total = visibleSelectedIds.length;
+    if (!confirm(`Decline and remove ${total} selected order${total > 1 ? "s" : ""}?`)) return;
+    let completed = 0;
+    visibleSelectedIds.forEach((id) => {
+      deleteOrder(id, {
+        onSuccess: () => {
+          completed++;
+          if (completed === total) {
+            toast({ title: "Orders Declined", description: `${total} order${total > 1 ? "s" : ""} have been removed.` });
+            setSelectedIds(new Set());
+          }
+        },
+        onError: (err) => toast({ title: "Error", description: err.message, variant: "destructive" }),
+      });
+    });
+  };
+
+  if (isLoading) {
+    return (
+      <div className="space-y-8 animate-in fade-in duration-500">
+        <div className="flex items-center justify-between">
+          <Skeleton className="h-10 w-48 rounded-xl" />
+          <Skeleton className="h-10 w-64 rounded-xl" />
+        </div>
+        <Skeleton className="h-[500px] rounded-3xl" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 animate-in fade-in duration-500 pb-12">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -140,9 +232,40 @@ export function RequestsView() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-9 rounded-xl bg-background border-border/50"
+            data-testid="input-search-requests"
           />
         </div>
       </div>
+
+      {visibleSelectedIds.length > 0 && (
+        <div className="flex items-center gap-3 px-4 py-3 bg-primary/5 border border-primary/20 rounded-2xl">
+          <span className="text-sm font-medium text-foreground">
+            {visibleSelectedIds.length} selected
+          </span>
+          <div className="flex items-center gap-2 ml-auto">
+            <Button
+              size="sm"
+              variant="ghost"
+              className="rounded-xl gap-1.5 text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700"
+              onClick={handleBulkAccept}
+              data-testid="button-bulk-accept"
+            >
+              <CheckCircle className="w-4 h-4" />
+              Accept All
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="rounded-xl gap-1.5 text-red-500 hover:bg-red-50 hover:text-red-600"
+              onClick={handleBulkDecline}
+              data-testid="button-bulk-decline"
+            >
+              <XCircle className="w-4 h-4" />
+              Decline All
+            </Button>
+          </div>
+        </div>
+      )}
 
       {requests.length === 0 ? (
         <div className="py-16 text-center border border-dashed border-border/60 rounded-2xl bg-background/50">
@@ -156,6 +279,14 @@ export function RequestsView() {
             <Table>
               <TableHeader className="bg-muted/50">
                 <TableRow className="hover:bg-transparent border-border/50">
+                  <TableHead className="w-10">
+                    <Checkbox
+                      checked={allSelected ? true : someSelected ? "indeterminate" : false}
+                      onCheckedChange={handleSelectAll}
+                      data-testid="checkbox-select-all"
+                      aria-label="Select all requests"
+                    />
+                  </TableHead>
                   <TableHead className="font-semibold text-foreground">Order ID</TableHead>
                   <TableHead className="font-semibold text-foreground">Customer</TableHead>
                   <TableHead className="font-semibold text-foreground">Service</TableHead>
@@ -166,7 +297,13 @@ export function RequestsView() {
               </TableHeader>
               <TableBody>
                 {requests.map((order) => (
-                  <RequestRow key={order.id} order={order} onView={setSelectedOrder} />
+                  <RequestRow
+                    key={order.id}
+                    order={order}
+                    onView={setSelectedOrder}
+                    selected={selectedIds.has(order.id)}
+                    onToggle={handleToggle}
+                  />
                 ))}
               </TableBody>
             </Table>
