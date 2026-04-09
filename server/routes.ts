@@ -83,6 +83,15 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/orders/logs", async (req, res) => {
+    try {
+      const logs = await storage.getOrderLogs();
+      res.json(logs);
+    } catch (err) {
+      res.status(500).json({ message: "Failed to fetch order logs" });
+    }
+  });
+
   app.get(api.orders.listDeleted.path, async (req, res) => {
     try {
       const orders = await storage.getDeletedOrders();

@@ -1,8 +1,7 @@
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { type Order } from "@shared/schema";
+import { type Order, type OrderLog } from "@shared/schema";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Badge } from "@/components/ui/badge";
 import { BarChart3, History, TrendingUp, Package, DollarSign, Weight } from "lucide-react";
 
 const STATUS_LABELS: Record<string, string> = {
@@ -27,6 +26,14 @@ const STATUS_COLORS: Record<string, string> = {
   completed: "bg-green-100 text-green-700 border-green-200",
 };
 
+const ACTION_LABELS: Record<string, { label: string; color: string }> = {
+  created: { label: "Created", color: "bg-green-100 text-green-700 border-green-200" },
+  status_changed: { label: "Status Changed", color: "bg-blue-100 text-blue-700 border-blue-200" },
+  deleted: { label: "Deleted", color: "bg-orange-100 text-orange-700 border-orange-200" },
+  restored: { label: "Restored", color: "bg-teal-100 text-teal-700 border-teal-200" },
+  permanently_deleted: { label: "Permanently Deleted", color: "bg-red-100 text-red-700 border-red-200" },
+};
+
 function formatDate(date: string | Date) {
   return new Date(date).toLocaleString("en-PH", {
     year: "numeric",
@@ -45,25 +52,33 @@ export function Reports() {
   const [tab, setTab] = useState<"history" | "analytics">("history");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [actionFilter, setActionFilter] = useState("all");
 
-  const { data: allOrders, isLoading } = useQuery<Order[]>({
+  const { data: allOrders, isLoading: ordersLoading } = useQuery<Order[]>({
     queryKey: ["/api/orders/all"],
   });
 
-  const orders = allOrders || [];
+  const { data: allLogs, isLoading: logsLoading } = useQuery<OrderLog[]>({
+    queryKey: ["/api/orders/logs"],
+  });
 
-  const filtered = useMemo(() => {
-    return orders.filter((o) => {
+  const orders = allOrders || [];
+  const logs = allLogs || [];
+  const isLoading = ordersLoading || logsLoading;
+
+  const filteredLogs = useMemo(() => {
+    return logs.filter((l) => {
       const matchesSearch =
         search === "" ||
-        o.orderId.toLowerCase().includes(search.toLowerCase()) ||
-        o.customerName.toLowerCase().includes(search.toLowerCase()) ||
-        o.email.toLowerCase().includes(search.toLowerCase()) ||
-        o.contactNumber.includes(search);
-      const matchesStatus = statusFilter === "all" || o.status === statusFilter;
-      return matchesSearch && matchesStatus;
+        l.orderId.toLowerCase().includes(search.toLowerCase()) ||
+        l.customerName.toLowerCase().includes(search.toLowerCase()) ||
+        l.email.toLowerCase().includes(search.toLowerCase()) ||
+        l.contactNumber.includes(search);
+      const matchesStatus = statusFilter === "all" || l.status === statusFilter;
+      const matchesAction = actionFilter === "all" || l.action === actionFilter;
+      return matchesSearch && matchesStatus && matchesAction;
     });
-  }, [orders, search, statusFilter]);
+  }, [logs, search, statusFilter, actionFilter]);
 
   const analytics = useMemo(() => {
     const completed = orders.filter((o) => o.status === "completed" && !o.deletedAt);
@@ -169,10 +184,21 @@ export function Reports() {
                 <option key={val} value={val}>{label}</option>
               ))}
             </select>
+            <select
+              data-testid="select-action"
+              value={actionFilter}
+              onChange={(e) => setActionFilter(e.target.value)}
+              className="px-4 py-2.5 rounded-xl border border-border bg-card text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+            >
+              <option value="all">All Actions</option>
+              {Object.entries(ACTION_LABELS).map(([val, { label }]) => (
+                <option key={val} value={val}>{label}</option>
+              ))}
+            </select>
           </div>
 
           <p className="text-xs text-muted-foreground px-1">
-            Showing <strong>{filtered.length}</strong> of <strong>{orders.length}</strong> total records (including deleted).
+            Showing <strong>{filteredLogs.length}</strong> of <strong>{logs.length}</strong> total audit entries — includes permanently deleted orders.
           </p>
 
           {/* Table */}
@@ -187,46 +213,46 @@ export function Reports() {
                     <th className="text-left px-5 py-3.5 font-semibold text-muted-foreground hidden sm:table-cell">Weight</th>
                     <th className="text-left px-5 py-3.5 font-semibold text-muted-foreground hidden sm:table-cell">Total</th>
                     <th className="text-left px-5 py-3.5 font-semibold text-muted-foreground">Status</th>
-                    <th className="text-left px-5 py-3.5 font-semibold text-muted-foreground hidden lg:table-cell">Created</th>
-                    <th className="text-left px-5 py-3.5 font-semibold text-muted-foreground hidden lg:table-cell">Deleted</th>
+                    <th className="text-left px-5 py-3.5 font-semibold text-muted-foreground">Action</th>
+                    <th className="text-left px-5 py-3.5 font-semibold text-muted-foreground hidden lg:table-cell">Logged At</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filtered.length === 0 ? (
+                  {filteredLogs.length === 0 ? (
                     <tr>
                       <td colSpan={8} className="text-center py-12 text-muted-foreground">No records found.</td>
                     </tr>
                   ) : (
-                    filtered.map((order) => (
-                      <tr
-                        key={order.id}
-                        data-testid={`row-order-${order.id}`}
-                        className={`border-b border-border/30 last:border-0 hover:bg-muted/20 transition-colors ${order.deletedAt ? "opacity-60" : ""}`}
-                      >
-                        <td className="px-5 py-4 font-mono font-semibold text-primary">
-                          {order.orderId}
-                          {order.deletedAt && (
-                            <span className="ml-2 text-xs text-destructive font-sans font-normal">[deleted]</span>
-                          )}
-                        </td>
-                        <td className="px-5 py-4">
-                          <p className="font-medium text-foreground">{order.customerName}</p>
-                          <p className="text-xs text-muted-foreground">{order.contactNumber}</p>
-                        </td>
-                        <td className="px-5 py-4 hidden md:table-cell text-muted-foreground">{order.service}</td>
-                        <td className="px-5 py-4 hidden sm:table-cell text-muted-foreground">{order.weight} kg</td>
-                        <td className="px-5 py-4 hidden sm:table-cell font-medium">{formatCurrency(order.total)}</td>
-                        <td className="px-5 py-4">
-                          <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium border ${STATUS_COLORS[order.status] || "bg-gray-100 text-gray-700"}`}>
-                            {STATUS_LABELS[order.status] || order.status}
-                          </span>
-                        </td>
-                        <td className="px-5 py-4 hidden lg:table-cell text-xs text-muted-foreground">{formatDate(order.createdAt)}</td>
-                        <td className="px-5 py-4 hidden lg:table-cell text-xs text-muted-foreground">
-                          {order.deletedAt ? formatDate(order.deletedAt) : "—"}
-                        </td>
-                      </tr>
-                    ))
+                    filteredLogs.map((log) => {
+                      const actionInfo = ACTION_LABELS[log.action] || { label: log.action, color: "bg-gray-100 text-gray-700 border-gray-200" };
+                      return (
+                        <tr
+                          key={log.id}
+                          data-testid={`row-log-${log.id}`}
+                          className={`border-b border-border/30 last:border-0 hover:bg-muted/20 transition-colors ${log.action === "permanently_deleted" ? "opacity-60" : ""}`}
+                        >
+                          <td className="px-5 py-4 font-mono font-semibold text-primary">{log.orderId}</td>
+                          <td className="px-5 py-4">
+                            <p className="font-medium text-foreground">{log.customerName}</p>
+                            <p className="text-xs text-muted-foreground">{log.contactNumber}</p>
+                          </td>
+                          <td className="px-5 py-4 hidden md:table-cell text-muted-foreground">{log.service}</td>
+                          <td className="px-5 py-4 hidden sm:table-cell text-muted-foreground">{log.weight} kg</td>
+                          <td className="px-5 py-4 hidden sm:table-cell font-medium">{formatCurrency(log.total)}</td>
+                          <td className="px-5 py-4">
+                            <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium border ${STATUS_COLORS[log.status] || "bg-gray-100 text-gray-700"}`}>
+                              {STATUS_LABELS[log.status] || log.status}
+                            </span>
+                          </td>
+                          <td className="px-5 py-4">
+                            <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium border ${actionInfo.color}`}>
+                              {actionInfo.label}
+                            </span>
+                          </td>
+                          <td className="px-5 py-4 hidden lg:table-cell text-xs text-muted-foreground">{formatDate(log.loggedAt)}</td>
+                        </tr>
+                      );
+                    })
                   )}
                 </tbody>
               </table>
