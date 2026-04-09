@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
+import { useQuery } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { format } from "date-fns";
-import { Loader2, Trash2, ArrowRight, User, MapPin, Phone, Mail, Scale, DollarSign, Tag, CalendarClock, Pencil, X } from "lucide-react";
+import { Loader2, Trash2, ArrowRight, User, MapPin, Phone, Mail, Scale, DollarSign, Tag, CalendarClock, Pencil, X, Printer, Sticker, Receipt, CheckCircle2, XCircle } from "lucide-react";
 import { useUpdateOrder, useDeleteOrder } from "@/hooks/use-orders";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -24,7 +25,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { type Order } from "@shared/schema";
+import { type Order, type Service } from "@shared/schema";
+import { printSticker, printReceipt } from "@/lib/print-receipt";
 
 const STATUS_LABELS: Record<string, string> = {
   requested:        "New Request",
@@ -41,11 +43,6 @@ const STATUS_LABELS: Record<string, string> = {
 export function statusLabel(status: string) {
   return STATUS_LABELS[status] ?? status.replace(/_/g, " ");
 }
-
-const SERVICES: Record<string, number> = {
-  "Wash & Hang": 30,
-  "Dry-cleaning": 60,
-};
 
 const editSchema = z.object({
   customerName: z.string().min(2, "Name is required"),
@@ -72,9 +69,13 @@ interface OrderDetailsProps {
 
 export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsProps) {
   const [isEditing, setIsEditing] = useState(false);
+  const [showPrintMenu, setShowPrintMenu] = useState(false);
   const { mutate: updateOrder, isPending: isUpdating } = useUpdateOrder();
   const { mutate: deleteOrder, isPending: isDeleting } = useDeleteOrder();
   const { toast } = useToast();
+
+  const { data: serviceList } = useQuery<Service[]>({ queryKey: ["/api/services"] });
+  const activeServices = (serviceList || []).filter((s) => s.active);
 
   const form = useForm<EditValues>({
     resolver: zodResolver(editSchema),
@@ -95,12 +96,13 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsPr
 
   useEffect(() => {
     if (!isEditing) return;
-    const pricePerKg = SERVICES[watchedService] ?? 0;
+    const svc = activeServices.find((s) => s.name === watchedService);
+    const pricePerKg = svc ? Number(svc.pricePerKg) : 0;
     const kg = parseFloat(watchedWeight);
     if (pricePerKg > 0 && !isNaN(kg) && kg > 0) {
       form.setValue("total", (pricePerKg * kg).toFixed(2), { shouldValidate: true });
     }
-  }, [watchedService, watchedWeight, isEditing, form]);
+  }, [watchedService, watchedWeight, isEditing, form, activeServices]);
 
   if (!order) return null;
 
@@ -111,6 +113,18 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsPr
         onSuccess: () => {
           toast({ title: "Status Updated", description: `Order moved to ${statusLabel(newStatus)}.` });
           onOpenChange(false);
+        },
+        onError: (err) => toast({ title: "Error", description: err.message, variant: "destructive" }),
+      }
+    );
+  };
+
+  const handleTogglePaid = () => {
+    updateOrder(
+      { id: order.id, paid: !order.paid },
+      {
+        onSuccess: () => {
+          toast({ title: order.paid ? "Marked as Unpaid" : "Marked as Paid" });
         },
         onError: (err) => toast({ title: "Error", description: err.message, variant: "destructive" }),
       }
@@ -172,15 +186,19 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsPr
   };
 
   return (
-    <Dialog open={open} onOpenChange={(o) => { onOpenChange(o); if (!o) setIsEditing(false); }}>
+    <Dialog open={open} onOpenChange={(o) => { onOpenChange(o); if (!o) { setIsEditing(false); setShowPrintMenu(false); } }}>
       <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto rounded-3xl border-border/50 sleek-shadow bg-card/95 backdrop-blur-xl p-6">
         <DialogHeader className="mb-2">
-          <div className="flex items-center justify-between pr-8">
-            <DialogTitle className="font-display text-2xl flex items-center gap-3">
+          <div className="flex items-center justify-between pr-8 flex-wrap gap-2">
+            <DialogTitle className="font-display text-2xl flex items-center gap-3 flex-wrap">
               {order.orderId}
               <Badge variant="outline" className={`capitalize rounded-full px-3 py-1 text-xs font-semibold ${getStatusColor(order.status)}`}>
                 {statusLabel(order.status)}
               </Badge>
+              <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full border ${order.paid ? "bg-emerald-100 text-emerald-700 border-emerald-200" : "bg-red-50 text-red-600 border-red-200"}`}>
+                {order.paid ? <CheckCircle2 className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
+                {order.paid ? "Paid" : "Unpaid"}
+              </span>
             </DialogTitle>
           </div>
         </DialogHeader>
@@ -219,17 +237,9 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsPr
                 )} />
                 <FormField control={form.control} name="notes" render={({ field }) => (
                   <FormItem className="md:col-span-2">
-                    <FormLabel>
-                      Special Instructions{" "}
-                      <span className="text-muted-foreground font-normal">(Optional)</span>
-                    </FormLabel>
+                    <FormLabel>Special Instructions <span className="text-muted-foreground font-normal">(Optional)</span></FormLabel>
                     <FormControl>
-                      <textarea
-                        rows={2}
-                        placeholder="e.g. No fabric softener, separate whites..."
-                        className="w-full rounded-xl border border-input bg-background/50 px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 resize-none"
-                        {...field}
-                      />
+                      <textarea rows={2} placeholder="e.g. No fabric softener, separate whites..." className="w-full rounded-xl border border-input bg-background/50 px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 resize-none" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -239,13 +249,12 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsPr
                     <FormLabel>Service</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
-                        <SelectTrigger className="rounded-xl bg-background/50 border-border/50">
-                          <SelectValue />
-                        </SelectTrigger>
+                        <SelectTrigger className="rounded-xl bg-background/50 border-border/50"><SelectValue /></SelectTrigger>
                       </FormControl>
                       <SelectContent className="rounded-xl border-border/50">
-                        <SelectItem value="Wash & Hang">Wash &amp; Hang (₱30/kg)</SelectItem>
-                        <SelectItem value="Dry-cleaning">Dry Cleaning (₱60/kg)</SelectItem>
+                        {activeServices.map((svc) => (
+                          <SelectItem key={svc.id} value={svc.name}>{svc.name} (₱{Number(svc.pricePerKg).toFixed(0)}/kg)</SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -316,6 +325,14 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsPr
                   <div className="flex items-center gap-3">
                     <DollarSign className="w-4 h-4 text-primary" />
                     <span className="text-sm font-semibold text-foreground">₱{order.total}</span>
+                    <button
+                      data-testid="button-toggle-paid"
+                      onClick={handleTogglePaid}
+                      disabled={isUpdating}
+                      className={`ml-auto text-xs font-semibold px-3 py-1 rounded-full border transition-colors cursor-pointer ${order.paid ? "bg-emerald-100 text-emerald-700 border-emerald-300 hover:bg-red-50 hover:text-red-600 hover:border-red-300" : "bg-red-50 text-red-600 border-red-200 hover:bg-emerald-100 hover:text-emerald-700 hover:border-emerald-300"}`}
+                    >
+                      {isUpdating ? "..." : order.paid ? "✓ Paid — click to undo" : "Mark as Paid"}
+                    </button>
                   </div>
                   <div className="flex items-center gap-3">
                     <CalendarClock className="w-4 h-4 text-primary" />
@@ -323,16 +340,53 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsPr
                   </div>
                 </div>
               </div>
+
               {order.notes && (
                 <div className="bg-amber-50 dark:bg-amber-950/30 rounded-2xl p-5 border border-amber-200/60 dark:border-amber-800/40">
                   <h4 className="text-xs font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wider mb-2">Special Instructions</h4>
                   <p className="text-sm text-foreground whitespace-pre-wrap">{order.notes}</p>
                 </div>
               )}
+
+              {/* Print Menu */}
+              {showPrintMenu && (
+                <div className="bg-background/50 rounded-2xl p-4 border border-border/50">
+                  <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Print Document</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    <button
+                      data-testid="print-sticker"
+                      onClick={() => { printSticker(order); setShowPrintMenu(false); }}
+                      className="flex flex-col items-center gap-2 p-3 rounded-xl border border-border/50 hover:bg-muted/50 hover:border-primary/40 transition-all text-sm"
+                    >
+                      <Sticker className="w-5 h-5 text-primary" />
+                      <span className="font-medium">Laundry Sticker</span>
+                      <span className="text-xs text-muted-foreground text-center">Attach to bag</span>
+                    </button>
+                    <button
+                      data-testid="print-dropoff"
+                      onClick={() => { printReceipt(order, "dropoff"); setShowPrintMenu(false); }}
+                      className="flex flex-col items-center gap-2 p-3 rounded-xl border border-border/50 hover:bg-muted/50 hover:border-primary/40 transition-all text-sm"
+                    >
+                      <Receipt className="w-5 h-5 text-primary" />
+                      <span className="font-medium">Drop-off Receipt</span>
+                      <span className="text-xs text-muted-foreground text-center">Give when received</span>
+                    </button>
+                    <button
+                      data-testid="print-pickup"
+                      onClick={() => { printReceipt(order, "pickup"); setShowPrintMenu(false); }}
+                      className="flex flex-col items-center gap-2 p-3 rounded-xl border border-border/50 hover:bg-muted/50 hover:border-primary/40 transition-all text-sm"
+                    >
+                      <Receipt className="w-5 h-5 text-emerald-600" />
+                      <span className="font-medium">Pickup Receipt</span>
+                      <span className="text-xs text-muted-foreground text-center">Give when picked up</span>
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
-            <div className="flex items-center justify-between pt-4 border-t border-border/50 mt-2">
-              <div className="flex gap-2">
+            <div className="flex items-center justify-between pt-4 border-t border-border/50 mt-2 flex-wrap gap-2">
+              <div className="flex gap-2 flex-wrap">
                 <Button
                   variant="destructive"
                   size="sm"
@@ -349,8 +403,16 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsPr
                   className="rounded-xl gap-2"
                   onClick={() => setIsEditing(true)}
                 >
-                  <Pencil className="w-4 h-4" />
-                  Edit
+                  <Pencil className="w-4 h-4" />Edit
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className={`rounded-xl gap-2 ${showPrintMenu ? "bg-primary/10 border-primary/40 text-primary" : ""}`}
+                  onClick={() => setShowPrintMenu((v) => !v)}
+                  data-testid="button-print"
+                >
+                  <Printer className="w-4 h-4" />Print
                 </Button>
               </div>
 
