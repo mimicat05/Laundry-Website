@@ -9,6 +9,7 @@ import { eq, isNull, isNotNull } from "drizzle-orm";
 
 export interface IStorage {
   getOrders(): Promise<Order[]>;
+  getAllOrders(): Promise<Order[]>;
   getDeletedOrders(): Promise<Order[]>;
   getOrder(id: number): Promise<Order | undefined>;
   createOrder(order: InsertOrder): Promise<Order>;
@@ -23,6 +24,10 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(orders)
       .where(isNull(orders.deletedAt))
       .orderBy(orders.id);
+  }
+
+  async getAllOrders(): Promise<Order[]> {
+    return await db.select().from(orders).orderBy(orders.id);
   }
 
   async getDeletedOrders(): Promise<Order[]> {

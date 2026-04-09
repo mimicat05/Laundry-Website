@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { LayoutDashboard, Clock, PackageCheck, Archive, LogOut, Menu, Droplets, Trash2, InboxIcon, ShirtIcon, Wind, Layers } from "lucide-react";
+import { LayoutDashboard, Clock, PackageCheck, Archive, LogOut, Menu, Droplets, Trash2, InboxIcon, ShirtIcon, Wind, Layers, BarChart3 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useOrders } from "@/hooks/use-orders";
 import { Button } from "@/components/ui/button";
@@ -40,6 +40,7 @@ const navGroups = [
   {
     group: null,
     items: [
+      { href: "/reports", label: "Reports", icon: BarChart3 },
       { href: "/deleted", label: "Recently Deleted", icon: Trash2 },
     ],
   },

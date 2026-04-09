@@ -15,6 +15,7 @@ import { OrdersView } from "@/pages/orders-view";
 import { RecentlyDeleted } from "@/pages/recently-deleted";
 import { CustomerOrder } from "@/pages/customer-order";
 import { RequestsView } from "@/pages/requests-view";
+import { Reports } from "@/pages/reports";
 
 const ProtectedRoute = ({ component: Component, ...rest }: any) => {
   const { isAuthenticated } = useAuth();
@@ -124,6 +125,10 @@ function Router() {
             description="Completed and collected orders."
           />
         )} />}
+      </Route>
+
+      <Route path="/reports">
+        {() => <ProtectedRoute component={Reports} />}
       </Route>
 
       <Route path="/deleted">
