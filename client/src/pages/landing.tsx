@@ -1,22 +1,9 @@
 import { Link } from "wouter";
-import { Droplets, Phone, Mail, MapPin, Clock, Shirt, Sparkles } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { Droplets, Phone, Mail, MapPin, Clock, Shirt } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-
-const services = [
-  {
-    icon: Shirt,
-    title: "Wash & Hang",
-    description: "We wash and hang your clothes so they come back fresh and ready to wear.",
-    price: "₱30/kg",
-  },
-  {
-    icon: Sparkles,
-    title: "Dry-cleaning",
-    description: "Professional dry cleaning for delicate fabrics, suits, and formal wear.",
-    price: "₱60/kg",
-  },
-];
+import { type Service, type Promo } from "@shared/schema";
 
 const contactInfo = [
   {
@@ -46,6 +33,11 @@ const contactInfo = [
 ];
 
 export function Landing() {
+  const { data: serviceList } = useQuery<Service[]>({ queryKey: ["/api/services"] });
+  const { data: promoList } = useQuery<Promo[]>({ queryKey: ["/api/promos"] });
+  const activeServices = (serviceList || []).filter((s) => s.active);
+  const activePromos = (promoList || []).filter((p) => p.active);
+
   return (
     <div className="min-h-screen bg-background">
       {/* Navbar */}
@@ -100,27 +92,40 @@ export function Landing() {
             </p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            {services.map((service) => (
+            {activeServices.map((svc) => (
               <Card
-                key={service.title}
+                key={svc.id}
                 className="border border-border/50 rounded-2xl p-6 hover:shadow-md transition-shadow bg-card"
-                data-testid={`card-service-${service.title.toLowerCase().replace(/\s+/g, "-")}`}
+                data-testid={`card-service-${svc.id}`}
               >
                 <div className="flex items-start gap-4">
                   <div className="w-11 h-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                    <service.icon className="w-5 h-5" />
+                    <Shirt className="w-5 h-5" />
                   </div>
                   <div>
                     <div className="flex items-center justify-between gap-4 mb-1">
-                      <h3 className="font-display font-semibold text-foreground">{service.title}</h3>
-                      <span className="text-xs font-medium text-primary bg-primary/10 px-2.5 py-1 rounded-lg whitespace-nowrap">{service.price}</span>
+                      <h3 className="font-display font-semibold text-foreground">{svc.name}</h3>
+                      <span className="text-xs font-medium text-primary bg-primary/10 px-2.5 py-1 rounded-lg whitespace-nowrap">₱{Number(svc.pricePerKg).toFixed(0)}/kg</span>
                     </div>
-                    <p className="text-sm text-muted-foreground leading-relaxed">{service.description}</p>
+                    <p className="text-sm text-muted-foreground leading-relaxed">{svc.description}</p>
                   </div>
                 </div>
               </Card>
             ))}
           </div>
+          {activePromos.length > 0 && (
+            <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {activePromos.map((promo) => (
+                <div key={promo.id} className="border border-green-200 bg-green-50 rounded-2xl px-5 py-4 flex items-center gap-3">
+                  <span className="text-lg font-bold text-green-700 bg-green-100 rounded-xl px-3 py-1">{Number(promo.discount).toFixed(0)}% off</span>
+                  <div>
+                    <p className="font-semibold text-green-900 text-sm">{promo.name}</p>
+                    <p className="text-xs text-green-700">{promo.description}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 

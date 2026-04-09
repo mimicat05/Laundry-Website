@@ -6,6 +6,12 @@ import { sendOrderStatusEmail } from "./email";
 import { z } from "zod";
 
 async function seedDatabase() {
+  const existingServices = await storage.getServices();
+  if (existingServices.length === 0) {
+    await storage.createService({ name: "Wash & Hang", description: "We wash and hang your clothes so they come back fresh and ready to wear.", pricePerKg: "30", active: true });
+    await storage.createService({ name: "Dry-cleaning", description: "Professional dry cleaning for delicate fabrics, suits, and formal wear.", pricePerKg: "60", active: true });
+  }
+
   const existingOrders = await storage.getOrders();
   if (existingOrders.length === 0) {
     await storage.createOrder({
@@ -256,6 +262,84 @@ export async function registerRoutes(
       res.status(204).send();
     } catch (err) {
       res.status(500).json({ message: "Failed to permanently delete order" });
+    }
+  });
+
+  // ── Services ──────────────────────────────────────────────────────────────
+  app.get("/api/services", async (_req, res) => {
+    try {
+      res.json(await storage.getServices());
+    } catch {
+      res.status(500).json({ message: "Failed to fetch services" });
+    }
+  });
+
+  app.post("/api/services", async (req, res) => {
+    try {
+      const data = req.body;
+      const svc = await storage.createService({ ...data, pricePerKg: String(data.pricePerKg), active: data.active ?? true });
+      res.status(201).json(svc);
+    } catch {
+      res.status(500).json({ message: "Failed to create service" });
+    }
+  });
+
+  app.put("/api/services/:id", async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      const data = req.body;
+      const svc = await storage.updateService(id, { ...data, pricePerKg: data.pricePerKg !== undefined ? String(data.pricePerKg) : undefined });
+      res.json(svc);
+    } catch {
+      res.status(500).json({ message: "Failed to update service" });
+    }
+  });
+
+  app.delete("/api/services/:id", async (req, res) => {
+    try {
+      await storage.deleteService(Number(req.params.id));
+      res.status(204).send();
+    } catch {
+      res.status(500).json({ message: "Failed to delete service" });
+    }
+  });
+
+  // ── Promos ────────────────────────────────────────────────────────────────
+  app.get("/api/promos", async (_req, res) => {
+    try {
+      res.json(await storage.getPromos());
+    } catch {
+      res.status(500).json({ message: "Failed to fetch promos" });
+    }
+  });
+
+  app.post("/api/promos", async (req, res) => {
+    try {
+      const data = req.body;
+      const promo = await storage.createPromo({ ...data, discount: String(data.discount), active: data.active ?? true });
+      res.status(201).json(promo);
+    } catch {
+      res.status(500).json({ message: "Failed to create promo" });
+    }
+  });
+
+  app.put("/api/promos/:id", async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      const data = req.body;
+      const promo = await storage.updatePromo(id, { ...data, discount: data.discount !== undefined ? String(data.discount) : undefined });
+      res.json(promo);
+    } catch {
+      res.status(500).json({ message: "Failed to update promo" });
+    }
+  });
+
+  app.delete("/api/promos/:id", async (req, res) => {
+    try {
+      await storage.deletePromo(Number(req.params.id));
+      res.status(204).send();
+    } catch {
+      res.status(500).json({ message: "Failed to delete promo" });
     }
   });
 

@@ -1,6 +1,30 @@
-import { pgTable, text, serial, timestamp, numeric } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, timestamp, numeric, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
+
+export const services = pgTable("services", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description").notNull(),
+  pricePerKg: numeric("price_per_kg", { precision: 10, scale: 2 }).notNull(),
+  active: boolean("active").notNull().default(true),
+});
+
+export const insertServiceSchema = createInsertSchema(services).omit({ id: true });
+export type Service = typeof services.$inferSelect;
+export type InsertService = z.infer<typeof insertServiceSchema>;
+
+export const promos = pgTable("promos", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description").notNull(),
+  discount: numeric("discount", { precision: 5, scale: 2 }).notNull(),
+  active: boolean("active").notNull().default(true),
+});
+
+export const insertPromoSchema = createInsertSchema(promos).omit({ id: true });
+export type Promo = typeof promos.$inferSelect;
+export type InsertPromo = z.infer<typeof insertPromoSchema>;
 
 export const orderLogs = pgTable("order_logs", {
   id: serial("id").primaryKey(),

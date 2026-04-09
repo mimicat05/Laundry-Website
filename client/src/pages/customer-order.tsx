@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
+import { useQuery } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Droplets, Loader2, CheckCircle2 } from "lucide-react";
@@ -17,11 +18,7 @@ import {
 } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-
-const SERVICES: Record<string, number> = {
-  "Wash & Hang": 30,
-  "Dry-cleaning": 60,
-};
+import { type Service } from "@shared/schema";
 
 const formSchema = z.object({
   customerName: z.string().min(2, "Please enter your full name"),
@@ -54,6 +51,8 @@ export function CustomerOrder() {
   const [orderId, setOrderId] = useState("");
   const [isPending, setIsPending] = useState(false);
   const { toast } = useToast();
+  const { data: serviceList } = useQuery<Service[]>({ queryKey: ["/api/services"] });
+  const activeServices = (serviceList || []).filter((s) => s.active);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -73,7 +72,8 @@ export function CustomerOrder() {
   const watchedWeight = form.watch("weight");
 
   const computedTotal = (() => {
-    const pricePerKg = SERVICES[watchedService] ?? 0;
+    const svc = activeServices.find((s) => s.name === watchedService);
+    const pricePerKg = svc ? Number(svc.pricePerKg) : 0;
     const kg = parseFloat(watchedWeight);
     if (pricePerKg > 0 && !isNaN(kg) && kg > 0) {
       return (pricePerKg * kg).toFixed(2);
@@ -273,8 +273,11 @@ export function CustomerOrder() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent className="rounded-xl">
-                          <SelectItem value="Wash & Hang">Wash &amp; Hang (₱30/kg)</SelectItem>
-                          <SelectItem value="Dry-cleaning">Dry Cleaning (₱60/kg)</SelectItem>
+                          {activeServices.map((svc) => (
+                            <SelectItem key={svc.id} value={svc.name}>
+                              {svc.name} (₱{Number(svc.pricePerKg).toFixed(0)}/kg)
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                       <FormMessage />
