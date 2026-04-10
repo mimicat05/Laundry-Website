@@ -42,6 +42,7 @@ export interface IStorage {
   deletePromo(id: number): Promise<void>;
   // Staff
   getStaffList(): Promise<Staff[]>;
+  getAllStaff(): Promise<Staff[]>;
   getStaffByPin(pin: string): Promise<Staff | undefined>;
   createStaff(data: InsertStaff): Promise<Staff>;
   updateStaff(id: number, data: Partial<InsertStaff>): Promise<Staff>;
@@ -171,9 +172,12 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(staff).orderBy(staff.id);
   }
 
-  async getStaffByPin(pin: string): Promise<Staff | undefined> {
-    const [member] = await db.select().from(staff).where(eq(staff.pin, pin));
-    return member;
+  async getStaffByPin(_pin: string): Promise<Staff | undefined> {
+    return undefined;
+  }
+
+  async getAllStaff(): Promise<Staff[]> {
+    return await db.select().from(staff).orderBy(staff.id);
   }
 
   async createStaff(data: InsertStaff): Promise<Staff> {

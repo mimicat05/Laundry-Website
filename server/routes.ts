@@ -4,6 +4,28 @@ import { storage } from "./storage";
 import { api, errorSchemas } from "@shared/routes";
 import { sendOrderStatusEmail, sendReceiptEmail } from "./email";
 import { z } from "zod";
+import bcrypt from "bcryptjs";
+import rateLimit from "express-rate-limit";
+
+const BCRYPT_ROUNDS = 10;
+
+async function hashPin(plainPin: string): Promise<string> {
+  return bcrypt.hash(plainPin, BCRYPT_ROUNDS);
+}
+
+async function isPinBcryptHash(value: string): Promise<boolean> {
+  return value.startsWith("$2a$") || value.startsWith("$2b$");
+}
+
+async function migrateExistingPins() {
+  const allStaff = await storage.getAllStaff();
+  for (const member of allStaff) {
+    if (!(await isPinBcryptHash(member.pin))) {
+      const hashed = await hashPin(member.pin);
+      await storage.updateStaff(member.id, { pin: hashed });
+    }
+  }
+}
 
 async function seedDatabase() {
   const existingServices = await storage.getServices();
@@ -14,7 +36,7 @@ async function seedDatabase() {
 
   const existingStaff = await storage.getStaffList();
   if (existingStaff.length === 0) {
-    await storage.createStaff({ name: "Admin", pin: "1234", role: "owner", active: true });
+    await storage.createStaff({ name: "Admin", pin: await hashPin("1234"), role: "owner", active: true });
   }
 
   const existingOrders = await storage.getOrders();
@@ -74,6 +96,7 @@ export async function registerRoutes(
   app: Express
 ): Promise<Server> {
   seedDatabase().catch(console.error);
+  migrateExistingPins().catch(console.error);
 
   // ── Auth ──────────────────────────────────────────────────────────────────
   const requireAuth = (req: any, res: any, next: any) => {
@@ -87,17 +110,32 @@ export async function registerRoutes(
     next();
   };
 
-  app.post("/api/auth/login", async (req, res) => {
+  const loginLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 10,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { message: "Too many login attempts. Please wait 15 minutes and try again." },
+  });
+
+  app.post("/api/auth/login", loginLimiter, async (req, res) => {
     try {
       const { pin } = z.object({ pin: z.string().min(1) }).parse(req.body);
-      const member = await storage.getStaffByPin(pin);
-      if (!member || !member.active) {
+      const allStaff = await storage.getAllStaff();
+      let matched = null;
+      for (const member of allStaff) {
+        if (member.active && await bcrypt.compare(pin, member.pin)) {
+          matched = member;
+          break;
+        }
+      }
+      if (!matched) {
         return res.status(401).json({ message: "Incorrect PIN. Please try again." });
       }
-      req.session.staffId = member.id;
-      req.session.staffName = member.name;
-      req.session.staffRole = member.role;
-      res.json({ id: member.id, name: member.name, role: member.role });
+      req.session.staffId = matched.id;
+      req.session.staffName = matched.name;
+      req.session.staffRole = matched.role;
+      res.json({ id: matched.id, name: matched.name, role: matched.role });
     } catch (err) {
       if (err instanceof z.ZodError) {
         return res.status(400).json({ message: "PIN is required." });
@@ -133,14 +171,18 @@ export async function registerRoutes(
       const schema = z.object({
         name: z.string().min(2, "Name must be at least 2 characters"),
         pin: z.string().length(4, "PIN must be exactly 4 digits").regex(/^\d{4}$/, "PIN must be 4 digits"),
+        role: z.enum(["owner", "staff"]).optional().default("staff"),
         active: z.boolean().optional().default(true),
       });
       const data = schema.parse(req.body);
-      const existing = await storage.getStaffByPin(data.pin);
-      if (existing) {
-        return res.status(409).json({ message: "That PIN is already in use by another staff member." });
+      const allStaff = await storage.getAllStaff();
+      for (const member of allStaff) {
+        if (await bcrypt.compare(data.pin, member.pin)) {
+          return res.status(409).json({ message: "That PIN is already in use by another staff member." });
+        }
       }
-      const member = await storage.createStaff(data);
+      const hashed = await hashPin(data.pin);
+      const member = await storage.createStaff({ ...data, pin: hashed });
       res.status(201).json(member);
     } catch (err) {
       if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors[0].message });
@@ -154,14 +196,18 @@ export async function registerRoutes(
       const schema = z.object({
         name: z.string().min(2).optional(),
         pin: z.string().length(4).regex(/^\d{4}$/).optional(),
+        role: z.enum(["owner", "staff"]).optional(),
         active: z.boolean().optional(),
       });
       const data = schema.parse(req.body);
       if (data.pin) {
-        const existing = await storage.getStaffByPin(data.pin);
-        if (existing && existing.id !== id) {
-          return res.status(409).json({ message: "That PIN is already in use by another staff member." });
+        const allStaff = await storage.getAllStaff();
+        for (const member of allStaff) {
+          if (member.id !== id && await bcrypt.compare(data.pin, member.pin)) {
+            return res.status(409).json({ message: "That PIN is already in use by another staff member." });
+          }
         }
+        data.pin = await hashPin(data.pin);
       }
       const member = await storage.updateStaff(id, data);
       res.json(member);
