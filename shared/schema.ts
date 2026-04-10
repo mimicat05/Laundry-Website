@@ -5,7 +5,7 @@ import { z } from "zod";
 export const staff = pgTable("staff", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
-  pin: text("pin").notNull(),
+  pin: text("pin").notNull().unique(),
   role: text("role").notNull().default("staff"), // "owner" | "staff"
   active: boolean("active").notNull().default(true),
 });
@@ -72,6 +72,7 @@ export const orders = pgTable("orders", {
   promoId: integer("promo_id"),
   promoName: text("promo_name"),
   discountAmount: numeric("discount_amount", { precision: 10, scale: 2 }),
+  actualWeight: numeric("actual_weight", { precision: 10, scale: 2 }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   deletedAt: timestamp("deleted_at"),
 });

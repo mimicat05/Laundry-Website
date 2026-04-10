@@ -5,6 +5,10 @@ import { api, errorSchemas } from "@shared/routes";
 import { sendOrderStatusEmail, sendReceiptEmail } from "./email";
 import { z } from "zod";
 
+const loginAttempts = new Map<string, { count: number; lockedUntil: number }>();
+const MAX_ATTEMPTS = 5;
+const LOCKOUT_MS = 5 * 60 * 1000;
+
 async function seedDatabase() {
   const existingServices = await storage.getServices();
   if (existingServices.length === 0) {
@@ -89,11 +93,31 @@ export async function registerRoutes(
 
   app.post("/api/auth/login", async (req, res) => {
     try {
+      const ip = (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() || req.socket.remoteAddress || "unknown";
+      const now = Date.now();
+      const record = loginAttempts.get(ip) || { count: 0, lockedUntil: 0 };
+
+      if (record.lockedUntil > now) {
+        const minutesLeft = Math.ceil((record.lockedUntil - now) / 60000);
+        return res.status(429).json({ message: `Too many failed attempts. Try again in ${minutesLeft} minute${minutesLeft > 1 ? "s" : ""}.` });
+      }
+
       const { pin } = z.object({ pin: z.string().min(1) }).parse(req.body);
       const member = await storage.getStaffByPin(pin);
       if (!member || !member.active) {
-        return res.status(401).json({ message: "Incorrect PIN. Please try again." });
+        record.count += 1;
+        if (record.count >= MAX_ATTEMPTS) {
+          record.lockedUntil = now + LOCKOUT_MS;
+          record.count = 0;
+          loginAttempts.set(ip, record);
+          return res.status(429).json({ message: "Too many failed attempts. You are locked out for 5 minutes." });
+        }
+        loginAttempts.set(ip, record);
+        const remaining = MAX_ATTEMPTS - record.count;
+        return res.status(401).json({ message: `Incorrect PIN. ${remaining} attempt${remaining !== 1 ? "s" : ""} remaining.` });
       }
+
+      loginAttempts.delete(ip);
       req.session.staffId = member.id;
       req.session.staffName = member.name;
       req.session.staffRole = member.role;

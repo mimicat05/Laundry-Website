@@ -2,7 +2,9 @@ import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { type Order, type OrderLog } from "@shared/schema";
 import { Skeleton } from "@/components/ui/skeleton";
-import { BarChart3, History, TrendingUp, Package, DollarSign, Weight } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { BarChart3, History, TrendingUp, Package, DollarSign, Weight, FileSpreadsheet } from "lucide-react";
+import * as XLSX from "xlsx";
 
 const STATUS_LABELS: Record<string, string> = {
   requested: "Requested",
@@ -48,11 +50,48 @@ function formatCurrency(amount: string | number) {
   return `₱${Number(amount).toLocaleString("en-PH", { minimumFractionDigits: 2 })}`;
 }
 
+function exportToExcel(orders: Order[], from: string, to: string) {
+  const fromDate = from ? new Date(from) : null;
+  const toDate = to ? new Date(to + "T23:59:59") : null;
+
+  const filtered = orders.filter((o) => {
+    if (o.status !== "completed" || o.deletedAt) return false;
+    const d = new Date(o.createdAt);
+    if (fromDate && d < fromDate) return false;
+    if (toDate && d > toDate) return false;
+    return true;
+  });
+
+  const rows = filtered.map((o) => ({
+    "Order ID": o.orderId,
+    "Customer Name": o.customerName,
+    "Contact": o.contactNumber,
+    "Email": o.email,
+    "Address": o.address,
+    "Service": o.service,
+    "Est. Weight (kg)": Number(o.weight),
+    "Actual Weight (kg)": o.actualWeight ? Number(o.actualWeight) : "",
+    "Promo": o.promoName || "",
+    "Discount (₱)": o.discountAmount ? Number(o.discountAmount) : 0,
+    "Total (₱)": Number(o.total),
+    "Paid": o.paid ? "Yes" : "No",
+    "Date": new Date(o.createdAt).toLocaleDateString("en-PH"),
+  }));
+
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Completed Orders");
+  const label = from && to ? `${from}_to_${to}` : from ? `from_${from}` : to ? `to_${to}` : "all";
+  XLSX.writeFile(wb, `completed_orders_${label}.xlsx`);
+}
+
 export function Reports() {
   const [tab, setTab] = useState<"history" | "analytics">("history");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [actionFilter, setActionFilter] = useState("all");
+  const [exportFrom, setExportFrom] = useState("");
+  const [exportTo, setExportTo] = useState("");
 
   const { data: allOrders, isLoading: ordersLoading } = useQuery<Order[]>({
     queryKey: ["/api/orders/all"],
@@ -271,6 +310,48 @@ export function Reports() {
 
       {tab === "analytics" && (
         <div className="space-y-8">
+          {/* Excel Export */}
+          <div className="bg-card border border-border/50 rounded-3xl p-5 sleek-shadow">
+            <div className="flex items-center gap-2 mb-4">
+              <FileSpreadsheet className="w-4 h-4 text-primary" />
+              <h2 className="text-sm font-semibold text-foreground">Export Completed Orders</h2>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-3 items-end">
+              <div className="flex-1 space-y-1">
+                <label className="text-xs text-muted-foreground font-medium">From</label>
+                <input
+                  data-testid="input-export-from"
+                  type="date"
+                  value={exportFrom}
+                  onChange={(e) => setExportFrom(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                />
+              </div>
+              <div className="flex-1 space-y-1">
+                <label className="text-xs text-muted-foreground font-medium">To</label>
+                <input
+                  data-testid="input-export-to"
+                  type="date"
+                  value={exportTo}
+                  onChange={(e) => setExportTo(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                />
+              </div>
+              <Button
+                data-testid="button-export-excel"
+                className="rounded-xl gap-2 shrink-0"
+                onClick={() => exportToExcel(orders, exportFrom, exportTo)}
+                disabled={orders.filter((o) => o.status === "completed" && !o.deletedAt).length === 0}
+              >
+                <FileSpreadsheet className="w-4 h-4" />
+                Export to Excel
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground mt-3">
+              Leave dates empty to export all completed orders. Only completed, non-deleted orders are included.
+            </p>
+          </div>
+
           {/* Stat Cards */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="bg-card border border-border/50 rounded-3xl p-5 sleek-shadow" data-testid="stat-total-revenue">

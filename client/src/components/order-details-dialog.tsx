@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { format } from "date-fns";
-import { Loader2, Trash2, ArrowRight, User, MapPin, Phone, Mail, Scale, DollarSign, Tag, CalendarClock, Pencil, X, Printer, Sticker, Send, CheckCircle2, XCircle, Percent, BadgePercent } from "lucide-react";
+import { Loader2, Trash2, ArrowRight, User, MapPin, Phone, Mail, Scale, DollarSign, Tag, CalendarClock, Pencil, X, Printer, Sticker, Send, CheckCircle2, XCircle, Percent, BadgePercent, ClipboardCheck } from "lucide-react";
 import { useUpdateOrder, useDeleteOrder } from "@/hooks/use-orders";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation } from "@tanstack/react-query";
@@ -58,6 +58,7 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsPr
   const [isEditing, setIsEditing] = useState(false);
   const [showPrintMenu, setShowPrintMenu] = useState(false);
   const [selectedPromoId, setSelectedPromoId] = useState<string>("");
+  const [actualWeightInput, setActualWeightInput] = useState("");
   const { mutate: updateOrder, isPending: isUpdating } = useUpdateOrder();
   const { mutate: deleteOrder, isPending: isDeleting } = useDeleteOrder();
   const { toast } = useToast();
@@ -82,8 +83,12 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsPr
   useEffect(() => {
     if (!open) {
       setSelectedPromoId("");
+      setActualWeightInput("");
     }
-  }, [open]);
+    if (open && order) {
+      setActualWeightInput(order.actualWeight ? String(order.actualWeight) : "");
+    }
+  }, [open, order]);
 
   const form = useForm<EditValues>({
     resolver: zodResolver(editSchema),
@@ -364,7 +369,18 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsPr
                   </div>
                   <div className="flex items-center gap-3">
                     <Scale className="w-4 h-4 text-primary" />
-                    <span className="text-sm text-foreground">{order.weight} kg</span>
+                    <div className="flex flex-col">
+                      <span className="text-sm text-foreground">
+                        {order.actualWeight ? (
+                          <><span className="font-semibold">{Number(order.actualWeight).toFixed(2)} kg</span> <span className="text-xs text-muted-foreground">(actual)</span></>
+                        ) : (
+                          <>{order.weight} kg <span className="text-xs text-muted-foreground">(estimated)</span></>
+                        )}
+                      </span>
+                      {order.actualWeight && String(order.actualWeight) !== String(order.weight) && (
+                        <span className="text-xs text-muted-foreground">Est: {order.weight} kg</span>
+                      )}
+                    </div>
                   </div>
                   <div className="flex items-center gap-3">
                     <DollarSign className="w-4 h-4 text-primary" />
@@ -392,6 +408,64 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsPr
                   </div>
                 </div>
               </div>
+
+              {/* Actual Weight Recording — visible once order is received at the shop */}
+              {["received", "washing", "drying", "folding", "ready_for_pickup", "completed"].includes(order.status) && (
+                <div className="bg-background/50 rounded-2xl p-5 border border-border/50">
+                  <div className="flex items-center gap-2 mb-4">
+                    <ClipboardCheck className="w-4 h-4 text-primary" />
+                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Actual Weight</h4>
+                  </div>
+                  <div className="flex gap-3 items-end">
+                    <div className="flex-1 space-y-1">
+                      <label className="text-xs text-muted-foreground">Weighed at shop (kg)</label>
+                      <input
+                        data-testid="input-actual-weight"
+                        type="number"
+                        step="0.1"
+                        min="0.1"
+                        placeholder="e.g. 3.5"
+                        value={actualWeightInput}
+                        onChange={(e) => setActualWeightInput(e.target.value)}
+                        disabled={order.status === "completed"}
+                        className="w-full px-3 py-2 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-50 disabled:cursor-not-allowed"
+                      />
+                    </div>
+                    {order.status !== "completed" && (
+                      <Button
+                        data-testid="button-save-actual-weight"
+                        size="sm"
+                        className="rounded-xl"
+                        disabled={isUpdating || !actualWeightInput || parseFloat(actualWeightInput) <= 0}
+                        onClick={() => {
+                          const svc = (serviceList || []).find((s) => s.name === order.service);
+                          const pricePerKg = svc ? Number(svc.pricePerKg) : 0;
+                          const kg = parseFloat(actualWeightInput);
+                          const baseTotal = pricePerKg > 0 && kg > 0 ? pricePerKg * kg : Number(order.total);
+                          const discountAmt = order.discountAmount ? Number(order.discountAmount) : 0;
+                          const promoRatio = order.discountAmount && Number(order.total) > 0
+                            ? discountAmt / (Number(order.total) + discountAmt)
+                            : 0;
+                          const newDiscount = promoRatio > 0 ? (baseTotal * promoRatio).toFixed(2) : order.discountAmount;
+                          const newTotal = promoRatio > 0 ? (baseTotal - Number(newDiscount)).toFixed(2) : baseTotal.toFixed(2);
+                          updateOrder(
+                            { id: order.id, actualWeight: actualWeightInput, weight: actualWeightInput, total: newTotal, ...(promoRatio > 0 ? { discountAmount: newDiscount } : {}) },
+                            {
+                              onSuccess: () => toast({ title: "Weight Recorded", description: `Actual weight set to ${kg.toFixed(2)} kg. Total updated to ₱${newTotal}.` }),
+                              onError: (err) => toast({ title: "Error", description: err.message, variant: "destructive" }),
+                            }
+                          );
+                        }}
+                      >
+                        {isUpdating ? <Loader2 className="w-3 h-3 animate-spin" /> : "Save Weight"}
+                      </Button>
+                    )}
+                  </div>
+                  {order.status !== "completed" && (
+                    <p className="text-xs text-muted-foreground mt-2">Saving the actual weight will recalculate the total based on the service rate.</p>
+                  )}
+                </div>
+              )}
 
               {/* Promo Discount Section — visible only for pending (accepted) orders */}
               {order.status === "pending" && (
