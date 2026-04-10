@@ -45,7 +45,7 @@ const BASE_STYLES = `
 
 /* ─── STICKER ─────────────────────────────────────────────── */
 export function printSticker(order: Order) {
-  const win = window.open("", "_blank", "width=400,height=350");
+  const win = window.open("", "_blank", "width=400,height=400");
   if (!win) return;
   win.document.write(`<!DOCTYPE html><html><head><title>Sticker - ${order.orderId}</title>
   <style>
@@ -57,6 +57,10 @@ export function printSticker(order: Order) {
     .row { margin: 2px 0; font-size: 10px; }
     .divider { font-size: 9px; margin: 5px 0; }
     .tag-line { text-align: center; font-size: 9px; margin-top: 6px; opacity: 0.5; }
+    .payment-row { display: flex; justify-content: space-between; align-items: center; margin: 6px 0 2px; font-size: 11px; }
+    .payment-badge { font-weight: bold; font-size: 11px; padding: 2px 10px; border-radius: 3px; border: 1.5px solid; }
+    .paid { color: #15803d; border-color: #15803d; background: #f0fdf4; }
+    .unpaid { color: #b91c1c; border-color: #b91c1c; background: #fef2f2; }
   </style></head><body>
   ${shopHeader()}
   ${divider()}
@@ -65,8 +69,14 @@ export function printSticker(order: Order) {
   <div class="row"><span class="label">Customer:</span><span class="bold">${order.customerName}</span></div>
   <div class="row"><span class="label">Service:</span><span>${order.service}</span></div>
   <div class="row"><span class="label">Weight:</span><span>${order.weight} kg</span></div>
+  <div class="row"><span class="label">Total:</span><span class="bold">${formatCurrency(order.total)}</span></div>
   <div class="row"><span class="label">Received:</span><span>${formatDate(order.createdAt)}</span></div>
   ${order.notes ? `<div class="row"><span class="label">Notes:</span><span>${order.notes}</span></div>` : ""}
+  ${divider()}
+  <div class="payment-row">
+    <span class="label">Payment Status:</span>
+    <span class="payment-badge ${order.paid ? "paid" : "unpaid"}">${order.paid ? "✓ PAID" : "✗ UNPAID"}</span>
+  </div>
   <div class="tag-line">Lavanderia Sunrise · Laundry Sticker</div>
   </body></html>`);
   win.document.close();
@@ -99,6 +109,11 @@ export function printReceipt(order: Order, type: "dropoff" | "pickup") {
     .divider { font-size: 10px; margin: 8px 0; }
     .footer { text-align: center; font-size: 10px; margin-top: 10px; opacity: 0.7; white-space: pre-line; }
     .badge { font-size: 11px; padding: 2px 8px; }
+    .payment-block { text-align: center; margin: 6px 0; }
+    .payment-label { font-size: 10px; opacity: 0.6; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
+    .payment-value { display: inline-block; font-size: 15px; font-weight: bold; padding: 4px 18px; border-radius: 4px; border: 2px solid; }
+    .paid { color: #15803d; border-color: #15803d; background: #f0fdf4; }
+    .unpaid { color: #b91c1c; border-color: #b91c1c; background: #fef2f2; }
   </style></head><body>
   ${shopHeader()}
   ${divider()}
@@ -129,15 +144,18 @@ export function printReceipt(order: Order, type: "dropoff" | "pickup") {
     <span>TOTAL</span>
     <span>${formatCurrency(order.total)}</span>
   </div>
-  <div class="row">
-    <span class="label">Payment</span>
-    <span class="badge ${order.paid ? "paid" : "unpaid"}">${order.paid ? "PAID" : "UNPAID"}</span>
+
+  ${divider()}
+
+  <div class="payment-block">
+    <div class="payment-label">Payment Status</div>
+    <div class="payment-value ${order.paid ? "paid" : "unpaid"}">${order.paid ? "✓ PAID" : "✗ UNPAID"}</div>
   </div>
 
   ${divider()}
 
   <div class="section">
-    <div class="row"><span class="label">${isPickup ? "Picked up" : "Received"}</span><span>${formatDate(isPickup ? order.createdAt : order.createdAt)}</span></div>
+    <div class="row"><span class="label">Date Received</span><span>${formatDate(order.createdAt)}</span></div>
     <div class="row"><span class="label">Status</span><span>${order.status.replace(/_/g, " ").toUpperCase()}</span></div>
   </div>
 
