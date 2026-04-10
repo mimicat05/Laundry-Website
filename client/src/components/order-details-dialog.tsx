@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { format } from "date-fns";
-import { Loader2, Trash2, ArrowRight, User, MapPin, Phone, Mail, Scale, DollarSign, Tag, CalendarClock, Pencil, X, Printer, Sticker, Send, CheckCircle2, XCircle } from "lucide-react";
+import { Loader2, Trash2, ArrowRight, User, MapPin, Phone, Mail, Scale, DollarSign, Tag, CalendarClock, Pencil, X, Printer, Sticker, Send, CheckCircle2, XCircle, Percent, BadgePercent } from "lucide-react";
 import { useUpdateOrder, useDeleteOrder } from "@/hooks/use-orders";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation } from "@tanstack/react-query";
@@ -27,7 +27,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { type Order, type Service } from "@shared/schema";
+import { type Order, type Service, type Promo } from "@shared/schema";
 import { printSticker } from "@/lib/print-receipt";
 import { statusLabel } from "@/lib/order-utils";
 
@@ -57,6 +57,7 @@ interface OrderDetailsProps {
 export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [showPrintMenu, setShowPrintMenu] = useState(false);
+  const [selectedPromoId, setSelectedPromoId] = useState<string>("");
   const { mutate: updateOrder, isPending: isUpdating } = useUpdateOrder();
   const { mutate: deleteOrder, isPending: isDeleting } = useDeleteOrder();
   const { toast } = useToast();
@@ -74,7 +75,15 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsPr
   });
 
   const { data: serviceList } = useQuery<Service[]>({ queryKey: ["/api/services"] });
+  const { data: promoList } = useQuery<Promo[]>({ queryKey: ["/api/promos"] });
   const activeServices = useMemo(() => (serviceList || []).filter((s) => s.active), [serviceList]);
+  const activePromos = useMemo(() => (promoList || []).filter((p) => p.active), [promoList]);
+
+  useEffect(() => {
+    if (!open) {
+      setSelectedPromoId("");
+    }
+  }, [open]);
 
   const form = useForm<EditValues>({
     resolver: zodResolver(editSchema),
@@ -104,6 +113,42 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsPr
   }, [watchedService, watchedWeight, isEditing, form, activeServices]);
 
   if (!order) return null;
+
+  const baseTotal = order.discountAmount
+    ? parseFloat(String(order.total)) + parseFloat(String(order.discountAmount))
+    : parseFloat(String(order.total));
+
+  const selectedPromo = activePromos.find((p) => String(p.id) === selectedPromoId);
+  const previewDiscount = selectedPromo ? (baseTotal * parseFloat(String(selectedPromo.discount))) / 100 : 0;
+  const previewTotal = baseTotal - previewDiscount;
+
+  const handleApplyPromo = () => {
+    if (!selectedPromo) return;
+    const discountAmt = previewDiscount.toFixed(2);
+    const newTotal = previewTotal.toFixed(2);
+    updateOrder(
+      { id: order.id, total: newTotal, promoId: selectedPromo.id, promoName: selectedPromo.name, discountAmount: discountAmt },
+      {
+        onSuccess: () => {
+          toast({ title: "Discount Applied", description: `${selectedPromo.name} (${selectedPromo.discount}% off) has been applied.` });
+          setSelectedPromoId("");
+        },
+        onError: (err) => toast({ title: "Error", description: err.message, variant: "destructive" }),
+      }
+    );
+  };
+
+  const handleRemovePromo = () => {
+    updateOrder(
+      { id: order.id, total: baseTotal.toFixed(2), promoId: null, promoName: null, discountAmount: null },
+      {
+        onSuccess: () => {
+          toast({ title: "Discount Removed", description: "The promo discount has been removed." });
+        },
+        onError: (err) => toast({ title: "Error", description: err.message, variant: "destructive" }),
+      }
+    );
+  };
 
   const handleStatusChange = (newStatus: string) => {
     updateOrder(
@@ -323,7 +368,15 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsPr
                   </div>
                   <div className="flex items-center gap-3">
                     <DollarSign className="w-4 h-4 text-primary" />
-                    <span className="text-sm font-semibold text-foreground">₱{order.total}</span>
+                    <div className="flex flex-col">
+                      {order.discountAmount && (
+                        <span className="text-xs text-muted-foreground line-through">₱{baseTotal.toFixed(2)}</span>
+                      )}
+                      <span className="text-sm font-semibold text-foreground">₱{order.total}</span>
+                      {order.discountAmount && (
+                        <span className="text-xs text-emerald-600 font-medium">-₱{parseFloat(String(order.discountAmount)).toFixed(2)} discount</span>
+                      )}
+                    </div>
                     <button
                       data-testid="button-toggle-paid"
                       onClick={handleTogglePaid}
@@ -339,6 +392,93 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsPr
                   </div>
                 </div>
               </div>
+
+              {/* Promo Discount Section — visible only for pending (accepted) orders */}
+              {order.status === "pending" && (
+                <div className="bg-background/50 rounded-2xl p-5 border border-border/50">
+                  <div className="flex items-center gap-2 mb-4">
+                    <BadgePercent className="w-4 h-4 text-primary" />
+                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Promo Discount</h4>
+                  </div>
+
+                  {order.promoId ? (
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <Percent className="w-4 h-4 text-emerald-600" />
+                          <div>
+                            <p className="text-sm font-semibold text-emerald-800">{order.promoName}</p>
+                            <p className="text-xs text-emerald-600">-₱{parseFloat(String(order.discountAmount)).toFixed(2)} off from ₱{baseTotal.toFixed(2)}</p>
+                          </div>
+                        </div>
+                        <Button
+                          data-testid="button-remove-promo"
+                          variant="ghost"
+                          size="sm"
+                          className="rounded-xl text-red-500 hover:text-red-600 hover:bg-red-50 text-xs"
+                          onClick={handleRemovePromo}
+                          disabled={isUpdating}
+                        >
+                          {isUpdating ? <Loader2 className="w-3 h-3 animate-spin" /> : <X className="w-3 h-3 mr-1" />}
+                          Remove
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {activePromos.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">No active promos available.</p>
+                      ) : (
+                        <>
+                          <Select
+                            value={selectedPromoId}
+                            onValueChange={setSelectedPromoId}
+                          >
+                            <SelectTrigger data-testid="select-promo" className="rounded-xl bg-background border-border/50">
+                              <SelectValue placeholder="Select a promo..." />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-xl border-border/50">
+                              {activePromos.map((promo) => (
+                                <SelectItem key={promo.id} value={String(promo.id)}>
+                                  {promo.name} — {promo.discount}% off
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+
+                          {selectedPromo && (
+                            <div className="bg-muted/40 rounded-xl px-4 py-3 border border-border/50 space-y-1.5 text-sm">
+                              <div className="flex justify-between text-muted-foreground">
+                                <span>Original Total</span>
+                                <span>₱{baseTotal.toFixed(2)}</span>
+                              </div>
+                              <div className="flex justify-between text-emerald-600 font-medium">
+                                <span>Discount ({selectedPromo.discount}%)</span>
+                                <span>-₱{previewDiscount.toFixed(2)}</span>
+                              </div>
+                              <div className="flex justify-between font-semibold text-foreground border-t border-border/50 pt-1.5 mt-1.5">
+                                <span>New Total</span>
+                                <span>₱{previewTotal.toFixed(2)}</span>
+                              </div>
+                            </div>
+                          )}
+
+                          <Button
+                            data-testid="button-apply-promo"
+                            size="sm"
+                            className="rounded-xl w-full"
+                            onClick={handleApplyPromo}
+                            disabled={!selectedPromo || isUpdating}
+                          >
+                            {isUpdating ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Percent className="w-4 h-4 mr-2" />}
+                            Apply Discount
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
 
               {order.notes && (
                 <div className="bg-amber-50 dark:bg-amber-950/30 rounded-2xl p-5 border border-amber-200/60 dark:border-amber-800/40">

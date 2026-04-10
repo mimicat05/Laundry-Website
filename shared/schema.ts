@@ -1,4 +1,4 @@
-import { pgTable, text, serial, timestamp, numeric, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, timestamp, numeric, boolean, integer } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -56,6 +56,9 @@ export const orders = pgTable("orders", {
   status: text("status").notNull().default("pending"), // pending, washed, ready_for_pickup, completed
   paid: boolean("paid").notNull().default(false),
   notes: text("notes"),
+  promoId: integer("promo_id"),
+  promoName: text("promo_name"),
+  discountAmount: numeric("discount_amount", { precision: 10, scale: 2 }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   deletedAt: timestamp("deleted_at"),
 });
