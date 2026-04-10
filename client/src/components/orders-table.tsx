@@ -3,7 +3,7 @@ import { Eye } from "lucide-react";
 import { type Order } from "@shared/schema";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { statusLabel } from "@/components/order-details-dialog";
+import { statusLabel } from "@/lib/order-utils";
 import {
   Table,
   TableCell,

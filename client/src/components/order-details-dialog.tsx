@@ -27,22 +27,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { type Order, type Service } from "@shared/schema";
 import { printSticker, printReceipt } from "@/lib/print-receipt";
-
-const STATUS_LABELS: Record<string, string> = {
-  requested:        "New Request",
-  pending:          "Accepted",
-  received:         "Received",
-  washing:          "Washing",
-  drying:           "Drying",
-  folding:          "Folding",
-  ready_for_pickup: "Ready for Pickup",
-  completed:        "Completed",
-  washed:           "In Progress",
-};
-
-export function statusLabel(status: string) {
-  return STATUS_LABELS[status] ?? status.replace(/_/g, " ");
-}
+import { statusLabel } from "@/lib/order-utils";
 
 const editSchema = z.object({
   customerName: z.string().min(2, "Name is required"),

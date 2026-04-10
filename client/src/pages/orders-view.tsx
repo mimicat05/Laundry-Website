@@ -5,7 +5,7 @@ import { useOrders } from "@/hooks/use-orders";
 import { useQueryClient } from "@tanstack/react-query";
 import { OrderDetailsDialog } from "@/components/order-details-dialog";
 import { OrdersTable } from "@/components/orders-table";
-import { statusLabel } from "@/components/order-details-dialog";
+import { statusLabel } from "@/lib/order-utils";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
