@@ -83,6 +83,8 @@ export async function registerRoutes(
       if (!member || !member.active) {
         return res.status(401).json({ message: "Incorrect PIN. Please try again." });
       }
+      req.session.staffId = member.id;
+      req.session.staffName = member.name;
       res.json({ id: member.id, name: member.name });
     } catch (err) {
       if (err instanceof z.ZodError) {
@@ -90,6 +92,19 @@ export async function registerRoutes(
       }
       res.status(500).json({ message: "Login failed." });
     }
+  });
+
+  app.post("/api/auth/logout", (req, res) => {
+    req.session.destroy(() => {
+      res.json({ ok: true });
+    });
+  });
+
+  app.get("/api/auth/me", (req, res) => {
+    if (req.session.staffId) {
+      return res.json({ id: req.session.staffId, name: req.session.staffName });
+    }
+    res.status(401).json({ message: "Not authenticated" });
   });
 
   // ── Staff CRUD ─────────────────────────────────────────────────────────────
@@ -255,11 +270,10 @@ export async function registerRoutes(
       const bodySchema = api.orders.create.input.extend({
         weight: z.coerce.string(),
         total: z.coerce.string(),
-        staffName: z.string().optional(),
       });
-      const { staffName, ...input } = bodySchema.parse(req.body);
+      const input = bodySchema.parse(req.body);
       const order = await storage.createOrder(input);
-      await storage.logOrderAction(order, "created", staffName);
+      await storage.logOrderAction(order, "created", req.session.staffName);
       res.status(201).json(order);
     } catch (err) {
       if (err instanceof z.ZodError) {
@@ -280,10 +294,8 @@ export async function registerRoutes(
         return res.status(404).json({ message: "Order not found" });
       }
 
-      const bodySchema = api.orders.update.input.extend({
-        staffName: z.string().optional(),
-      });
-      const { staffName, ...input } = bodySchema.parse(req.body);
+      const input = api.orders.update.input.parse(req.body);
+      const staffName = req.session.staffName;
 
       const order = await storage.updateOrder(id, input);
 
@@ -330,8 +342,7 @@ export async function registerRoutes(
       if (!existing) {
         return res.status(404).json({ message: "Order not found" });
       }
-      const staffName = req.headers["x-staff-name"] as string | undefined;
-      await storage.deleteOrder(id, staffName);
+      await storage.deleteOrder(id, req.session.staffName);
       res.status(204).send();
     } catch (err) {
       res.status(500).json({ message: "Failed to delete order" });
@@ -345,8 +356,7 @@ export async function registerRoutes(
       if (!existing) {
         return res.status(404).json({ message: "Order not found" });
       }
-      const staffName = req.headers["x-staff-name"] as string | undefined;
-      const restored = await storage.restoreOrder(id, staffName);
+      const restored = await storage.restoreOrder(id, req.session.staffName);
       res.json(restored);
     } catch (err) {
       res.status(500).json({ message: "Failed to restore order" });
@@ -360,8 +370,7 @@ export async function registerRoutes(
       if (!existing) {
         return res.status(404).json({ message: "Order not found" });
       }
-      const staffName = req.headers["x-staff-name"] as string | undefined;
-      await storage.permanentDeleteOrder(id, staffName);
+      await storage.permanentDeleteOrder(id, req.session.staffName);
       res.status(204).send();
     } catch (err) {
       res.status(500).json({ message: "Failed to permanently delete order" });

@@ -15,6 +15,30 @@ export function useAuth() {
   });
 
   useEffect(() => {
+    fetch("/api/auth/me", { credentials: "include" })
+      .then((res) => {
+        if (res.ok) return res.json();
+        throw new Error("not authenticated");
+      })
+      .then((data: { id: number; name: string }) => {
+        setIsAuthenticated(true);
+        setStaffId(data.id);
+        setStaffName(data.name);
+        localStorage.setItem("staff_auth", "true");
+        localStorage.setItem("staff_id", String(data.id));
+        localStorage.setItem("staff_name", data.name);
+      })
+      .catch(() => {
+        setIsAuthenticated(false);
+        setStaffId(null);
+        setStaffName("");
+        localStorage.removeItem("staff_auth");
+        localStorage.removeItem("staff_id");
+        localStorage.removeItem("staff_name");
+      });
+  }, []);
+
+  useEffect(() => {
     const handleStorageChange = () => {
       setIsAuthenticated(localStorage.getItem("staff_auth") === "true");
       setStaffName(localStorage.getItem("staff_name") || "");
@@ -35,7 +59,11 @@ export function useAuth() {
     window.dispatchEvent(new Event("storage"));
   };
 
-  const logout = () => {
+  const logout = async () => {
+    try {
+      await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
+    } catch {
+    }
     localStorage.removeItem("staff_auth");
     localStorage.removeItem("staff_id");
     localStorage.removeItem("staff_name");

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { Droplets, ArrowRight, ArrowLeft } from "lucide-react";
+import { Droplets, ArrowRight, ArrowLeft, Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,20 +11,35 @@ export function Login() {
   const { login } = useAuth();
   const [pin, setPin] = useState("");
   const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (pin === "1234") {
-      login();
+    setIsLoading(true);
+    setError("");
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ pin }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.message || "Incorrect PIN. Please try again.");
+        return;
+      }
+      login(data.id, data.name);
       setLocation("/dashboard");
-    } else {
-      setError("Incorrect PIN. Please try again.");
+    } catch {
+      setError("Unable to connect. Please try again.");
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
-      {/* Background decoration */}
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden -z-10 pointer-events-none">
         <div className="absolute top-[-10%] right-[-5%] w-[40%] h-[40%] bg-primary/5 rounded-full blur-[100px]" />
         <div className="absolute bottom-[-10%] left-[-5%] w-[40%] h-[40%] bg-accent/20 rounded-full blur-[100px]" />
@@ -43,26 +58,34 @@ export function Login() {
           <form onSubmit={handleLogin} className="space-y-6">
             <div className="space-y-2">
               <Label htmlFor="pin" className="text-foreground/80 ml-1">Staff PIN</Label>
-              <Input 
-                id="pin" 
-                type="password" 
-                placeholder="Enter your 4-digit PIN" 
+              <Input
+                id="pin"
+                data-testid="input-pin"
+                type="password"
+                placeholder="Enter your 4-digit PIN"
                 className="rounded-xl h-12 bg-background/50 border-border/50 focus:bg-background transition-all text-center text-xl tracking-widest"
                 value={pin}
+                maxLength={4}
                 onChange={(e) => {
-                  setPin(e.target.value);
+                  setPin(e.target.value.replace(/\D/g, ""));
                   setError("");
                 }}
               />
               {error && <p className="text-sm text-destructive ml-1">{error}</p>}
             </div>
-            <Button type="submit" className="w-full rounded-xl h-12 text-md shadow-lg shadow-primary/20 hover:shadow-xl hover:-translate-y-0.5 transition-all">
+            <Button
+              type="submit"
+              data-testid="button-login"
+              disabled={isLoading || pin.length < 4}
+              className="w-full rounded-xl h-12 text-md shadow-lg shadow-primary/20 hover:shadow-xl hover:-translate-y-0.5 transition-all"
+            >
+              {isLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
               Access Portal
-              <ArrowRight className="w-4 h-4 ml-2" />
+              {!isLoading && <ArrowRight className="w-4 h-4 ml-2" />}
             </Button>
           </form>
         </div>
-        
+
         <div className="text-center mt-8">
           <Link href="/">
             <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary transition-colors cursor-pointer" data-testid="link-back-home">

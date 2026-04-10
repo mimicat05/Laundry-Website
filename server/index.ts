@@ -5,12 +5,37 @@ config({ path: "../.env.local", override: false });
 config({ path: "../.env", override: false });
 
 import express, { type Request, Response, NextFunction } from "express";
+import session from "express-session";
+import connectPgSimple from "connect-pg-simple";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
+import { pool } from "./db";
+
+declare module "express-session" {
+  interface SessionData {
+    staffId: number;
+    staffName: string;
+  }
+}
 
 const app = express();
 const httpServer = createServer(app);
+
+const PgSession = connectPgSimple(session);
+app.use(
+  session({
+    store: new PgSession({ pool, createTableIfMissing: true }),
+    secret: process.env.SESSION_SECRET || "lavanderia-sunrise-secret",
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      maxAge: 8 * 60 * 60 * 1000,
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+    },
+  })
+);
 
 declare module "http" {
   interface IncomingMessage {
