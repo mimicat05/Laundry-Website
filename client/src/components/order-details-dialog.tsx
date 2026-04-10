@@ -62,10 +62,10 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsPr
   const { toast } = useToast();
 
   const { mutate: emailReceipt, isPending: isEmailing } = useMutation({
-    mutationFn: (type: "dropoff" | "pickup") =>
-      apiRequest("POST", `/api/orders/${order?.id}/email-receipt`, { type }),
-    onSuccess: (_data, type) => {
-      toast({ title: "Receipt Sent", description: `${type === "dropoff" ? "Drop-off" : "Pickup"} receipt emailed to ${order?.email}.` });
+    mutationFn: () =>
+      apiRequest("POST", `/api/orders/${order?.id}/email-receipt`, {}),
+    onSuccess: () => {
+      toast({ title: "Receipt Sent", description: `Receipt emailed to ${order?.email}.` });
       setShowPrintMenu(false);
     },
     onError: () => {
@@ -351,7 +351,7 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsPr
               {showPrintMenu && (
                 <div className="bg-background/50 rounded-2xl p-4 border border-border/50">
                   <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Print / Email</h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <button
                       data-testid="print-sticker"
                       onClick={() => { printSticker(order); setShowPrintMenu(false); }}
@@ -362,24 +362,14 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsPr
                       <span className="text-xs text-muted-foreground text-center">Print & attach to bag</span>
                     </button>
                     <button
-                      data-testid="email-dropoff"
-                      onClick={() => emailReceipt("dropoff")}
+                      data-testid="email-receipt"
+                      onClick={() => emailReceipt()}
                       disabled={isEmailing}
                       className="flex flex-col items-center gap-2 p-3 rounded-xl border border-border/50 hover:bg-muted/50 hover:border-primary/40 transition-all text-sm disabled:opacity-50"
                     >
                       {isEmailing ? <Loader2 className="w-5 h-5 animate-spin text-primary" /> : <Send className="w-5 h-5 text-primary" />}
-                      <span className="font-medium">Drop-off Receipt</span>
-                      <span className="text-xs text-muted-foreground text-center">Email to customer</span>
-                    </button>
-                    <button
-                      data-testid="email-pickup"
-                      onClick={() => emailReceipt("pickup")}
-                      disabled={isEmailing}
-                      className="flex flex-col items-center gap-2 p-3 rounded-xl border border-border/50 hover:bg-muted/50 hover:border-emerald-400/40 transition-all text-sm disabled:opacity-50"
-                    >
-                      {isEmailing ? <Loader2 className="w-5 h-5 animate-spin text-emerald-600" /> : <Send className="w-5 h-5 text-emerald-600" />}
-                      <span className="font-medium">Pickup Receipt</span>
-                      <span className="text-xs text-muted-foreground text-center">Email to customer</span>
+                      <span className="font-medium">Email Receipt</span>
+                      <span className="text-xs text-muted-foreground text-center">Send to {order.email}</span>
                     </button>
                   </div>
                 </div>

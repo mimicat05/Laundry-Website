@@ -226,15 +226,11 @@ export async function registerRoutes(
   app.post("/api/orders/:id/email-receipt", async (req, res) => {
     try {
       const id = Number(req.params.id);
-      const { type } = z.object({ type: z.enum(["dropoff", "pickup"]) }).parse(req.body);
       const order = await storage.getOrder(id);
       if (!order) return res.status(404).json({ message: "Order not found" });
-      await sendReceiptEmail(order, type);
+      await sendReceiptEmail(order);
       res.json({ ok: true });
     } catch (err) {
-      if (err instanceof z.ZodError) {
-        return res.status(400).json({ message: err.errors[0].message });
-      }
       res.status(500).json({ message: "Failed to send receipt email" });
     }
   });
