@@ -12,6 +12,11 @@ async function seedDatabase() {
     await storage.createService({ name: "Dry-cleaning", description: "Professional dry cleaning for delicate fabrics, suits, and formal wear.", pricePerKg: "60", active: true });
   }
 
+  const existingStaff = await storage.getStaffList();
+  if (existingStaff.length === 0) {
+    await storage.createStaff({ name: "Admin", pin: "1234", active: true });
+  }
+
   const existingOrders = await storage.getOrders();
   if (existingOrders.length === 0) {
     await storage.createOrder({
@@ -68,9 +73,94 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
-  // Seed the database with initial examples
   seedDatabase().catch(console.error);
 
+  // ── Auth ──────────────────────────────────────────────────────────────────
+  app.post("/api/auth/login", async (req, res) => {
+    try {
+      const { pin } = z.object({ pin: z.string().min(1) }).parse(req.body);
+      const member = await storage.getStaffByPin(pin);
+      if (!member || !member.active) {
+        return res.status(401).json({ message: "Incorrect PIN. Please try again." });
+      }
+      res.json({ id: member.id, name: member.name });
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: "PIN is required." });
+      }
+      res.status(500).json({ message: "Login failed." });
+    }
+  });
+
+  // ── Staff CRUD ─────────────────────────────────────────────────────────────
+  app.get("/api/staff", async (_req, res) => {
+    try {
+      res.json(await storage.getStaffList());
+    } catch {
+      res.status(500).json({ message: "Failed to fetch staff" });
+    }
+  });
+
+  app.post("/api/staff", async (req, res) => {
+    try {
+      const schema = z.object({
+        name: z.string().min(2, "Name must be at least 2 characters"),
+        pin: z.string().length(4, "PIN must be exactly 4 digits").regex(/^\d{4}$/, "PIN must be 4 digits"),
+        active: z.boolean().optional().default(true),
+      });
+      const data = schema.parse(req.body);
+      const existing = await storage.getStaffByPin(data.pin);
+      if (existing) {
+        return res.status(409).json({ message: "That PIN is already in use by another staff member." });
+      }
+      const member = await storage.createStaff(data);
+      res.status(201).json(member);
+    } catch (err) {
+      if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors[0].message });
+      res.status(500).json({ message: "Failed to create staff member" });
+    }
+  });
+
+  app.put("/api/staff/:id", async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      const schema = z.object({
+        name: z.string().min(2).optional(),
+        pin: z.string().length(4).regex(/^\d{4}$/).optional(),
+        active: z.boolean().optional(),
+      });
+      const data = schema.parse(req.body);
+      if (data.pin) {
+        const existing = await storage.getStaffByPin(data.pin);
+        if (existing && existing.id !== id) {
+          return res.status(409).json({ message: "That PIN is already in use by another staff member." });
+        }
+      }
+      const member = await storage.updateStaff(id, data);
+      res.json(member);
+    } catch (err) {
+      if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors[0].message });
+      res.status(500).json({ message: "Failed to update staff member" });
+    }
+  });
+
+  app.delete("/api/staff/:id", async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      const allStaff = await storage.getStaffList();
+      const activeCount = allStaff.filter((s) => s.active).length;
+      const target = allStaff.find((s) => s.id === id);
+      if (target?.active && activeCount <= 1) {
+        return res.status(400).json({ message: "Cannot remove the last active staff account." });
+      }
+      await storage.deleteStaff(id);
+      res.status(204).send();
+    } catch {
+      res.status(500).json({ message: "Failed to delete staff member" });
+    }
+  });
+
+  // ── Orders ────────────────────────────────────────────────────────────────
   app.get(api.orders.list.path, async (req, res) => {
     try {
       const orders = await storage.getOrders();
@@ -120,7 +210,6 @@ export async function registerRoutes(
     }
   });
 
-  // Public endpoint for customer order requests (no auth needed)
   app.post("/api/orders/request", async (req, res) => {
     try {
       const bodySchema = z.object({
@@ -128,16 +217,10 @@ export async function registerRoutes(
         address: z.string().min(5, "Please enter your full address"),
         contactNumber: z
           .string()
-          .regex(
-            /^(09|\+639)\d{9}$/,
-            "Please enter a valid mobile number"
-          ),
+          .regex(/^(09|\+639)\d{9}$/, "Please enter a valid mobile number"),
         email: z
           .string()
-          .regex(
-            /^[a-zA-Z0-9._%+\-]+@gmail\.com$/,
-            "Enter a valid Gmail address"
-          ),
+          .regex(/^[a-zA-Z0-9._%+\-]+@gmail\.com$/, "Enter a valid Gmail address"),
         service: z.string().min(1, "Please select a service"),
         notes: z.string().optional(),
         weight: z.coerce.string().optional(),
@@ -169,13 +252,14 @@ export async function registerRoutes(
 
   app.post(api.orders.create.path, async (req, res) => {
     try {
-      // Coerce numeric fields from strings if necessary
       const bodySchema = api.orders.create.input.extend({
         weight: z.coerce.string(),
         total: z.coerce.string(),
+        staffName: z.string().optional(),
       });
-      const input = bodySchema.parse(req.body);
+      const { staffName, ...input } = bodySchema.parse(req.body);
       const order = await storage.createOrder(input);
+      await storage.logOrderAction(order, "created", staffName);
       res.status(201).json(order);
     } catch (err) {
       if (err instanceof z.ZodError) {
@@ -196,21 +280,25 @@ export async function registerRoutes(
         return res.status(404).json({ message: "Order not found" });
       }
 
-      const bodySchema = api.orders.update.input;
-      const input = bodySchema.parse(req.body);
-      
+      const bodySchema = api.orders.update.input.extend({
+        staffName: z.string().optional(),
+      });
+      const { staffName, ...input } = bodySchema.parse(req.body);
+
       const order = await storage.updateOrder(id, input);
-      
-      // Send email notification when status changes
+
+      // Determine what action to log
+      let action = "edited";
       if (input.status && input.status !== existing.status) {
-        await sendOrderStatusEmail(
-          order.email,
-          order.customerName,
-          order.orderId,
-          order.status
-        );
+        action = "status_changed";
+        await sendOrderStatusEmail(order.email, order.customerName, order.orderId, order.status);
+      } else if (input.paid !== undefined && input.paid !== existing.paid) {
+        action = input.paid ? "paid" : "unpaid";
+      } else if (input.promoId !== undefined && input.promoId !== existing.promoId) {
+        action = input.promoId ? "discount_applied" : "discount_removed";
       }
 
+      await storage.logOrderAction(order, action, staffName);
       res.json(order);
     } catch (err) {
       if (err instanceof z.ZodError) {
@@ -242,7 +330,8 @@ export async function registerRoutes(
       if (!existing) {
         return res.status(404).json({ message: "Order not found" });
       }
-      await storage.deleteOrder(id);
+      const staffName = req.headers["x-staff-name"] as string | undefined;
+      await storage.deleteOrder(id, staffName);
       res.status(204).send();
     } catch (err) {
       res.status(500).json({ message: "Failed to delete order" });
@@ -256,7 +345,8 @@ export async function registerRoutes(
       if (!existing) {
         return res.status(404).json({ message: "Order not found" });
       }
-      const restored = await storage.restoreOrder(id);
+      const staffName = req.headers["x-staff-name"] as string | undefined;
+      const restored = await storage.restoreOrder(id, staffName);
       res.json(restored);
     } catch (err) {
       res.status(500).json({ message: "Failed to restore order" });
@@ -270,7 +360,8 @@ export async function registerRoutes(
       if (!existing) {
         return res.status(404).json({ message: "Order not found" });
       }
-      await storage.permanentDeleteOrder(id);
+      const staffName = req.headers["x-staff-name"] as string | undefined;
+      await storage.permanentDeleteOrder(id, staffName);
       res.status(204).send();
     } catch (err) {
       res.status(500).json({ message: "Failed to permanently delete order" });

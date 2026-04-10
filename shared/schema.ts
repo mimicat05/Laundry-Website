@@ -2,6 +2,17 @@ import { pgTable, text, serial, timestamp, numeric, boolean, integer } from "dri
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+export const staff = pgTable("staff", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  pin: text("pin").notNull(),
+  active: boolean("active").notNull().default(true),
+});
+
+export const insertStaffSchema = createInsertSchema(staff).omit({ id: true });
+export type Staff = typeof staff.$inferSelect;
+export type InsertStaff = z.infer<typeof insertStaffSchema>;
+
 export const services = pgTable("services", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
@@ -36,8 +47,9 @@ export const orderLogs = pgTable("order_logs", {
   weight: numeric("weight", { precision: 10, scale: 2 }).notNull(),
   total: numeric("total", { precision: 10, scale: 2 }).notNull(),
   status: text("status").notNull(),
-  action: text("action").notNull(), // created | status_changed | deleted | restored | permanently_deleted
+  action: text("action").notNull(), // created | status_changed | deleted | restored | permanently_deleted | paid | unpaid | discount_applied | discount_removed | edited
   notes: text("notes"),
+  staffName: text("staff_name"),
   loggedAt: timestamp("logged_at").defaultNow().notNull(),
 });
 

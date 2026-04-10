@@ -4,6 +4,7 @@ import {
   orderLogs,
   services,
   promos,
+  staff,
   type InsertOrder,
   type Order,
   type OrderLog,
@@ -11,6 +12,8 @@ import {
   type InsertService,
   type Promo,
   type InsertPromo,
+  type Staff,
+  type InsertStaff,
   type UpdateOrderRequest
 } from "@shared/schema";
 import { eq, isNull, isNotNull, desc } from "drizzle-orm";
@@ -22,10 +25,11 @@ export interface IStorage {
   getOrder(id: number): Promise<Order | undefined>;
   createOrder(order: InsertOrder): Promise<Order>;
   updateOrder(id: number, updates: UpdateOrderRequest): Promise<Order>;
-  deleteOrder(id: number): Promise<void>;
-  restoreOrder(id: number): Promise<Order>;
-  permanentDeleteOrder(id: number): Promise<void>;
+  deleteOrder(id: number, staffName?: string): Promise<void>;
+  restoreOrder(id: number, staffName?: string): Promise<Order>;
+  permanentDeleteOrder(id: number, staffName?: string): Promise<void>;
   getOrderLogs(): Promise<OrderLog[]>;
+  logOrderAction(order: Order, action: string, staffName?: string): Promise<void>;
   // Services
   getServices(): Promise<Service[]>;
   createService(data: InsertService): Promise<Service>;
@@ -36,9 +40,15 @@ export interface IStorage {
   createPromo(data: InsertPromo): Promise<Promo>;
   updatePromo(id: number, data: Partial<InsertPromo>): Promise<Promo>;
   deletePromo(id: number): Promise<void>;
+  // Staff
+  getStaffList(): Promise<Staff[]>;
+  getStaffByPin(pin: string): Promise<Staff | undefined>;
+  createStaff(data: InsertStaff): Promise<Staff>;
+  updateStaff(id: number, data: Partial<InsertStaff>): Promise<Staff>;
+  deleteStaff(id: number): Promise<void>;
 }
 
-async function logOrder(order: Order, action: string) {
+async function logOrder(order: Order, action: string, staffName?: string) {
   await db.insert(orderLogs).values({
     orderId: order.orderId,
     customerName: order.customerName,
@@ -50,6 +60,7 @@ async function logOrder(order: Order, action: string) {
     status: order.status,
     action,
     notes: order.notes ?? null,
+    staffName: staffName ?? null,
   });
 }
 
@@ -86,32 +97,33 @@ export class DatabaseStorage implements IStorage {
       .set(updates)
       .where(eq(orders.id, id))
       .returning();
-    if (updates.status) {
-      await logOrder(updated, "status_changed");
-    }
     return updated;
   }
 
-  async deleteOrder(id: number): Promise<void> {
+  async logOrderAction(order: Order, action: string, staffName?: string): Promise<void> {
+    await logOrder(order, action, staffName);
+  }
+
+  async deleteOrder(id: number, staffName?: string): Promise<void> {
     const order = await this.getOrder(id);
     await db.update(orders)
       .set({ deletedAt: new Date() })
       .where(eq(orders.id, id));
-    if (order) await logOrder(order, "deleted");
+    if (order) await logOrder(order, "deleted", staffName);
   }
 
-  async restoreOrder(id: number): Promise<Order> {
+  async restoreOrder(id: number, staffName?: string): Promise<Order> {
     const [restored] = await db.update(orders)
       .set({ deletedAt: null })
       .where(eq(orders.id, id))
       .returning();
-    await logOrder(restored, "restored");
+    await logOrder(restored, "restored", staffName);
     return restored;
   }
 
-  async permanentDeleteOrder(id: number): Promise<void> {
+  async permanentDeleteOrder(id: number, staffName?: string): Promise<void> {
     const order = await this.getOrder(id);
-    if (order) await logOrder(order, "permanently_deleted");
+    if (order) await logOrder(order, "permanently_deleted", staffName);
     await db.delete(orders).where(eq(orders.id, id));
   }
 
@@ -153,6 +165,29 @@ export class DatabaseStorage implements IStorage {
 
   async deletePromo(id: number): Promise<void> {
     await db.delete(promos).where(eq(promos.id, id));
+  }
+
+  async getStaffList(): Promise<Staff[]> {
+    return await db.select().from(staff).orderBy(staff.id);
+  }
+
+  async getStaffByPin(pin: string): Promise<Staff | undefined> {
+    const [member] = await db.select().from(staff).where(eq(staff.pin, pin));
+    return member;
+  }
+
+  async createStaff(data: InsertStaff): Promise<Staff> {
+    const [member] = await db.insert(staff).values(data).returning();
+    return member;
+  }
+
+  async updateStaff(id: number, data: Partial<InsertStaff>): Promise<Staff> {
+    const [member] = await db.update(staff).set(data).where(eq(staff.id, id)).returning();
+    return member;
+  }
+
+  async deleteStaff(id: number): Promise<void> {
+    await db.delete(staff).where(eq(staff.id, id));
   }
 }
 
