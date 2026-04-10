@@ -214,6 +214,7 @@ export function Reports() {
                     <th className="text-left px-5 py-3.5 font-semibold text-muted-foreground hidden sm:table-cell">Total</th>
                     <th className="text-left px-5 py-3.5 font-semibold text-muted-foreground">Status</th>
                     <th className="text-left px-5 py-3.5 font-semibold text-muted-foreground">Action</th>
+                    <th className="text-left px-5 py-3.5 font-semibold text-muted-foreground hidden md:table-cell">Staff</th>
                     <th className="text-left px-5 py-3.5 font-semibold text-muted-foreground hidden lg:table-cell">Logged At</th>
                   </tr>
                 </thead>
@@ -248,6 +249,13 @@ export function Reports() {
                             <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium border ${actionInfo.color}`}>
                               {actionInfo.label}
                             </span>
+                          </td>
+                          <td className="px-5 py-4 hidden md:table-cell">
+                            {log.staffName ? (
+                              <span className="text-xs font-medium text-foreground bg-muted px-2 py-0.5 rounded-full">{log.staffName}</span>
+                            ) : (
+                              <span className="text-xs text-muted-foreground italic">—</span>
+                            )}
                           </td>
                           <td className="px-5 py-4 hidden lg:table-cell text-xs text-muted-foreground">{formatDate(log.loggedAt)}</td>
                         </tr>
