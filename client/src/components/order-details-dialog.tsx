@@ -4,9 +4,11 @@ import { useQuery } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { format } from "date-fns";
-import { Loader2, Trash2, ArrowRight, User, MapPin, Phone, Mail, Scale, DollarSign, Tag, CalendarClock, Pencil, X, Printer, Sticker, Receipt, CheckCircle2, XCircle } from "lucide-react";
+import { Loader2, Trash2, ArrowRight, User, MapPin, Phone, Mail, Scale, DollarSign, Tag, CalendarClock, Pencil, X, Printer, Sticker, Send, CheckCircle2, XCircle } from "lucide-react";
 import { useUpdateOrder, useDeleteOrder } from "@/hooks/use-orders";
 import { useToast } from "@/hooks/use-toast";
+import { useMutation } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -26,7 +28,7 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { type Order, type Service } from "@shared/schema";
-import { printSticker, printReceipt } from "@/lib/print-receipt";
+import { printSticker } from "@/lib/print-receipt";
 import { statusLabel } from "@/lib/order-utils";
 
 const editSchema = z.object({
@@ -58,6 +60,18 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsPr
   const { mutate: updateOrder, isPending: isUpdating } = useUpdateOrder();
   const { mutate: deleteOrder, isPending: isDeleting } = useDeleteOrder();
   const { toast } = useToast();
+
+  const { mutate: emailReceipt, isPending: isEmailing } = useMutation({
+    mutationFn: (type: "dropoff" | "pickup") =>
+      apiRequest("POST", `/api/orders/${order?.id}/email-receipt`, { type }),
+    onSuccess: (_data, type) => {
+      toast({ title: "Receipt Sent", description: `${type === "dropoff" ? "Drop-off" : "Pickup"} receipt emailed to ${order?.email}.` });
+      setShowPrintMenu(false);
+    },
+    onError: () => {
+      toast({ title: "Failed to Send", description: "Could not send the receipt email.", variant: "destructive" });
+    },
+  });
 
   const { data: serviceList } = useQuery<Service[]>({ queryKey: ["/api/services"] });
   const activeServices = useMemo(() => (serviceList || []).filter((s) => s.active), [serviceList]);
@@ -333,10 +347,10 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsPr
                 </div>
               )}
 
-              {/* Print Menu */}
+              {/* Print / Email Menu */}
               {showPrintMenu && (
                 <div className="bg-background/50 rounded-2xl p-4 border border-border/50">
-                  <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Print Document</h4>
+                  <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Print / Email</h4>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                     <button
                       data-testid="print-sticker"
@@ -345,25 +359,27 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsPr
                     >
                       <Sticker className="w-5 h-5 text-primary" />
                       <span className="font-medium">Laundry Sticker</span>
-                      <span className="text-xs text-muted-foreground text-center">Attach to bag</span>
+                      <span className="text-xs text-muted-foreground text-center">Print & attach to bag</span>
                     </button>
                     <button
-                      data-testid="print-dropoff"
-                      onClick={() => { printReceipt(order, "dropoff"); setShowPrintMenu(false); }}
-                      className="flex flex-col items-center gap-2 p-3 rounded-xl border border-border/50 hover:bg-muted/50 hover:border-primary/40 transition-all text-sm"
+                      data-testid="email-dropoff"
+                      onClick={() => emailReceipt("dropoff")}
+                      disabled={isEmailing}
+                      className="flex flex-col items-center gap-2 p-3 rounded-xl border border-border/50 hover:bg-muted/50 hover:border-primary/40 transition-all text-sm disabled:opacity-50"
                     >
-                      <Receipt className="w-5 h-5 text-primary" />
+                      {isEmailing ? <Loader2 className="w-5 h-5 animate-spin text-primary" /> : <Send className="w-5 h-5 text-primary" />}
                       <span className="font-medium">Drop-off Receipt</span>
-                      <span className="text-xs text-muted-foreground text-center">Give when received</span>
+                      <span className="text-xs text-muted-foreground text-center">Email to customer</span>
                     </button>
                     <button
-                      data-testid="print-pickup"
-                      onClick={() => { printReceipt(order, "pickup"); setShowPrintMenu(false); }}
-                      className="flex flex-col items-center gap-2 p-3 rounded-xl border border-border/50 hover:bg-muted/50 hover:border-primary/40 transition-all text-sm"
+                      data-testid="email-pickup"
+                      onClick={() => emailReceipt("pickup")}
+                      disabled={isEmailing}
+                      className="flex flex-col items-center gap-2 p-3 rounded-xl border border-border/50 hover:bg-muted/50 hover:border-emerald-400/40 transition-all text-sm disabled:opacity-50"
                     >
-                      <Receipt className="w-5 h-5 text-emerald-600" />
+                      {isEmailing ? <Loader2 className="w-5 h-5 animate-spin text-emerald-600" /> : <Send className="w-5 h-5 text-emerald-600" />}
                       <span className="font-medium">Pickup Receipt</span>
-                      <span className="text-xs text-muted-foreground text-center">Give when picked up</span>
+                      <span className="text-xs text-muted-foreground text-center">Email to customer</span>
                     </button>
                   </div>
                 </div>
