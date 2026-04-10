@@ -6,6 +6,7 @@ export const staff = pgTable("staff", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
   pin: text("pin").notNull(),
+  role: text("role").notNull().default("staff"), // "owner" | "staff"
   active: boolean("active").notNull().default(true),
 });
 

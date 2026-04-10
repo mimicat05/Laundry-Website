@@ -29,7 +29,7 @@ export function Login() {
         setError(data.message || "Incorrect PIN. Please try again.");
         return;
       }
-      login(data.id, data.name);
+      login(data.id, data.name, data.role);
       setLocation("/dashboard");
     } catch {
       setError("Unable to connect. Please try again.");

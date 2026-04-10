@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { LayoutDashboard, Clock, PackageCheck, Archive, LogOut, Menu, Droplets, Trash2, InboxIcon, ShirtIcon, Wind, Layers, BarChart3, Wrench } from "lucide-react";
+import { LayoutDashboard, Clock, PackageCheck, Archive, LogOut, Menu, Droplets, Trash2, InboxIcon, ShirtIcon, Wind, Layers, BarChart3, Wrench, Users, Crown, UserCircle } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useOrders } from "@/hooks/use-orders";
 import { Button } from "@/components/ui/button";
@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useState } from "react";
 
-const navGroups = [
+const staffNavGroups = [
   {
     group: null,
     items: [
@@ -37,26 +37,32 @@ const navGroups = [
       { href: "/history", label: "Completed",        icon: Archive },
     ],
   },
+];
+
+const ownerNavGroups = [
   {
-    group: "Admin",
+    group: "Owner",
     items: [
-      { href: "/manage-services", label: "Manage Services", icon: Wrench },
-      { href: "/reports", label: "Reports", icon: BarChart3 },
-      { href: "/deleted", label: "Recently Deleted", icon: Trash2 },
+      { href: "/manage-staff",   label: "Manage Staff",     icon: Users },
+      { href: "/manage-services", label: "Services & Promos", icon: Wrench },
+      { href: "/reports",        label: "Reports",          icon: BarChart3 },
+      { href: "/deleted",        label: "Recently Deleted", icon: Trash2 },
     ],
   },
 ];
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
-  const { logout } = useAuth();
+  const { logout, staffName, staffRole, isOwner } = useAuth();
   const [open, setOpen] = useState(false);
   const { data: orders } = useOrders();
   const requestCount = (orders || []).filter((o) => o.status === "requested").length;
 
+  const allNavGroups = isOwner ? [...staffNavGroups, ...ownerNavGroups] : staffNavGroups;
+
   const NavLinks = () => (
     <div className="space-y-4">
-      {navGroups.map((section, si) => (
+      {allNavGroups.map((section, si) => (
         <div key={si}>
           {section.group && (
             <p className="px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">
@@ -94,13 +100,29 @@ export function Layout({ children }: { children: React.ReactNode }) {
     </div>
   );
 
+  const UserInfo = () => (
+    <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-muted/50 border border-border/50">
+      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+        {isOwner ? <Crown className="w-4 h-4 text-primary" /> : <UserCircle className="w-4 h-4 text-primary" />}
+      </div>
+      <div className="min-w-0">
+        <p className="text-sm font-semibold text-foreground truncate">{staffName || "Staff"}</p>
+        <p className="text-xs text-muted-foreground capitalize">{staffRole || "staff"}</p>
+      </div>
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-background flex">
       {/* Desktop Sidebar */}
       <aside className="hidden lg:flex flex-col w-72 border-r border-border/50 bg-card/50 backdrop-blur-xl p-6 sleek-shadow z-10">
-        <div className="flex items-center gap-3 px-2 mb-8 text-primary">
+        <div className="flex items-center gap-3 px-2 mb-6 text-primary">
           <Droplets className="w-8 h-8" />
           <h1 className="font-display text-2xl font-bold text-foreground">Lavanderia Sunrise</h1>
+        </div>
+
+        <div className="mb-6">
+          <UserInfo />
         </div>
 
         <nav className="flex-1 overflow-y-auto">
@@ -134,9 +156,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
               </Button>
             </SheetTrigger>
             <SheetContent side="left" className="w-72 bg-background border-r-0 p-6 flex flex-col">
-              <div className="flex items-center gap-3 px-2 mb-8 mt-4 text-primary">
+              <div className="flex items-center gap-3 px-2 mb-4 mt-4 text-primary">
                 <Droplets className="w-8 h-8" />
                 <h1 className="font-display text-2xl font-bold text-foreground">Lavanderia Sunrise</h1>
+              </div>
+              <div className="mb-4">
+                <UserInfo />
               </div>
               <nav className="flex-1 overflow-y-auto">
                 <NavLinks />

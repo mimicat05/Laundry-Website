@@ -14,7 +14,7 @@ async function seedDatabase() {
 
   const existingStaff = await storage.getStaffList();
   if (existingStaff.length === 0) {
-    await storage.createStaff({ name: "Admin", pin: "1234", active: true });
+    await storage.createStaff({ name: "Admin", pin: "1234", role: "owner", active: true });
   }
 
   const existingOrders = await storage.getOrders();
@@ -76,6 +76,17 @@ export async function registerRoutes(
   seedDatabase().catch(console.error);
 
   // ── Auth ──────────────────────────────────────────────────────────────────
+  const requireAuth = (req: any, res: any, next: any) => {
+    if (!req.session.staffId) return res.status(401).json({ message: "Not authenticated" });
+    next();
+  };
+
+  const requireOwner = (req: any, res: any, next: any) => {
+    if (!req.session.staffId) return res.status(401).json({ message: "Not authenticated" });
+    if (req.session.staffRole !== "owner") return res.status(403).json({ message: "Owner access required" });
+    next();
+  };
+
   app.post("/api/auth/login", async (req, res) => {
     try {
       const { pin } = z.object({ pin: z.string().min(1) }).parse(req.body);
@@ -85,7 +96,8 @@ export async function registerRoutes(
       }
       req.session.staffId = member.id;
       req.session.staffName = member.name;
-      res.json({ id: member.id, name: member.name });
+      req.session.staffRole = member.role;
+      res.json({ id: member.id, name: member.name, role: member.role });
     } catch (err) {
       if (err instanceof z.ZodError) {
         return res.status(400).json({ message: "PIN is required." });
@@ -102,13 +114,13 @@ export async function registerRoutes(
 
   app.get("/api/auth/me", (req, res) => {
     if (req.session.staffId) {
-      return res.json({ id: req.session.staffId, name: req.session.staffName });
+      return res.json({ id: req.session.staffId, name: req.session.staffName, role: req.session.staffRole });
     }
     res.status(401).json({ message: "Not authenticated" });
   });
 
-  // ── Staff CRUD ─────────────────────────────────────────────────────────────
-  app.get("/api/staff", async (_req, res) => {
+  // ── Staff CRUD (owner only) ────────────────────────────────────────────────
+  app.get("/api/staff", requireOwner, async (_req, res) => {
     try {
       res.json(await storage.getStaffList());
     } catch {
@@ -116,7 +128,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/staff", async (req, res) => {
+  app.post("/api/staff", requireOwner, async (req, res) => {
     try {
       const schema = z.object({
         name: z.string().min(2, "Name must be at least 2 characters"),
@@ -136,7 +148,7 @@ export async function registerRoutes(
     }
   });
 
-  app.put("/api/staff/:id", async (req, res) => {
+  app.put("/api/staff/:id", requireOwner, async (req, res) => {
     try {
       const id = Number(req.params.id);
       const schema = z.object({
@@ -159,7 +171,7 @@ export async function registerRoutes(
     }
   });
 
-  app.delete("/api/staff/:id", async (req, res) => {
+  app.delete("/api/staff/:id", requireOwner, async (req, res) => {
     try {
       const id = Number(req.params.id);
       const allStaff = await storage.getStaffList();
@@ -194,7 +206,7 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/orders/logs", async (req, res) => {
+  app.get("/api/orders/logs", requireOwner, async (req, res) => {
     try {
       const logs = await storage.getOrderLogs();
       res.json(logs);
@@ -203,7 +215,7 @@ export async function registerRoutes(
     }
   });
 
-  app.get(api.orders.listDeleted.path, async (req, res) => {
+  app.get(api.orders.listDeleted.path, requireOwner, async (req, res) => {
     try {
       const orders = await storage.getDeletedOrders();
       res.json(orders);
@@ -363,7 +375,7 @@ export async function registerRoutes(
     }
   });
 
-  app.delete("/api/orders/:id/permanent", async (req, res) => {
+  app.delete("/api/orders/:id/permanent", requireOwner, async (req, res) => {
     try {
       const id = Number(req.params.id);
       const existing = await storage.getOrder(id);
@@ -377,7 +389,7 @@ export async function registerRoutes(
     }
   });
 
-  // ── Services ──────────────────────────────────────────────────────────────
+  // ── Services (GET public for order forms; write ops owner only) ───────────
   app.get("/api/services", async (_req, res) => {
     try {
       res.json(await storage.getServices());
@@ -386,7 +398,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/services", async (req, res) => {
+  app.post("/api/services", requireOwner, async (req, res) => {
     try {
       const data = req.body;
       const svc = await storage.createService({ ...data, pricePerKg: String(data.pricePerKg), active: data.active ?? true });
@@ -396,7 +408,7 @@ export async function registerRoutes(
     }
   });
 
-  app.put("/api/services/:id", async (req, res) => {
+  app.put("/api/services/:id", requireOwner, async (req, res) => {
     try {
       const id = Number(req.params.id);
       const data = req.body;
@@ -407,7 +419,7 @@ export async function registerRoutes(
     }
   });
 
-  app.delete("/api/services/:id", async (req, res) => {
+  app.delete("/api/services/:id", requireOwner, async (req, res) => {
     try {
       await storage.deleteService(Number(req.params.id));
       res.status(204).send();
@@ -416,7 +428,7 @@ export async function registerRoutes(
     }
   });
 
-  // ── Promos ────────────────────────────────────────────────────────────────
+  // ── Promos (GET public for order forms; write ops owner only) ─────────────
   app.get("/api/promos", async (_req, res) => {
     try {
       res.json(await storage.getPromos());
@@ -425,7 +437,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/promos", async (req, res) => {
+  app.post("/api/promos", requireOwner, async (req, res) => {
     try {
       const data = req.body;
       const promo = await storage.createPromo({ ...data, discount: String(data.discount), active: data.active ?? true });
@@ -435,7 +447,7 @@ export async function registerRoutes(
     }
   });
 
-  app.put("/api/promos/:id", async (req, res) => {
+  app.put("/api/promos/:id", requireOwner, async (req, res) => {
     try {
       const id = Number(req.params.id);
       const data = req.body;
@@ -446,7 +458,7 @@ export async function registerRoutes(
     }
   });
 
-  app.delete("/api/promos/:id", async (req, res) => {
+  app.delete("/api/promos/:id", requireOwner, async (req, res) => {
     try {
       await storage.deletePromo(Number(req.params.id));
       res.status(204).send();

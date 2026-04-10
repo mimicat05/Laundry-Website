@@ -16,6 +16,7 @@ declare module "express-session" {
   interface SessionData {
     staffId: number;
     staffName: string;
+    staffRole: string;
   }
 }
 

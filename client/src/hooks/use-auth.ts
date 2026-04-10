@@ -14,27 +14,35 @@ export function useAuth() {
     return id ? Number(id) : null;
   });
 
+  const [staffRole, setStaffRole] = useState<string>(() => {
+    return localStorage.getItem("staff_role") || "staff";
+  });
+
   useEffect(() => {
     fetch("/api/auth/me", { credentials: "include" })
       .then((res) => {
         if (res.ok) return res.json();
         throw new Error("not authenticated");
       })
-      .then((data: { id: number; name: string }) => {
+      .then((data: { id: number; name: string; role: string }) => {
         setIsAuthenticated(true);
         setStaffId(data.id);
         setStaffName(data.name);
+        setStaffRole(data.role);
         localStorage.setItem("staff_auth", "true");
         localStorage.setItem("staff_id", String(data.id));
         localStorage.setItem("staff_name", data.name);
+        localStorage.setItem("staff_role", data.role);
       })
       .catch(() => {
         setIsAuthenticated(false);
         setStaffId(null);
         setStaffName("");
+        setStaffRole("staff");
         localStorage.removeItem("staff_auth");
         localStorage.removeItem("staff_id");
         localStorage.removeItem("staff_name");
+        localStorage.removeItem("staff_role");
       });
   }, []);
 
@@ -42,6 +50,7 @@ export function useAuth() {
     const handleStorageChange = () => {
       setIsAuthenticated(localStorage.getItem("staff_auth") === "true");
       setStaffName(localStorage.getItem("staff_name") || "");
+      setStaffRole(localStorage.getItem("staff_role") || "staff");
       const id = localStorage.getItem("staff_id");
       setStaffId(id ? Number(id) : null);
     };
@@ -49,13 +58,15 @@ export function useAuth() {
     return () => window.removeEventListener("storage", handleStorageChange);
   }, []);
 
-  const login = (id: number, name: string) => {
+  const login = (id: number, name: string, role: string) => {
     localStorage.setItem("staff_auth", "true");
     localStorage.setItem("staff_id", String(id));
     localStorage.setItem("staff_name", name);
+    localStorage.setItem("staff_role", role);
     setIsAuthenticated(true);
     setStaffId(id);
     setStaffName(name);
+    setStaffRole(role);
     window.dispatchEvent(new Event("storage"));
   };
 
@@ -67,11 +78,15 @@ export function useAuth() {
     localStorage.removeItem("staff_auth");
     localStorage.removeItem("staff_id");
     localStorage.removeItem("staff_name");
+    localStorage.removeItem("staff_role");
     setIsAuthenticated(false);
     setStaffId(null);
     setStaffName("");
+    setStaffRole("staff");
     window.dispatchEvent(new Event("storage"));
   };
 
-  return { isAuthenticated, staffId, staffName, login, logout };
+  const isOwner = staffRole === "owner";
+
+  return { isAuthenticated, staffId, staffName, staffRole, isOwner, login, logout };
 }

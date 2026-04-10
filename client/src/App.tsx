@@ -17,6 +17,7 @@ import { CustomerOrder } from "@/pages/customer-order";
 import { RequestsView } from "@/pages/requests-view";
 import { Reports } from "@/pages/reports";
 import { ManageServices } from "@/pages/manage-services";
+import { ManageStaff } from "@/pages/manage-staff";
 
 const ProtectedRoute = ({ component: Component, ...rest }: any) => {
   const { isAuthenticated } = useAuth();
@@ -29,6 +30,27 @@ const ProtectedRoute = ({ component: Component, ...rest }: any) => {
   }, [isAuthenticated, setLocation]);
 
   if (!isAuthenticated) return null;
+
+  return (
+    <Layout>
+      <Component {...rest} />
+    </Layout>
+  );
+};
+
+const OwnerRoute = ({ component: Component, ...rest }: any) => {
+  const { isAuthenticated, isOwner } = useAuth();
+  const [_, setLocation] = useLocation();
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setLocation("/staff");
+    } else if (!isOwner) {
+      setLocation("/dashboard");
+    }
+  }, [isAuthenticated, isOwner, setLocation]);
+
+  if (!isAuthenticated || !isOwner) return null;
 
   return (
     <Layout>
@@ -128,16 +150,20 @@ function Router() {
         )} />}
       </Route>
 
+      <Route path="/manage-staff">
+        {() => <OwnerRoute component={ManageStaff} />}
+      </Route>
+
       <Route path="/manage-services">
-        {() => <ProtectedRoute component={ManageServices} />}
+        {() => <OwnerRoute component={ManageServices} />}
       </Route>
 
       <Route path="/reports">
-        {() => <ProtectedRoute component={Reports} />}
+        {() => <OwnerRoute component={Reports} />}
       </Route>
 
       <Route path="/deleted">
-        {() => <ProtectedRoute component={RecentlyDeleted} />}
+        {() => <OwnerRoute component={RecentlyDeleted} />}
       </Route>
 
       <Route component={NotFound} />
