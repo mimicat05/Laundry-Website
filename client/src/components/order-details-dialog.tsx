@@ -408,7 +408,6 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsPr
               </div>
 
               <div className="flex gap-3">
-                <Button variant="outline" className="rounded-xl" onClick={() => onOpenChange(false)}>Close</Button>
                 {action && (
                   <Button
                     className="rounded-xl shadow-lg shadow-primary/20"

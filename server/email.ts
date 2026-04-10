@@ -47,35 +47,41 @@ export async function sendReceiptEmail(order: {
     year: "numeric", month: "short", day: "numeric",
     hour: "2-digit", minute: "2-digit",
   });
-  const divider = `<div style="text-align:center;color:#9ca3af;letter-spacing:1px;font-size:11px;margin:8px 0;">- - - - - - - - - - - - - - - - - -</div>`;
-  const row = (label: string, value: string) =>
-    `<div style="display:flex;justify-content:space-between;margin:3px 0;font-size:12px;"><span style="color:#6b7280;">${label}</span><span style="font-weight:500;">${value}</span></div>`;
 
   const html = `
-    <div style="font-family:'Courier New',Courier,monospace;max-width:360px;margin:0 auto;background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:20px;color:#111;">
-      <div style="text-align:center;margin-bottom:10px;">
-        <div style="font-size:17px;font-weight:bold;letter-spacing:1px;">Lavanderia Sunrise</div>
-        <div style="font-size:11px;color:#6b7280;">Dacanlao, Calaca, Batangas 4212</div>
-        <div style="font-size:11px;color:#6b7280;">0955 921 8921 · zareenans09@gmail.com</div>
+    <div style="font-family: Arial, sans-serif; max-width: 400px; margin: 0 auto; background: #f9f9f9; padding: 20px; border-radius: 8px;">
+      <div style="text-align: center; margin-bottom: 20px;">
+        <h2 style="color: #333; margin: 0;">Lavanderia Sunrise</h2>
+        <p style="color: #666; margin: 5px 0;">Dacanlao, Calaca, Batangas 4212</p>
+        <p style="color: #666; margin: 5px 0; font-size: 14px;">0955 921 8921 · zareenans09@gmail.com</p>
       </div>
-      ${divider}
-      <div style="text-align:center;font-size:11px;font-weight:bold;letter-spacing:2px;margin-bottom:6px;">LAUNDRY RECEIPT</div>
-      <div style="text-align:center;font-size:22px;font-weight:bold;letter-spacing:2px;border:2px solid #111;padding:6px;margin-bottom:6px;">${order.orderId}</div>
-      ${divider}
-      ${row("Customer:", order.customerName)}
-      ${row("Contact:", order.contactNumber)}
-      ${row("Address:", order.address)}
-      ${row("Service:", order.service)}
-      ${row("Weight:", order.weight + " kg")}
-      ${order.notes ? row("Notes:", order.notes) : ""}
-      ${row("Received:", dateReceived)}
-      ${divider}
-      ${row("TOTAL:", totalFormatted)}
-      <div style="text-align:center;margin:8px 0;">
-        <span style="display:inline-block;font-size:13px;font-weight:bold;padding:3px 16px;border-radius:4px;border:2px solid ${paymentColor};color:${paymentColor};background:${paymentBg};">${paymentText}</span>
+      
+      <div style="background: white; padding: 20px; border-radius: 8px; border: 1px solid #ddd;">
+        <h3 style="text-align: center; color: #333; margin-top: 0;">LAUNDRY RECEIPT</h3>
+        <div style="text-align: center; font-size: 24px; font-weight: bold; color: #333; margin: 10px 0; border: 2px solid #333; padding: 10px; display: inline-block;">${order.orderId}</div>
+        
+        <div style="margin: 20px 0;">
+          <p><strong>Customer:</strong> ${order.customerName}</p>
+          <p><strong>Contact:</strong> ${order.contactNumber}</p>
+          <p><strong>Address:</strong> ${order.address}</p>
+          <p><strong>Service:</strong> ${order.service}</p>
+          <p><strong>Weight:</strong> ${order.weight} kg</p>
+          ${order.notes ? `<p><strong>Notes:</strong> ${order.notes}</p>` : ""}
+          <p><strong>Received:</strong> ${dateReceived}</p>
+        </div>
+        
+        <div style="text-align: center; margin: 20px 0; padding: 15px; background: ${paymentBg}; border: 2px solid ${paymentColor}; border-radius: 4px;">
+          <strong style="color: ${paymentColor}; font-size: 16px;">${paymentText}</strong>
+        </div>
+        
+        <div style="text-align: center; font-size: 20px; font-weight: bold; color: #333; margin: 20px 0;">
+          TOTAL: ${totalFormatted}
+        </div>
+        
+        <div style="text-align: center; color: #666; margin-top: 20px;">
+          Thank you for choosing Lavanderia Sunrise!
+        </div>
       </div>
-      ${divider}
-      <div style="text-align:center;font-size:11px;color:#9ca3af;">Thank you for choosing Lavanderia Sunrise!</div>
     </div>
   `;
 
@@ -103,14 +109,14 @@ Thank you for choosing Lavanderia Sunrise!
   }
 
   try {
-    await transport.sendMail({
+    const result = await transport.sendMail({
       from: process.env.GMAIL_USER,
       to: order.email,
       subject: `Lavanderia Sunrise – Receipt (${order.orderId})`,
       html,
       text,
     });
-    console.log(`✅ Receipt email sent to ${order.email}`);
+    console.log(`✅ Receipt email sent to ${order.email} - Message ID: ${result.messageId}`);
   } catch (error) {
     console.error(`❌ Failed to send receipt email to ${order.email}:`, error);
     throw error;
