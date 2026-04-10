@@ -88,7 +88,7 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsPr
     if (open && order) {
       setActualWeightInput(order.actualWeight ? String(order.actualWeight) : "");
     }
-  }, [open, order]);
+  }, [open, order?.id]);
 
   const form = useForm<EditValues>({
     resolver: zodResolver(editSchema),
