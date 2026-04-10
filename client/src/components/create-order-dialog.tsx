@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { useQuery } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -60,7 +60,7 @@ export function CreateOrderDialog() {
   const { mutate: createOrder, isPending } = useCreateOrder();
   const { toast } = useToast();
   const { data: serviceList } = useQuery<Service[]>({ queryKey: ["/api/services"] });
-  const activeServices = (serviceList || []).filter((s) => s.active);
+  const activeServices = useMemo(() => (serviceList || []).filter((s) => s.active), [serviceList]);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
