@@ -50,11 +50,6 @@ export function Landing() {
             <span className="font-display font-bold text-xl text-foreground">Lavanderia Sunrise</span>
           </div>
           <div className="flex items-center gap-2">
-            <Link href="/track">
-              <Button variant="ghost" className="rounded-xl" data-testid="link-track-order">
-                Track Order
-              </Button>
-            </Link>
             <Link href="/staff">
               <Button variant="outline" className="rounded-xl" data-testid="link-staff-login">
                 Staff Login
@@ -83,16 +78,6 @@ export function Landing() {
                 className="rounded-xl h-13 px-8 shadow-lg shadow-primary/20 hover:shadow-xl hover:-translate-y-0.5 transition-all"
               >
                 Place an Order
-              </Button>
-            </Link>
-            <Link href="/track">
-              <Button
-                size="lg"
-                variant="outline"
-                className="rounded-xl h-13 px-8 hover:-translate-y-0.5 transition-all"
-                data-testid="button-track-order-hero"
-              >
-                Track My Order
               </Button>
             </Link>
           </div>

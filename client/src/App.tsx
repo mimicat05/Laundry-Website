@@ -18,7 +18,6 @@ import { RequestsView } from "@/pages/requests-view";
 import { Reports } from "@/pages/reports";
 import { ManageServices } from "@/pages/manage-services";
 import { ManageStaff } from "@/pages/manage-staff";
-import { CustomerTracking } from "@/pages/customer-tracking";
 import { CustomerAuth } from "@/pages/customer-auth";
 import { CustomerDashboard } from "@/pages/customer-dashboard";
 
@@ -70,9 +69,6 @@ function Router() {
 
       {/* Public customer order form */}
       <Route path="/order" component={CustomerOrder} />
-
-      {/* Public order tracking */}
-      <Route path="/track" component={CustomerTracking} />
 
       {/* Customer auth & dashboard */}
       <Route path="/customer/login" component={CustomerAuth} />
