@@ -2,6 +2,7 @@ import type { Express } from "express";
 import type { Server } from "http";
 import { storage } from "./storage";
 import { api, errorSchemas } from "@shared/routes";
+import { insertCustomerSchema } from "@shared/schema";
 import { sendOrderStatusEmail, sendReceiptEmail } from "./email";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
@@ -202,6 +203,24 @@ export async function registerRoutes(
     if (!customer) return res.status(401).json({ message: "Not authenticated" });
     const { password: _, ...safe } = customer;
     res.json(safe);
+  });
+
+  app.patch("/api/customer/me", requireCustomer, async (req, res) => {
+    try {
+      const updateSchema = insertCustomerSchema.omit({ password: true }).partial();
+      const data = updateSchema.parse(req.body);
+      if (data.email) {
+        const existing = await storage.getCustomerByEmail(data.email);
+        if (existing && existing.id !== req.session.customerId) {
+          return res.status(400).json({ message: "Email already in use." });
+        }
+      }
+      const updated = await storage.updateCustomer(req.session.customerId, data);
+      const { password: _, ...safe } = updated;
+      res.json(safe);
+    } catch (err: any) {
+      res.status(400).json({ message: err.message });
+    }
   });
 
   app.get("/api/customer/orders", requireCustomer, async (req, res) => {

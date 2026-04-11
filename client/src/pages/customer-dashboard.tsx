@@ -1,10 +1,9 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import {
-  Droplets, LogOut, Plus, Package, CheckCircle2, Clock,
-  ChevronRight, Shirt, Weight, CreditCard, Calendar,
-  ClipboardList, Wind, Layers, ShoppingBag, Star, Circle, Tag,
+  Droplets, LogOut, Plus, Package, CheckCircle2,
+  ChevronRight, ClipboardList, Wind, Layers, ShoppingBag, Star, UserCog,
 } from "lucide-react";
 import { useCustomerAuth } from "@/hooks/use-customer-auth";
 import { Button } from "@/components/ui/button";
@@ -15,9 +14,14 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { type Order } from "@shared/schema";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
+import { type Order, type PublicCustomer } from "@shared/schema";
 
 const STAGES: { key: string; label: string; icon: React.ElementType }[] = [
   { key: "requested",        label: "Order Submitted",    icon: ClipboardList },
@@ -47,6 +51,116 @@ const STATUS_LABEL: Record<string, string> = {
   washing: "Washing", drying: "Drying", folding: "Folding",
   ready_for_pickup: "Ready for Pickup", completed: "Completed",
 };
+
+function EditProfileDialog({
+  customer,
+  open,
+  onClose,
+  onSaved,
+}: {
+  customer: PublicCustomer;
+  open: boolean;
+  onClose: () => void;
+  onSaved: (updated: PublicCustomer) => void;
+}) {
+  const { toast } = useToast();
+  const [form, setForm] = useState({
+    name: customer.name,
+    email: customer.email,
+    contactNumber: customer.contactNumber,
+    address: customer.address,
+  });
+
+  const mutation = useMutation({
+    mutationFn: (data: typeof form) =>
+      apiRequest("PATCH", "/api/customer/me", data).then((r) => r.json()),
+    onSuccess: (updated: PublicCustomer) => {
+      localStorage.setItem("customer_data", JSON.stringify(updated));
+      window.dispatchEvent(new Event("storage"));
+      onSaved(updated);
+      onClose();
+      toast({ title: "Profile updated", description: "Your information has been saved." });
+    },
+    onError: (err: any) => {
+      toast({ title: "Update failed", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    mutation.mutate(form);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="max-w-md rounded-3xl">
+        <DialogHeader>
+          <DialogTitle className="font-display text-xl">Edit Profile</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4 mt-2">
+          <div className="space-y-1.5">
+            <Label htmlFor="edit-name">Full Name</Label>
+            <Input
+              id="edit-name"
+              data-testid="input-edit-name"
+              value={form.name}
+              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+              className="rounded-xl"
+              required
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="edit-email">Email</Label>
+            <Input
+              id="edit-email"
+              data-testid="input-edit-email"
+              type="email"
+              value={form.email}
+              onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+              className="rounded-xl"
+              required
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="edit-contact">Contact Number</Label>
+            <Input
+              id="edit-contact"
+              data-testid="input-edit-contact"
+              value={form.contactNumber}
+              onChange={(e) => setForm((f) => ({ ...f, contactNumber: e.target.value }))}
+              className="rounded-xl"
+              required
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="edit-address">Address</Label>
+            <Input
+              id="edit-address"
+              data-testid="input-edit-address"
+              value={form.address}
+              onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
+              className="rounded-xl"
+              required
+            />
+          </div>
+          <DialogFooter className="pt-2">
+            <Button type="button" variant="outline" className="rounded-xl" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              className="rounded-xl"
+              disabled={mutation.isPending}
+              data-testid="button-save-profile"
+            >
+              {mutation.isPending ? "Saving…" : "Save Changes"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 function OrderTrackingDialog({ order, open, onClose }: { order: Order | null; open: boolean; onClose: () => void }) {
   if (!order) return null;
@@ -185,8 +299,9 @@ function OrderCard({ order, onClick }: { order: Order; onClick: () => void }) {
 
 export function CustomerDashboard() {
   const [_, setLocation] = useLocation();
-  const { customer, logoutCustomer } = useCustomerAuth();
+  const { customer, logoutCustomer, loginCustomer } = useCustomerAuth();
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [editProfileOpen, setEditProfileOpen] = useState(false);
 
   const { data: orders, isLoading } = useQuery<Order[]>({
     queryKey: ["/api/customer/orders"],
@@ -218,6 +333,16 @@ export function CustomerDashboard() {
             <span className="text-sm text-muted-foreground hidden sm:block" data-testid="text-customer-name">
               Hi, {customer?.name?.split(" ")[0]}
             </span>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="rounded-xl gap-1.5 text-muted-foreground"
+              onClick={() => setEditProfileOpen(true)}
+              data-testid="button-edit-profile"
+            >
+              <UserCog className="w-4 h-4" />
+              <span className="hidden sm:inline">Edit Profile</span>
+            </Button>
             <Button
               variant="ghost"
               size="sm"
@@ -317,6 +442,15 @@ export function CustomerDashboard() {
         open={!!selectedOrder}
         onClose={() => setSelectedOrder(null)}
       />
+
+      {customer && (
+        <EditProfileDialog
+          customer={customer}
+          open={editProfileOpen}
+          onClose={() => setEditProfileOpen(false)}
+          onSaved={(updated) => loginCustomer(updated)}
+        />
+      )}
     </div>
   );
 }
