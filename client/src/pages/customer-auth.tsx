@@ -1,13 +1,13 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
-import { Droplets, ArrowLeft, Eye, EyeOff, Loader2 } from "lucide-react";
+import { Droplets, ArrowLeft, Eye, EyeOff, Loader2, CheckCircle2 } from "lucide-react";
 import { useCustomerAuth } from "@/hooks/use-customer-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { type PublicCustomer } from "@shared/schema";
 
-type Tab = "login" | "signup";
+type Tab = "login" | "signup" | "forgot";
 
 export function CustomerAuth() {
   const [_, setLocation] = useLocation();
@@ -24,6 +24,8 @@ export function CustomerAuth() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotSent, setForgotSent] = useState(false);
 
   // Login form state
   const [loginEmail, setLoginEmail] = useState("");
@@ -54,6 +56,29 @@ export function CustomerAuth() {
       }
       loginCustomer(data as PublicCustomer);
       setLocation("/customer/dashboard");
+    } catch {
+      setError("Unable to connect. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError("");
+    try {
+      const res = await fetch("/api/customer/forgot-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: forgotEmail.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.message || "Request failed.");
+        return;
+      }
+      setForgotSent(true);
     } catch {
       setError("Unable to connect. Please try again.");
     } finally {
@@ -109,27 +134,29 @@ export function CustomerAuth() {
           <p className="text-muted-foreground text-sm">Customer Portal</p>
         </div>
 
-        {/* Tab Switcher */}
-        <div className="flex bg-muted/60 rounded-2xl p-1 mb-6">
-          <button
-            onClick={() => { setTab("login"); setError(""); }}
-            className={`flex-1 py-2.5 text-sm font-medium rounded-xl transition-all ${
-              tab === "login" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
-            }`}
-            data-testid="tab-login"
-          >
-            Log In
-          </button>
-          <button
-            onClick={() => { setTab("signup"); setError(""); }}
-            className={`flex-1 py-2.5 text-sm font-medium rounded-xl transition-all ${
-              tab === "signup" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
-            }`}
-            data-testid="tab-signup"
-          >
-            Create Account
-          </button>
-        </div>
+        {/* Tab Switcher — hide on forgot tab */}
+        {tab !== "forgot" && (
+          <div className="flex bg-muted/60 rounded-2xl p-1 mb-6">
+            <button
+              onClick={() => { setTab("login"); setError(""); }}
+              className={`flex-1 py-2.5 text-sm font-medium rounded-xl transition-all ${
+                tab === "login" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+              }`}
+              data-testid="tab-login"
+            >
+              Log In
+            </button>
+            <button
+              onClick={() => { setTab("signup"); setError(""); }}
+              className={`flex-1 py-2.5 text-sm font-medium rounded-xl transition-all ${
+                tab === "signup" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+              }`}
+              data-testid="tab-signup"
+            >
+              Create Account
+            </button>
+          </div>
+        )}
 
         <div className="bg-card/80 backdrop-blur-xl border border-border/50 rounded-3xl p-8 shadow-xl shadow-black/5">
           {/* Error */}

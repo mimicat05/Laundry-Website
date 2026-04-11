@@ -351,7 +351,10 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsPr
                   </div>
                   <div className="flex items-start gap-3">
                     <Mail className="w-4 h-4 mt-0.5 text-primary" />
-                    <p className="text-sm text-foreground truncate max-w-[200px]" title={order.email}>{order.email}</p>
+                    <div className="min-w-0">
+                      <p className="text-sm text-foreground truncate max-w-[200px]" title={order.email}>{order.email}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">Customer can track this order by logging in with this email at <span className="font-medium">/customer/login</span></p>
+                    </div>
                   </div>
                   <div className="flex items-start gap-3">
                     <MapPin className="w-4 h-4 mt-0.5 text-primary" />

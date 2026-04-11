@@ -78,14 +78,16 @@ function EditProfileDialog({
   onSaved: (updated: PublicCustomer) => void;
 }) {
   const { toast } = useToast();
+  const [tab, setTab] = useState<"profile" | "password">("profile");
   const [form, setForm] = useState({
     name: customer.name,
     email: customer.email,
     contactNumber: customer.contactNumber,
     address: customer.address,
   });
+  const [pwForm, setPwForm] = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
 
-  const mutation = useMutation({
+  const profileMutation = useMutation({
     mutationFn: (data: typeof form) =>
       apiRequest("PATCH", "/api/customer/me", data).then((r) => r.json()),
     onSuccess: (updated: PublicCustomer) => {
@@ -100,77 +102,179 @@ function EditProfileDialog({
     },
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const passwordMutation = useMutation({
+    mutationFn: (data: { currentPassword: string; newPassword: string }) =>
+      apiRequest("POST", "/api/customer/change-password", data).then((r) => r.json()),
+    onSuccess: () => {
+      setPwForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
+      onClose();
+      toast({ title: "Password changed", description: "Your password has been updated successfully." });
+    },
+    onError: (err: any) => {
+      toast({ title: "Failed to change password", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const handleProfileSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    mutation.mutate(form);
+    profileMutation.mutate(form);
+  };
+
+  const handlePasswordSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (pwForm.newPassword !== pwForm.confirmPassword) {
+      toast({ title: "Passwords don't match", description: "New password and confirmation must match.", variant: "destructive" });
+      return;
+    }
+    passwordMutation.mutate({ currentPassword: pwForm.currentPassword, newPassword: pwForm.newPassword });
   };
 
   return (
-    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+    <Dialog open={open} onOpenChange={(v) => { if (!v) { setTab("profile"); onClose(); } }}>
       <DialogContent className="max-w-md rounded-3xl">
         <DialogHeader>
-          <DialogTitle className="font-display text-xl">Edit Profile</DialogTitle>
+          <DialogTitle className="font-display text-xl">Account Settings</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4 mt-2">
-          <div className="space-y-1.5">
-            <Label htmlFor="edit-name">Full Name</Label>
-            <Input
-              id="edit-name"
-              data-testid="input-edit-name"
-              value={form.name}
-              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-              className="rounded-xl"
-              required
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="edit-email">Email</Label>
-            <Input
-              id="edit-email"
-              data-testid="input-edit-email"
-              type="email"
-              value={form.email}
-              onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
-              className="rounded-xl"
-              required
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="edit-contact">Contact Number</Label>
-            <Input
-              id="edit-contact"
-              data-testid="input-edit-contact"
-              value={form.contactNumber}
-              onChange={(e) => setForm((f) => ({ ...f, contactNumber: e.target.value }))}
-              className="rounded-xl"
-              required
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="edit-address">Address</Label>
-            <Input
-              id="edit-address"
-              data-testid="input-edit-address"
-              value={form.address}
-              onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
-              className="rounded-xl"
-              required
-            />
-          </div>
-          <DialogFooter className="pt-2">
-            <Button type="button" variant="outline" className="rounded-xl" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              className="rounded-xl"
-              disabled={mutation.isPending}
-              data-testid="button-save-profile"
-            >
-              {mutation.isPending ? "Saving…" : "Save Changes"}
-            </Button>
-          </DialogFooter>
-        </form>
+
+        {/* Tab switcher */}
+        <div className="flex gap-1 bg-muted rounded-xl p-1 mt-1">
+          <button
+            type="button"
+            onClick={() => setTab("profile")}
+            data-testid="tab-profile"
+            className={`flex-1 text-sm font-medium py-1.5 rounded-lg transition-colors ${tab === "profile" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+          >
+            Profile
+          </button>
+          <button
+            type="button"
+            onClick={() => setTab("password")}
+            data-testid="tab-password"
+            className={`flex-1 text-sm font-medium py-1.5 rounded-lg transition-colors ${tab === "password" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+          >
+            Change Password
+          </button>
+        </div>
+
+        {tab === "profile" ? (
+          <form onSubmit={handleProfileSubmit} className="space-y-4 mt-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-name">Full Name</Label>
+              <Input
+                id="edit-name"
+                data-testid="input-edit-name"
+                value={form.name}
+                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                className="rounded-xl"
+                required
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-email">Email</Label>
+              <Input
+                id="edit-email"
+                data-testid="input-edit-email"
+                type="email"
+                value={form.email}
+                onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+                className="rounded-xl"
+                required
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-contact">Contact Number</Label>
+              <Input
+                id="edit-contact"
+                data-testid="input-edit-contact"
+                value={form.contactNumber}
+                onChange={(e) => setForm((f) => ({ ...f, contactNumber: e.target.value }))}
+                className="rounded-xl"
+                required
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-address">Address</Label>
+              <Input
+                id="edit-address"
+                data-testid="input-edit-address"
+                value={form.address}
+                onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
+                className="rounded-xl"
+                required
+              />
+            </div>
+            <DialogFooter className="pt-2">
+              <Button type="button" variant="outline" className="rounded-xl" onClick={onClose}>
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                className="rounded-xl"
+                disabled={profileMutation.isPending}
+                data-testid="button-save-profile"
+              >
+                {profileMutation.isPending ? "Saving…" : "Save Changes"}
+              </Button>
+            </DialogFooter>
+          </form>
+        ) : (
+          <form onSubmit={handlePasswordSubmit} className="space-y-4 mt-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="current-password">Current Password</Label>
+              <Input
+                id="current-password"
+                data-testid="input-current-password"
+                type="password"
+                value={pwForm.currentPassword}
+                onChange={(e) => setPwForm((f) => ({ ...f, currentPassword: e.target.value }))}
+                className="rounded-xl"
+                required
+                autoComplete="current-password"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="new-password">New Password</Label>
+              <Input
+                id="new-password"
+                data-testid="input-new-password"
+                type="password"
+                value={pwForm.newPassword}
+                onChange={(e) => setPwForm((f) => ({ ...f, newPassword: e.target.value }))}
+                className="rounded-xl"
+                required
+                minLength={6}
+                autoComplete="new-password"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="confirm-password">Confirm New Password</Label>
+              <Input
+                id="confirm-password"
+                data-testid="input-confirm-password"
+                type="password"
+                value={pwForm.confirmPassword}
+                onChange={(e) => setPwForm((f) => ({ ...f, confirmPassword: e.target.value }))}
+                className="rounded-xl"
+                required
+                minLength={6}
+                autoComplete="new-password"
+              />
+            </div>
+            <DialogFooter className="pt-2">
+              <Button type="button" variant="outline" className="rounded-xl" onClick={onClose}>
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                className="rounded-xl"
+                disabled={passwordMutation.isPending}
+                data-testid="button-save-password"
+              >
+                {passwordMutation.isPending ? "Updating…" : "Update Password"}
+              </Button>
+            </DialogFooter>
+          </form>
+        )}
       </DialogContent>
     </Dialog>
   );
@@ -399,8 +503,9 @@ export function CustomerDashboard() {
     setLocation("/");
   };
 
-  const activeOrders = (orders || []).filter((o) => o.status !== "completed");
+  const activeOrders = (orders || []).filter((o) => o.status !== "completed" && o.status !== "cancelled");
   const completedOrders = (orders || []).filter((o) => o.status === "completed");
+  const cancelledOrders = (orders || []).filter((o) => o.status === "cancelled");
 
   return (
     <div className="min-h-screen bg-background">
@@ -463,7 +568,7 @@ export function CustomerDashboard() {
         {/* Stats */}
         <div className="grid grid-cols-3 gap-4 mb-8">
           <Card className="rounded-2xl border border-border/50 p-5 text-center" data-testid="card-stat-total">
-            <p className="text-2xl font-bold text-foreground font-display">{(orders || []).length}</p>
+            <p className="text-2xl font-bold text-foreground font-display">{activeOrders.length + completedOrders.length}</p>
             <p className="text-xs text-muted-foreground mt-1">Total Orders</p>
           </Card>
           <Card className="rounded-2xl border border-border/50 p-5 text-center" data-testid="card-stat-active">
@@ -515,6 +620,18 @@ export function CustomerDashboard() {
                   Completed Orders
                 </h2>
                 {completedOrders.map((order) => (
+                  <OrderCard key={order.id} order={order} onClick={() => setSelectedOrder(order)} />
+                ))}
+              </>
+            )}
+
+            {/* Cancelled orders */}
+            {cancelledOrders.length > 0 && (
+              <>
+                <h2 className={`font-display font-semibold text-sm uppercase tracking-wide text-muted-foreground mb-3 ${(activeOrders.length > 0 || completedOrders.length > 0) ? "mt-6" : ""}`}>
+                  Cancelled Orders
+                </h2>
+                {cancelledOrders.map((order) => (
                   <OrderCard key={order.id} order={order} onClick={() => setSelectedOrder(order)} />
                 ))}
               </>

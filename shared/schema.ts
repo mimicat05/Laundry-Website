@@ -101,3 +101,13 @@ export type CreateOrderRequest = InsertOrder;
 export type UpdateOrderRequest = Partial<InsertOrder>;
 
 export type OrderResponse = Order;
+
+export const passwordResetTokens = pgTable("password_reset_tokens", {
+  id: serial("id").primaryKey(),
+  token: text("token").notNull().unique(),
+  customerId: integer("customer_id").notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;

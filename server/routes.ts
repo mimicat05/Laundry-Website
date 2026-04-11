@@ -3,7 +3,7 @@ import type { Server } from "http";
 import { storage } from "./storage";
 import { api, errorSchemas } from "@shared/routes";
 import { insertCustomerSchema } from "@shared/schema";
-import { sendOrderStatusEmail, sendReceiptEmail } from "./email";
+import { sendOrderStatusEmail, sendReceiptEmail, sendPasswordResetEmail, sendPriceUpdateEmail } from "./email";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
 
@@ -253,6 +253,72 @@ export async function registerRoutes(
     }
   });
 
+  // ── Customer: Change Password ─────────────────────────────────────────────
+  app.post("/api/customer/change-password", requireCustomer, async (req, res) => {
+    try {
+      const schema = z.object({
+        currentPassword: z.string().min(1),
+        newPassword: z.string().min(6, "New password must be at least 6 characters"),
+      });
+      const { currentPassword, newPassword } = schema.parse(req.body);
+      const customer = await storage.getCustomerById(req.session.customerId!);
+      if (!customer) return res.status(401).json({ message: "Not authenticated" });
+      const valid = await bcrypt.compare(currentPassword, customer.password);
+      if (!valid) return res.status(400).json({ message: "Current password is incorrect" });
+      const hashed = await bcrypt.hash(newPassword, 10);
+      await storage.updateCustomer(customer.id, { password: hashed });
+      res.json({ message: "Password changed successfully" });
+    } catch (err) {
+      if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors[0].message });
+      res.status(500).json({ message: "Failed to change password" });
+    }
+  });
+
+  // ── Customer: Forgot Password ─────────────────────────────────────────────
+  app.post("/api/customer/forgot-password", async (req, res) => {
+    try {
+      const schema = z.object({ email: z.string().email() });
+      const { email } = schema.parse(req.body);
+      // Always respond OK to prevent email enumeration
+      const customer = await storage.getCustomerByEmail(email);
+      if (customer) {
+        const crypto = await import("crypto");
+        const token = crypto.randomUUID();
+        const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+        await storage.createResetToken(customer.id, token, expiresAt);
+        const baseUrl = process.env.REPLIT_DEV_DOMAIN
+          ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+          : "http://localhost:5000";
+        const resetLink = `${baseUrl}/customer/reset-password?token=${token}`;
+        await sendPasswordResetEmail(customer.email, customer.name, resetLink);
+      }
+      res.json({ message: "If that email is registered, a reset link has been sent." });
+    } catch (err) {
+      if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors[0].message });
+      res.status(500).json({ message: "Failed to process request" });
+    }
+  });
+
+  // ── Customer: Reset Password ───────────────────────────────────────────────
+  app.post("/api/customer/reset-password", async (req, res) => {
+    try {
+      const schema = z.object({ token: z.string().min(1), newPassword: z.string().min(6, "Password must be at least 6 characters") });
+      const { token, newPassword } = schema.parse(req.body);
+      await storage.deleteExpiredTokens();
+      const record = await storage.getResetToken(token);
+      if (!record || record.expiresAt < new Date()) {
+        return res.status(400).json({ message: "This reset link is invalid or has expired. Please request a new one." });
+      }
+      const hashed = await bcrypt.hash(newPassword, 10);
+      await storage.updateCustomer(record.customerId, { password: hashed });
+      await storage.deleteResetToken(token);
+      res.json({ message: "Password has been reset successfully. You can now log in." });
+    } catch (err) {
+      if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors[0].message });
+      res.status(500).json({ message: "Failed to reset password" });
+    }
+  });
+
   // ── Staff CRUD (owner only) ────────────────────────────────────────────────
   app.get("/api/staff", requireOwner, async (_req, res) => {
     try {
@@ -481,6 +547,16 @@ export async function registerRoutes(
         action = input.paid ? "paid" : "unpaid";
       } else if (input.promoId !== undefined && input.promoId !== existing.promoId) {
         action = input.promoId ? "discount_applied" : "discount_removed";
+      } else if (input.actualWeight && input.total && String(input.total) !== String(existing.total)) {
+        action = "edited";
+        await sendPriceUpdateEmail(
+          order.email,
+          order.customerName,
+          order.orderId,
+          String(existing.total),
+          String(order.total),
+          String(input.actualWeight)
+        );
       }
 
       await storage.logOrderAction(order, action, staffName);

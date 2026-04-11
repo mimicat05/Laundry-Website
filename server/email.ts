@@ -123,6 +123,79 @@ Thank you for choosing Lavanderia Sunrise!
   }
 }
 
+export async function sendPasswordResetEmail(email: string, customerName: string, resetLink: string) {
+  const transport = getTransporter();
+  if (!transport) {
+    console.log(`[Email Disabled] Would send password reset to ${email} - Link: ${resetLink}`);
+    return;
+  }
+  try {
+    await transport.sendMail({
+      from: process.env.GMAIL_USER,
+      to: email,
+      subject: "Lavanderia Sunrise – Password Reset",
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 20px;">
+          <h2 style="color: #333;">Password Reset Request</h2>
+          <p>Hi ${customerName},</p>
+          <p>We received a request to reset the password for your Lavanderia Sunrise account. Click the button below to set a new password. This link expires in <strong>1 hour</strong>.</p>
+          <div style="text-align:center; margin: 28px 0;">
+            <a href="${resetLink}" style="background:#4f7df3;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:15px;">Reset My Password</a>
+          </div>
+          <p style="color:#666;font-size:13px;">If you didn't request this, you can safely ignore this email. Your password will not change.</p>
+          <hr style="border:none;border-top:1px solid #eee;margin:20px 0;">
+          <p style="color:#999;font-size:12px;">Lavanderia Sunrise · Dacanlao, Calaca, Batangas</p>
+        </div>
+      `,
+      text: `Hi ${customerName},\n\nReset your Lavanderia Sunrise password by visiting:\n${resetLink}\n\nThis link expires in 1 hour. If you didn't request this, ignore this email.\n\nLavanderia Sunrise`,
+    });
+    console.log(`✅ Password reset email sent to ${email}`);
+  } catch (error) {
+    console.error(`❌ Failed to send password reset email to ${email}:`, error);
+  }
+}
+
+export async function sendPriceUpdateEmail(
+  email: string,
+  customerName: string,
+  orderId: string,
+  oldTotal: string,
+  newTotal: string,
+  actualWeight: string
+) {
+  const transport = getTransporter();
+  if (!transport) {
+    console.log(`[Email Disabled] Would send price update to ${email} - Order: ${orderId}`);
+    return;
+  }
+  try {
+    await transport.sendMail({
+      from: process.env.GMAIL_USER,
+      to: email,
+      subject: `Lavanderia Sunrise – Updated Price for ${orderId}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 20px;">
+          <h2 style="color: #333;">Order Price Updated</h2>
+          <p>Hi ${customerName},</p>
+          <p>The actual weight of your laundry for order <strong>${orderId}</strong> has been recorded, and your total has been updated accordingly.</p>
+          <table style="width:100%;border-collapse:collapse;margin:20px 0;">
+            <tr><td style="padding:8px;color:#666;">Actual Weight</td><td style="padding:8px;font-weight:bold;">${actualWeight} kg</td></tr>
+            <tr style="background:#f9f9f9;"><td style="padding:8px;color:#666;">Previous Total</td><td style="padding:8px;text-decoration:line-through;color:#999;">₱${Number(oldTotal).toFixed(2)}</td></tr>
+            <tr><td style="padding:8px;color:#333;font-weight:bold;">New Total</td><td style="padding:8px;font-weight:bold;color:#333;font-size:16px;">₱${Number(newTotal).toFixed(2)}</td></tr>
+          </table>
+          <p style="color:#666;font-size:13px;">You can track your order status through our customer portal.</p>
+          <hr style="border:none;border-top:1px solid #eee;margin:20px 0;">
+          <p style="color:#999;font-size:12px;">Lavanderia Sunrise · Dacanlao, Calaca, Batangas</p>
+        </div>
+      `,
+      text: `Hi ${customerName},\n\nThe actual weight for order ${orderId} has been recorded.\nActual Weight: ${actualWeight} kg\nPrevious Total: ₱${Number(oldTotal).toFixed(2)}\nNew Total: ₱${Number(newTotal).toFixed(2)}\n\nLavanderia Sunrise`,
+    });
+    console.log(`✅ Price update email sent to ${email}`);
+  } catch (error) {
+    console.error(`❌ Failed to send price update email to ${email}:`, error);
+  }
+}
+
 export async function sendOrderStatusEmail(
   email: string,
   customerName: string,
