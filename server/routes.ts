@@ -235,6 +235,24 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/customer/orders/:id/cancel", requireCustomer, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const customer = await storage.getCustomerById(req.session.customerId);
+      if (!customer) return res.status(401).json({ message: "Not authenticated" });
+      const order = await storage.getOrder(id);
+      if (!order) return res.status(404).json({ message: "Order not found" });
+      if (order.email !== customer.email) return res.status(403).json({ message: "Not your order" });
+      if (!["requested", "pending"].includes(order.status)) {
+        return res.status(400).json({ message: "Order can no longer be cancelled at this stage." });
+      }
+      const updated = await storage.updateOrder(id, { status: "cancelled" });
+      res.json(updated);
+    } catch {
+      res.status(500).json({ message: "Failed to cancel order" });
+    }
+  });
+
   // ── Staff CRUD (owner only) ────────────────────────────────────────────────
   app.get("/api/staff", requireOwner, async (_req, res) => {
     try {

@@ -3,7 +3,7 @@ import { Link, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import {
   Droplets, LogOut, Plus, Package, CheckCircle2,
-  ChevronRight, ClipboardList, Wind, Layers, ShoppingBag, Star, UserCog,
+  ChevronRight, ClipboardList, Wind, Layers, ShoppingBag, Star, UserCog, XCircle,
 } from "lucide-react";
 import { useCustomerAuth } from "@/hooks/use-customer-auth";
 import { Button } from "@/components/ui/button";
@@ -16,11 +16,21 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { type Order, type PublicCustomer } from "@shared/schema";
 
 const STAGES: { key: string; label: string; icon: React.ElementType }[] = [
@@ -44,13 +54,17 @@ const STATUS_BADGE: Record<string, string> = {
   folding:          "bg-violet-100 text-violet-700 border-violet-200",
   ready_for_pickup: "bg-amber-100 text-amber-700 border-amber-200",
   completed:        "bg-green-100 text-green-700 border-green-200",
+  cancelled:        "bg-red-100 text-red-700 border-red-200",
 };
 
 const STATUS_LABEL: Record<string, string> = {
   requested: "Submitted", pending: "Accepted", received: "Received",
   washing: "Washing", drying: "Drying", folding: "Folding",
   ready_for_pickup: "Ready for Pickup", completed: "Completed",
+  cancelled: "Cancelled",
 };
+
+const CANCELLABLE = ["requested", "pending"];
 
 function EditProfileDialog({
   customer,
@@ -162,100 +176,172 @@ function EditProfileDialog({
   );
 }
 
-function OrderTrackingDialog({ order, open, onClose }: { order: Order | null; open: boolean; onClose: () => void }) {
+function OrderTrackingDialog({
+  order, open, onClose,
+}: {
+  order: Order | null;
+  open: boolean;
+  onClose: () => void;
+}) {
+  const { toast } = useToast();
+  const [confirmCancel, setConfirmCancel] = useState(false);
+
+  const cancelMutation = useMutation({
+    mutationFn: (id: number) =>
+      apiRequest("POST", `/api/customer/orders/${id}/cancel`).then((r) => r.json()),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/customer/orders"] });
+      toast({ title: "Order cancelled", description: "Your order has been cancelled." });
+      onClose();
+    },
+    onError: (err: any) => {
+      toast({ title: "Could not cancel", description: err.message, variant: "destructive" });
+    },
+  });
+
   if (!order) return null;
+
+  const isCancelled = order.status === "cancelled";
+  const canCancel = CANCELLABLE.includes(order.status);
   const currentIdx = STAGE_KEYS.indexOf(order.status);
 
   return (
-    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-md rounded-3xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="font-display text-xl">
-            {order.orderId}
-          </DialogTitle>
-        </DialogHeader>
+    <>
+      <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+        <DialogContent className="max-w-md rounded-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="font-display text-xl">
+              {order.orderId}
+            </DialogTitle>
+          </DialogHeader>
 
-        {/* Status & payment */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <Badge variant="outline" className={`text-xs px-2.5 py-1 ${STATUS_BADGE[order.status] ?? ""}`}>
-            {STATUS_LABEL[order.status] ?? order.status}
-          </Badge>
-          {order.paid ? (
-            <span className="text-xs font-medium text-green-600 bg-green-50 border border-green-200 px-2.5 py-1 rounded-lg">Paid</span>
+          {/* Status & payment */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <Badge variant="outline" className={`text-xs px-2.5 py-1 ${STATUS_BADGE[order.status] ?? ""}`}>
+              {STATUS_LABEL[order.status] ?? order.status}
+            </Badge>
+            {!isCancelled && (order.paid ? (
+              <span className="text-xs font-medium text-green-600 bg-green-50 border border-green-200 px-2.5 py-1 rounded-lg">Paid</span>
+            ) : (
+              <span className="text-xs font-medium text-amber-600 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-lg">Payment Pending</span>
+            ))}
+          </div>
+
+          {/* Cancelled notice */}
+          {isCancelled ? (
+            <div className="flex items-center gap-3 bg-red-50 border border-red-200 rounded-2xl px-4 py-3 mt-1">
+              <XCircle className="w-5 h-5 text-red-500 shrink-0" />
+              <p className="text-sm text-red-700">This order was cancelled and will not be processed.</p>
+            </div>
           ) : (
-            <span className="text-xs font-medium text-amber-600 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-lg">Payment Pending</span>
-          )}
-        </div>
-
-        {/* Progress */}
-        <div className="mt-2">
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-4">Order Progress</p>
-          {STAGES.map((stage, idx) => {
-            const isDone = idx < currentIdx;
-            const isCurrent = idx === currentIdx;
-            const Icon = stage.icon;
-            return (
-              <div key={stage.key} className="flex gap-3">
-                <div className="flex flex-col items-center">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-colors
-                    ${isDone ? "bg-primary text-primary-foreground" : ""}
-                    ${isCurrent ? "bg-primary text-primary-foreground ring-4 ring-primary/20" : ""}
-                    ${!isDone && !isCurrent ? "bg-muted text-muted-foreground" : ""}
-                  `}>
-                    {isDone ? <CheckCircle2 className="w-4 h-4" /> : <Icon className="w-3.5 h-3.5" />}
+            /* Progress */
+            <div className="mt-2">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-4">Order Progress</p>
+              {STAGES.map((stage, idx) => {
+                const isDone = idx < currentIdx;
+                const isCurrent = idx === currentIdx;
+                const Icon = stage.icon;
+                return (
+                  <div key={stage.key} className="flex gap-3">
+                    <div className="flex flex-col items-center">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-colors
+                        ${isDone ? "bg-primary text-primary-foreground" : ""}
+                        ${isCurrent ? "bg-primary text-primary-foreground ring-4 ring-primary/20" : ""}
+                        ${!isDone && !isCurrent ? "bg-muted text-muted-foreground" : ""}
+                      `}>
+                        {isDone ? <CheckCircle2 className="w-4 h-4" /> : <Icon className="w-3.5 h-3.5" />}
+                      </div>
+                      {idx < STAGES.length - 1 && (
+                        <div className={`w-0.5 h-6 mt-0.5 mb-0.5 rounded-full ${isDone ? "bg-primary" : "bg-border"}`} />
+                      )}
+                    </div>
+                    <div className={`pt-1.5 pb-5 ${idx === STAGES.length - 1 ? "pb-0" : ""}`}>
+                      <p className={`text-sm font-medium ${isCurrent ? "text-primary" : isDone ? "text-foreground" : "text-muted-foreground"}`}>
+                        {stage.label}
+                      </p>
+                      {isCurrent && <p className="text-xs text-muted-foreground">Current status</p>}
+                    </div>
                   </div>
-                  {idx < STAGES.length - 1 && (
-                    <div className={`w-0.5 h-6 mt-0.5 mb-0.5 rounded-full ${isDone ? "bg-primary" : "bg-border"}`} />
-                  )}
-                </div>
-                <div className={`pt-1.5 pb-5 ${idx === STAGES.length - 1 ? "pb-0" : ""}`}>
-                  <p className={`text-sm font-medium ${isCurrent ? "text-primary" : isDone ? "text-foreground" : "text-muted-foreground"}`}>
-                    {stage.label}
-                  </p>
-                  {isCurrent && <p className="text-xs text-muted-foreground">Current status</p>}
-                </div>
-              </div>
-            );
-          })}
-        </div>
+                );
+              })}
+            </div>
+          )}
 
-        {/* Details */}
-        <div className="border-t border-border/50 pt-4 mt-2 grid grid-cols-2 gap-4">
-          <div>
-            <p className="text-xs text-muted-foreground mb-1 uppercase tracking-wide">Service</p>
-            <p className="text-sm font-semibold">{order.service}</p>
+          {/* Details */}
+          <div className="border-t border-border/50 pt-4 mt-2 grid grid-cols-2 gap-4">
+            <div>
+              <p className="text-xs text-muted-foreground mb-1 uppercase tracking-wide">Service</p>
+              <p className="text-sm font-semibold">{order.service}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground mb-1 uppercase tracking-wide">Weight</p>
+              <p className="text-sm font-semibold">
+                {order.actualWeight ? `${Number(order.actualWeight).toFixed(2)} kg` : `${Number(order.weight).toFixed(2)} kg (est.)`}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground mb-1 uppercase tracking-wide">Total</p>
+              <p className="text-sm font-semibold">₱{Number(order.total).toFixed(2)}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground mb-1 uppercase tracking-wide">Date</p>
+              <p className="text-sm font-semibold">
+                {new Date(order.createdAt).toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" })}
+              </p>
+            </div>
+            {order.promoName && (
+              <div className="col-span-2">
+                <p className="text-xs text-muted-foreground mb-1 uppercase tracking-wide">Promo</p>
+                <p className="text-sm font-semibold text-green-600">{order.promoName} (−₱{Number(order.discountAmount).toFixed(2)})</p>
+              </div>
+            )}
+            {order.notes && (
+              <div className="col-span-2">
+                <p className="text-xs text-muted-foreground mb-1 uppercase tracking-wide">Notes</p>
+                <p className="text-sm">{order.notes}</p>
+              </div>
+            )}
           </div>
-          <div>
-            <p className="text-xs text-muted-foreground mb-1 uppercase tracking-wide">Weight</p>
-            <p className="text-sm font-semibold">
-              {order.actualWeight ? `${Number(order.actualWeight).toFixed(2)} kg` : `${Number(order.weight).toFixed(2)} kg (est.)`}
-            </p>
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground mb-1 uppercase tracking-wide">Total</p>
-            <p className="text-sm font-semibold">₱{Number(order.total).toFixed(2)}</p>
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground mb-1 uppercase tracking-wide">Date</p>
-            <p className="text-sm font-semibold">
-              {new Date(order.createdAt).toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" })}
-            </p>
-          </div>
-          {order.promoName && (
-            <div className="col-span-2">
-              <p className="text-xs text-muted-foreground mb-1 uppercase tracking-wide">Promo</p>
-              <p className="text-sm font-semibold text-green-600">{order.promoName} (−₱{Number(order.discountAmount).toFixed(2)})</p>
+
+          {/* Cancel button */}
+          {canCancel && (
+            <div className="border-t border-border/50 pt-4 mt-2">
+              <Button
+                variant="outline"
+                className="w-full rounded-xl border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 gap-2"
+                onClick={() => setConfirmCancel(true)}
+                disabled={cancelMutation.isPending}
+                data-testid="button-cancel-order"
+              >
+                <XCircle className="w-4 h-4" />
+                Cancel Order
+              </Button>
             </div>
           )}
-          {order.notes && (
-            <div className="col-span-2">
-              <p className="text-xs text-muted-foreground mb-1 uppercase tracking-wide">Notes</p>
-              <p className="text-sm">{order.notes}</p>
-            </div>
-          )}
-        </div>
-      </DialogContent>
-    </Dialog>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={confirmCancel} onOpenChange={setConfirmCancel}>
+        <AlertDialogContent className="rounded-3xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancel this order?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to cancel <span className="font-semibold">{order.orderId}</span>? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="rounded-xl" data-testid="button-cancel-no">Keep Order</AlertDialogCancel>
+            <AlertDialogAction
+              className="rounded-xl bg-red-600 hover:bg-red-700 text-white"
+              onClick={() => cancelMutation.mutate(order.id)}
+              data-testid="button-cancel-confirm"
+            >
+              Yes, Cancel Order
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
 
