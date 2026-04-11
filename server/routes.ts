@@ -230,6 +230,33 @@ export async function registerRoutes(
     }
   });
 
+  // Public order tracking endpoint — no auth required
+  app.post("/api/orders/track", async (req, res) => {
+    try {
+      const { orderId, contact } = z.object({
+        orderId: z.string().min(1),
+        contact: z.string().min(1),
+      }).parse(req.body);
+
+      const allOrders = await storage.getAllOrders();
+      const order = allOrders.find(
+        (o) =>
+          !o.deletedAt &&
+          o.orderId.toLowerCase() === orderId.trim().toLowerCase() &&
+          (o.email.toLowerCase() === contact.trim().toLowerCase() ||
+            o.contactNumber === contact.trim())
+      );
+
+      if (!order) {
+        return res.status(404).json({ message: "Order not found. Please check your Order ID and contact details." });
+      }
+
+      return res.json(order);
+    } catch {
+      return res.status(400).json({ message: "Invalid request." });
+    }
+  });
+
   app.get("/api/orders/logs", requireOwner, async (req, res) => {
     try {
       const logs = await storage.getOrderLogs();

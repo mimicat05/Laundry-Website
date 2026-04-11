@@ -18,6 +18,7 @@ import { RequestsView } from "@/pages/requests-view";
 import { Reports } from "@/pages/reports";
 import { ManageServices } from "@/pages/manage-services";
 import { ManageStaff } from "@/pages/manage-staff";
+import { CustomerTracking } from "@/pages/customer-tracking";
 
 const ProtectedRoute = ({ component: Component, ...rest }: any) => {
   const { isAuthenticated } = useAuth();
@@ -67,6 +68,9 @@ function Router() {
 
       {/* Public customer order form */}
       <Route path="/order" component={CustomerOrder} />
+
+      {/* Public order tracking */}
+      <Route path="/track" component={CustomerTracking} />
 
       {/* Staff login */}
       <Route path="/staff" component={Login} />
