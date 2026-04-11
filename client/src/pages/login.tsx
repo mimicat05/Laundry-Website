@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 export function Login() {
   const [_, setLocation] = useLocation();
   const { login } = useAuth();
+  const [name, setName] = useState("");
   const [pin, setPin] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -22,11 +23,11 @@ export function Login() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ pin }),
+        body: JSON.stringify({ name: name.trim(), pin }),
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.message || "Incorrect PIN. Please try again.");
+        setError(data.message || "Invalid name or PIN. Please try again.");
         return;
       }
       login(data.id, data.name, data.role);
@@ -55,9 +56,26 @@ export function Login() {
         </div>
 
         <div className="bg-card/80 backdrop-blur-xl border border-border/50 rounded-3xl p-8 shadow-xl shadow-black/5 sleek-shadow">
-          <form onSubmit={handleLogin} className="space-y-6">
+          <form onSubmit={handleLogin} className="space-y-5">
             <div className="space-y-2">
-              <Label htmlFor="pin" className="text-foreground/80 ml-1">Staff PIN</Label>
+              <Label htmlFor="name" className="text-foreground/80 ml-1">Name</Label>
+              <Input
+                id="name"
+                data-testid="input-name"
+                type="text"
+                placeholder="Enter your name"
+                className="rounded-xl h-12 bg-background/50 border-border/50 focus:bg-background transition-all"
+                value={name}
+                onChange={(e) => {
+                  setName(e.target.value);
+                  setError("");
+                }}
+                autoComplete="off"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="pin" className="text-foreground/80 ml-1">PIN</Label>
               <Input
                 id="pin"
                 data-testid="input-pin"
@@ -70,13 +88,16 @@ export function Login() {
                   setPin(e.target.value.replace(/\D/g, ""));
                   setError("");
                 }}
+                autoComplete="off"
               />
-              {error && <p className="text-sm text-destructive ml-1">{error}</p>}
             </div>
+
+            {error && <p className="text-sm text-destructive ml-1">{error}</p>}
+
             <Button
               type="submit"
               data-testid="button-login"
-              disabled={isLoading || pin.length < 4}
+              disabled={isLoading || pin.length < 4 || !name.trim()}
               className="w-full rounded-xl h-12 text-md shadow-lg shadow-primary/20 hover:shadow-xl hover:-translate-y-0.5 transition-all"
             >
               {isLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}

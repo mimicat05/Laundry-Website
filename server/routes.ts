@@ -102,9 +102,9 @@ export async function registerRoutes(
         return res.status(429).json({ message: `Too many failed attempts. Try again in ${minutesLeft} minute${minutesLeft > 1 ? "s" : ""}.` });
       }
 
-      const { pin } = z.object({ pin: z.string().min(1) }).parse(req.body);
+      const { name, pin } = z.object({ name: z.string().min(1), pin: z.string().min(1) }).parse(req.body);
       const member = await storage.getStaffByPin(pin);
-      if (!member || !member.active) {
+      if (!member || !member.active || member.name.toLowerCase() !== name.toLowerCase()) {
         record.count += 1;
         if (record.count >= MAX_ATTEMPTS) {
           record.lockedUntil = now + LOCKOUT_MS;
@@ -114,7 +114,7 @@ export async function registerRoutes(
         }
         loginAttempts.set(ip, record);
         const remaining = MAX_ATTEMPTS - record.count;
-        return res.status(401).json({ message: `Incorrect PIN. ${remaining} attempt${remaining !== 1 ? "s" : ""} remaining.` });
+        return res.status(401).json({ message: `Invalid name or PIN. ${remaining} attempt${remaining !== 1 ? "s" : ""} remaining.` });
       }
 
       loginAttempts.delete(ip);
