@@ -17,6 +17,7 @@ declare module "express-session" {
     staffId: number;
     staffName: string;
     staffRole: string;
+    customerId: number;
   }
 }
 

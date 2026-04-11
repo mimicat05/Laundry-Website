@@ -19,6 +19,8 @@ import { Reports } from "@/pages/reports";
 import { ManageServices } from "@/pages/manage-services";
 import { ManageStaff } from "@/pages/manage-staff";
 import { CustomerTracking } from "@/pages/customer-tracking";
+import { CustomerAuth } from "@/pages/customer-auth";
+import { CustomerDashboard } from "@/pages/customer-dashboard";
 
 const ProtectedRoute = ({ component: Component, ...rest }: any) => {
   const { isAuthenticated } = useAuth();
@@ -71,6 +73,10 @@ function Router() {
 
       {/* Public order tracking */}
       <Route path="/track" component={CustomerTracking} />
+
+      {/* Customer auth & dashboard */}
+      <Route path="/customer/login" component={CustomerAuth} />
+      <Route path="/customer/dashboard" component={CustomerDashboard} />
 
       {/* Staff login */}
       <Route path="/staff" component={Login} />

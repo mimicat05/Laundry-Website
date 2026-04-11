@@ -77,7 +77,7 @@ export function Landing() {
             Professional laundry services done with care. Drop off your clothes and pick them up clean, fresh, and ready to wear.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link href="/order">
+            <Link href="/customer/login">
               <Button
                 size="lg"
                 className="rounded-xl h-13 px-8 shadow-lg shadow-primary/20 hover:shadow-xl hover:-translate-y-0.5 transition-all"

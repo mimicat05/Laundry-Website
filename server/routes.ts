@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import { api, errorSchemas } from "@shared/routes";
 import { sendOrderStatusEmail, sendReceiptEmail } from "./email";
 import { z } from "zod";
+import bcrypt from "bcryptjs";
 
 const loginAttempts = new Map<string, { count: number; lockedUntil: number }>();
 const MAX_ATTEMPTS = 5;
@@ -141,6 +142,78 @@ export async function registerRoutes(
       return res.json({ id: req.session.staffId, name: req.session.staffName, role: req.session.staffRole });
     }
     res.status(401).json({ message: "Not authenticated" });
+  });
+
+  // ── Customer Auth ─────────────────────────────────────────────────────────
+  const requireCustomer = (req: any, res: any, next: any) => {
+    if (!req.session.customerId) return res.status(401).json({ message: "Not authenticated" });
+    next();
+  };
+
+  app.post("/api/customer/register", async (req, res) => {
+    try {
+      const schema = z.object({
+        name: z.string().min(2, "Name must be at least 2 characters"),
+        email: z.string().regex(/^[a-zA-Z0-9._%+\-]+@gmail\.com$/, "Enter a valid Gmail address"),
+        password: z.string().min(6, "Password must be at least 6 characters"),
+        contactNumber: z.string().regex(/^(09|\+639)\d{9}$/, "Enter a valid mobile number"),
+        address: z.string().min(5, "Please enter your full address"),
+      });
+      const data = schema.parse(req.body);
+      const existing = await storage.getCustomerByEmail(data.email);
+      if (existing) return res.status(409).json({ message: "An account with this email already exists." });
+      const hashed = await bcrypt.hash(data.password, 10);
+      const customer = await storage.createCustomer({ ...data, password: hashed });
+      req.session.customerId = customer.id;
+      const { password: _, ...safe } = customer;
+      res.status(201).json(safe);
+    } catch (err: any) {
+      if (err?.errors) return res.status(400).json({ message: err.errors[0]?.message || "Invalid input" });
+      res.status(500).json({ message: "Registration failed" });
+    }
+  });
+
+  app.post("/api/customer/login", async (req, res) => {
+    try {
+      const { email, password } = z.object({
+        email: z.string().email(),
+        password: z.string().min(1),
+      }).parse(req.body);
+      const customer = await storage.getCustomerByEmail(email);
+      if (!customer) return res.status(401).json({ message: "Invalid email or password." });
+      const valid = await bcrypt.compare(password, customer.password);
+      if (!valid) return res.status(401).json({ message: "Invalid email or password." });
+      req.session.customerId = customer.id;
+      const { password: _, ...safe } = customer;
+      res.json(safe);
+    } catch {
+      res.status(500).json({ message: "Login failed" });
+    }
+  });
+
+  app.post("/api/customer/logout", (req, res) => {
+    req.session.customerId = undefined as any;
+    req.session.save(() => res.json({ ok: true }));
+  });
+
+  app.get("/api/customer/me", async (req, res) => {
+    if (!req.session.customerId) return res.status(401).json({ message: "Not authenticated" });
+    const customer = await storage.getCustomerById(req.session.customerId);
+    if (!customer) return res.status(401).json({ message: "Not authenticated" });
+    const { password: _, ...safe } = customer;
+    res.json(safe);
+  });
+
+  app.get("/api/customer/orders", requireCustomer, async (req, res) => {
+    try {
+      const customer = await storage.getCustomerById(req.session.customerId);
+      if (!customer) return res.status(401).json({ message: "Not authenticated" });
+      const customerOrders = await storage.getOrdersByEmail(customer.email);
+      const visible = customerOrders.filter((o) => !o.deletedAt);
+      res.json(visible);
+    } catch {
+      res.status(500).json({ message: "Failed to fetch orders" });
+    }
   });
 
   // ── Staff CRUD (owner only) ────────────────────────────────────────────────

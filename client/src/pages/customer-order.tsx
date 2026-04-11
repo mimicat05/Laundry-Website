@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Droplets, Loader2, CheckCircle2 } from "lucide-react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -19,6 +19,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { type Service } from "@shared/schema";
+import { useCustomerAuth } from "@/hooks/use-customer-auth";
 
 const formSchema = z.object({
   customerName: z.string().min(2, "Please enter your full name"),
@@ -47,12 +48,21 @@ const formSchema = z.object({
 type FormValues = z.infer<typeof formSchema>;
 
 export function CustomerOrder() {
+  const [_, setLocation] = useLocation();
+  const { customer, isLoading: authLoading } = useCustomerAuth();
   const [submitted, setSubmitted] = useState(false);
   const [orderId, setOrderId] = useState("");
   const [isPending, setIsPending] = useState(false);
   const { toast } = useToast();
   const { data: serviceList } = useQuery<Service[]>({ queryKey: ["/api/services"] });
   const activeServices = (serviceList || []).filter((s) => s.active);
+
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!authLoading && !customer) {
+      setLocation("/customer/login");
+    }
+  }, [authLoading, customer, setLocation]);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -67,6 +77,16 @@ export function CustomerOrder() {
       notes: "",
     },
   });
+
+  // Pre-fill form with customer data once loaded
+  useEffect(() => {
+    if (customer) {
+      form.setValue("customerName", customer.name);
+      form.setValue("email", customer.email);
+      form.setValue("contactNumber", customer.contactNumber);
+      form.setValue("address", customer.address);
+    }
+  }, [customer]);
 
   const watchedService = form.watch("service");
   const watchedWeight = form.watch("weight");
@@ -121,15 +141,16 @@ export function CustomerOrder() {
             Our staff will review your request and send you a confirmation email once it's accepted. Please wait for the confirmation before dropping off your clothes.
           </p>
           <div className="flex flex-col gap-3">
+            <Link href="/customer/dashboard">
+              <Button className="rounded-xl w-full">Go to My Dashboard</Button>
+            </Link>
             <Button
+              variant="outline"
               className="rounded-xl w-full"
-              onClick={() => { setSubmitted(false); form.reset(); }}
+              onClick={() => { setSubmitted(false); form.reset({ service: "", weight: "", notes: "" }); if (customer) { form.setValue("customerName", customer.name); form.setValue("email", customer.email); form.setValue("contactNumber", customer.contactNumber); form.setValue("address", customer.address); } }}
             >
               Place Another Order
             </Button>
-            <Link href="/">
-              <Button variant="ghost" className="rounded-xl w-full">Back to Home</Button>
-            </Link>
           </div>
         </div>
       </div>
@@ -172,7 +193,7 @@ export function CustomerOrder() {
                     <FormItem>
                       <FormLabel>Full Name</FormLabel>
                       <FormControl>
-                        <Input placeholder="Juan dela Cruz" className="rounded-xl" {...field} />
+                        <Input placeholder="Juan dela Cruz" className="rounded-xl bg-muted/50" readOnly={!!customer} {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -187,12 +208,14 @@ export function CustomerOrder() {
                       <FormControl>
                         <Input
                           placeholder="09171234567"
-                          className="rounded-xl"
+                          className="rounded-xl bg-muted/50"
                           inputMode="tel"
                           maxLength={13}
+                          readOnly={!!customer}
                           data-testid="input-contact-number"
                           {...field}
                           onChange={(e) => {
+                            if (customer) return;
                             const raw = e.target.value;
                             const cleaned = raw.startsWith("+")
                               ? "+" + raw.slice(1).replace(/\D/g, "")
@@ -216,7 +239,8 @@ export function CustomerOrder() {
                         <Input
                           type="email"
                           placeholder="yourname@gmail.com"
-                          className="rounded-xl"
+                          className="rounded-xl bg-muted/50"
+                          readOnly={!!customer}
                           data-testid="input-email"
                           {...field}
                         />
@@ -233,7 +257,7 @@ export function CustomerOrder() {
                     <FormItem className="md:col-span-2">
                       <FormLabel>Full Address</FormLabel>
                       <FormControl>
-                        <Input placeholder="123 Mabini St, Calaca, Batangas" className="rounded-xl" {...field} />
+                        <Input placeholder="123 Mabini St, Calaca, Batangas" className="rounded-xl bg-muted/50" readOnly={!!customer} {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

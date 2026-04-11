@@ -5,6 +5,7 @@ import {
   services,
   promos,
   staff,
+  customers,
   type InsertOrder,
   type Order,
   type OrderLog,
@@ -14,6 +15,8 @@ import {
   type InsertPromo,
   type Staff,
   type InsertStaff,
+  type Customer,
+  type InsertCustomer,
   type UpdateOrderRequest
 } from "@shared/schema";
 import { eq, isNull, isNotNull, desc } from "drizzle-orm";
@@ -46,6 +49,11 @@ export interface IStorage {
   createStaff(data: InsertStaff): Promise<Staff>;
   updateStaff(id: number, data: Partial<InsertStaff>): Promise<Staff>;
   deleteStaff(id: number): Promise<void>;
+  // Customers
+  getCustomerById(id: number): Promise<Customer | undefined>;
+  getCustomerByEmail(email: string): Promise<Customer | undefined>;
+  createCustomer(data: InsertCustomer): Promise<Customer>;
+  getOrdersByEmail(email: string): Promise<Order[]>;
 }
 
 async function logOrder(order: Order, action: string, staffName?: string) {
@@ -188,6 +196,27 @@ export class DatabaseStorage implements IStorage {
 
   async deleteStaff(id: number): Promise<void> {
     await db.delete(staff).where(eq(staff.id, id));
+  }
+
+  async getCustomerById(id: number): Promise<Customer | undefined> {
+    const [c] = await db.select().from(customers).where(eq(customers.id, id));
+    return c;
+  }
+
+  async getCustomerByEmail(email: string): Promise<Customer | undefined> {
+    const [c] = await db.select().from(customers).where(eq(customers.email, email));
+    return c;
+  }
+
+  async createCustomer(data: InsertCustomer): Promise<Customer> {
+    const [c] = await db.insert(customers).values(data).returning();
+    return c;
+  }
+
+  async getOrdersByEmail(email: string): Promise<Order[]> {
+    return await db.select().from(orders)
+      .where(eq(orders.email, email))
+      .orderBy(desc(orders.id));
   }
 }
 
