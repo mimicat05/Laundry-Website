@@ -196,6 +196,49 @@ export async function sendPriceUpdateEmail(
   }
 }
 
+export async function sendWalkInOrderEmail(
+  email: string,
+  customerName: string,
+  orderId: string,
+  service: string,
+  portalUrl: string
+) {
+  const transport = getTransporter();
+  if (!transport) {
+    console.log(`[Email Disabled] Would send walk-in order notification to ${email} - Order: ${orderId}`);
+    return;
+  }
+  try {
+    await transport.sendMail({
+      from: process.env.GMAIL_USER,
+      to: email,
+      subject: `Lavanderia Sunrise – Your Order ${orderId} Has Been Created`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 20px;">
+          <h2 style="color: #333;">Your Laundry Order is Registered</h2>
+          <p>Hi ${customerName},</p>
+          <p>A laundry order has been created for you at <strong>Lavanderia Sunrise</strong>.</p>
+          <table style="width:100%;border-collapse:collapse;margin:20px 0;">
+            <tr><td style="padding:8px;color:#666;">Order ID</td><td style="padding:8px;font-weight:bold;">${orderId}</td></tr>
+            <tr style="background:#f9f9f9;"><td style="padding:8px;color:#666;">Service</td><td style="padding:8px;">${service}</td></tr>
+          </table>
+          <p>To track your order online, create a free account using this email address:</p>
+          <div style="text-align:center; margin: 24px 0;">
+            <a href="${portalUrl}" style="background:#4f7df3;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:15px;">Track My Order</a>
+          </div>
+          <p style="color:#666;font-size:13px;">Simply sign up with this email address and your order will appear in your dashboard automatically.</p>
+          <hr style="border:none;border-top:1px solid #eee;margin:20px 0;">
+          <p style="color:#999;font-size:12px;">Lavanderia Sunrise · Dacanlao, Calaca, Batangas</p>
+        </div>
+      `,
+      text: `Hi ${customerName},\n\nYour laundry order ${orderId} (${service}) has been registered at Lavanderia Sunrise.\n\nTo track it online, create a free account with this email at:\n${portalUrl}\n\nYour order will appear in your dashboard automatically.\n\nLavanderia Sunrise`,
+    });
+    console.log(`✅ Walk-in order email sent to ${email}`);
+  } catch (error) {
+    console.error(`❌ Failed to send walk-in order email to ${email}:`, error);
+  }
+}
+
 export async function sendOrderStatusEmail(
   email: string,
   customerName: string,

@@ -214,13 +214,84 @@ export function CustomerAuth() {
                 {isLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
                 Log In
               </Button>
+              <div className="flex flex-col items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => { setTab("forgot"); setError(""); setForgotSent(false); setForgotEmail(""); }}
+                  className="text-sm text-muted-foreground hover:text-primary transition-colors"
+                  data-testid="link-forgot-password"
+                >
+                  Forgot password?
+                </button>
+                <p className="text-sm text-muted-foreground">
+                  Don't have an account?{" "}
+                  <button type="button" onClick={() => { setTab("signup"); setError(""); }} className="text-primary hover:underline font-medium">
+                    Create one
+                  </button>
+                </p>
+              </div>
+            </form>
+          )}
+
+          {/* Forgot Password Form */}
+          {tab === "forgot" && !forgotSent && (
+            <form onSubmit={handleForgotPassword} className="space-y-5">
+              <div className="mb-2">
+                <h2 className="font-display text-xl font-bold text-foreground mb-1">Reset Password</h2>
+                <p className="text-sm text-muted-foreground">Enter the Gmail address for your account and we'll send you a reset link.</p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="forgot-email" className="text-foreground/80 ml-1">Gmail Address</Label>
+                <Input
+                  id="forgot-email"
+                  data-testid="input-forgot-email"
+                  type="email"
+                  placeholder="you@gmail.com"
+                  className="rounded-xl h-11 bg-background/50 border-border/50 focus:bg-background transition-all"
+                  value={forgotEmail}
+                  onChange={(e) => { setForgotEmail(e.target.value); setError(""); }}
+                  autoComplete="email"
+                />
+              </div>
+              <Button
+                type="submit"
+                data-testid="button-forgot-submit"
+                disabled={isLoading || !forgotEmail}
+                className="w-full rounded-xl h-11 shadow-md shadow-primary/20 hover:shadow-lg hover:-translate-y-0.5 transition-all"
+              >
+                {isLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                Send Reset Link
+              </Button>
               <p className="text-center text-sm text-muted-foreground">
-                Don't have an account?{" "}
-                <button type="button" onClick={() => { setTab("signup"); setError(""); }} className="text-primary hover:underline font-medium">
-                  Create one
+                <button type="button" onClick={() => { setTab("login"); setError(""); }} className="text-primary hover:underline font-medium">
+                  Back to Log In
                 </button>
               </p>
             </form>
+          )}
+
+          {/* Forgot Password Success */}
+          {tab === "forgot" && forgotSent && (
+            <div className="space-y-5 text-center">
+              <div className="w-14 h-14 rounded-2xl bg-green-100 text-green-600 flex items-center justify-center mx-auto">
+                <CheckCircle2 className="w-7 h-7" />
+              </div>
+              <div>
+                <h2 className="font-display text-xl font-bold text-foreground mb-2">Check your email</h2>
+                <p className="text-sm text-muted-foreground">
+                  If an account exists for <span className="font-medium text-foreground">{forgotEmail}</span>, a password reset link has been sent. The link expires in 1 hour.
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                className="rounded-xl w-full"
+                onClick={() => { setTab("login"); setError(""); setForgotSent(false); }}
+                data-testid="button-back-to-login"
+              >
+                Back to Log In
+              </Button>
+            </div>
           )}
 
           {/* Signup Form */}

@@ -20,6 +20,7 @@ import { ManageServices } from "@/pages/manage-services";
 import { ManageStaff } from "@/pages/manage-staff";
 import { CustomerAuth } from "@/pages/customer-auth";
 import { CustomerDashboard } from "@/pages/customer-dashboard";
+import { CustomerResetPassword } from "@/pages/customer-reset-password";
 
 const ProtectedRoute = ({ component: Component, ...rest }: any) => {
   const { isAuthenticated } = useAuth();
@@ -73,6 +74,7 @@ function Router() {
       {/* Customer auth & dashboard */}
       <Route path="/customer/login" component={CustomerAuth} />
       <Route path="/customer/dashboard" component={CustomerDashboard} />
+      <Route path="/customer/reset-password" component={CustomerResetPassword} />
 
       {/* Staff login */}
       <Route path="/staff" component={Login} />

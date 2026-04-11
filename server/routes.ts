@@ -3,7 +3,7 @@ import type { Server } from "http";
 import { storage } from "./storage";
 import { api, errorSchemas } from "@shared/routes";
 import { insertCustomerSchema } from "@shared/schema";
-import { sendOrderStatusEmail, sendReceiptEmail, sendPasswordResetEmail, sendPriceUpdateEmail } from "./email";
+import { sendOrderStatusEmail, sendReceiptEmail, sendPasswordResetEmail, sendPriceUpdateEmail, sendWalkInOrderEmail } from "./email";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
 
@@ -513,6 +513,19 @@ export async function registerRoutes(
       const input = bodySchema.parse(req.body);
       const order = await storage.createOrder(input);
       await storage.logOrderAction(order, "created", req.session.staffName);
+
+      // Notify the customer about their walk-in order so they can track it online
+      const baseUrl = process.env.REPLIT_DEV_DOMAIN
+        ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+        : "http://localhost:5000";
+      sendWalkInOrderEmail(
+        order.email,
+        order.customerName,
+        order.orderId,
+        order.service,
+        `${baseUrl}/customer/login`
+      ).catch(() => {});
+
       res.status(201).json(order);
     } catch (err) {
       if (err instanceof z.ZodError) {
