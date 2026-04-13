@@ -286,11 +286,9 @@ export async function registerRoutes(
         const token = crypto.randomUUID();
         const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
         await storage.createResetToken(customer.id, token, expiresAt);
-        const baseUrl =
-          process.env.APP_BASE_URL ||
-          (process.env.REPLIT_DEV_DOMAIN
-            ? `https://${process.env.REPLIT_DEV_DOMAIN}`
-            : `http://localhost:${process.env.PORT ?? 5000}`);
+        const baseUrl = process.env.REPLIT_DEV_DOMAIN
+          ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+          : "http://localhost:5000";
         const resetLink = `${baseUrl}/customer/reset-password?token=${token}`;
         await sendPasswordResetEmail(customer.email, customer.name, resetLink);
       }

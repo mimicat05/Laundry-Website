@@ -5,39 +5,22 @@ let transporter: ReturnType<typeof nodemailer.createTransport> | null = null;
 function getTransporter() {
   if (transporter) return transporter;
 
-  const emailUser = process.env.EMAIL_USER ?? process.env.GMAIL_USER;
-  const emailPassword = process.env.EMAIL_PASSWORD ?? process.env.GMAIL_PASSWORD;
-  const emailService = process.env.EMAIL_SERVICE;
-  const emailHost = process.env.EMAIL_HOST ?? "smtp.gmail.com";
-  const emailPort = process.env.EMAIL_PORT ? Number(process.env.EMAIL_PORT) : 465;
-  const emailSecure = process.env.EMAIL_SECURE !== "false";
+  const gmailUser = process.env.GMAIL_USER;
+  const gmailPassword = process.env.GMAIL_PASSWORD;
 
-  if (!emailUser || !emailPassword) {
-    console.warn(
-      "⚠️  Email credentials not set. Set EMAIL_USER/EMAIL_PASSWORD or GMAIL_USER/GMAIL_PASSWORD.",
-    );
+  if (!gmailUser || !gmailPassword) {
+    console.warn("⚠️  Gmail credentials not set. Email sending disabled.");
     return null;
   }
 
-  const transportOptions = emailService
-    ? {
-        service: emailService,
-        auth: {
-          user: emailUser,
-          pass: emailPassword,
-        },
-      }
-    : {
-        host: emailHost,
-        port: emailPort,
-        secure: emailSecure,
-        auth: {
-          user: emailUser,
-          pass: emailPassword,
-        },
-      };
+  transporter = nodemailer.createTransport({
+    service: "gmail",
+    auth: {
+      user: gmailUser,
+      pass: gmailPassword,
+    },
+  });
 
-  transporter = nodemailer.createTransport(transportOptions);
   return transporter;
 }
 
@@ -121,16 +104,13 @@ Thank you for choosing Lavanderia Sunrise!
   `;
 
   if (!transport) {
-    const err = new Error(
-      "Email transporter not configured. Set EMAIL_USER/EMAIL_PASSWORD or GMAIL_USER/GMAIL_PASSWORD.",
-    );
-    console.error(err.message);
-    throw err;
+    console.log(`[Email Disabled] Would send receipt to ${order.email}`);
+    return;
   }
 
   try {
     const result = await transport.sendMail({
-      from: process.env.EMAIL_FROM ?? process.env.EMAIL_USER ?? process.env.GMAIL_USER,
+      from: process.env.GMAIL_USER,
       to: order.email,
       subject: `Lavanderia Sunrise – Receipt (${order.orderId})`,
       html,
@@ -146,15 +126,12 @@ Thank you for choosing Lavanderia Sunrise!
 export async function sendPasswordResetEmail(email: string, customerName: string, resetLink: string) {
   const transport = getTransporter();
   if (!transport) {
-    const err = new Error(
-      "Email transporter not configured. Set EMAIL_USER/EMAIL_PASSWORD or GMAIL_USER/GMAIL_PASSWORD.",
-    );
-    console.error(err.message);
-    throw err;
+    console.log(`[Email Disabled] Would send password reset to ${email} - Link: ${resetLink}`);
+    return;
   }
   try {
     await transport.sendMail({
-      from: process.env.EMAIL_FROM ?? process.env.EMAIL_USER ?? process.env.GMAIL_USER,
+      from: process.env.GMAIL_USER,
       to: email,
       subject: "Lavanderia Sunrise – Password Reset",
       html: `
@@ -175,7 +152,6 @@ export async function sendPasswordResetEmail(email: string, customerName: string
     console.log(`✅ Password reset email sent to ${email}`);
   } catch (error) {
     console.error(`❌ Failed to send password reset email to ${email}:`, error);
-    throw error;
   }
 }
 
@@ -194,7 +170,7 @@ export async function sendPriceUpdateEmail(
   }
   try {
     await transport.sendMail({
-      from: process.env.EMAIL_FROM ?? process.env.EMAIL_USER ?? process.env.GMAIL_USER,
+      from: process.env.GMAIL_USER,
       to: email,
       subject: `Lavanderia Sunrise – Updated Price for ${orderId}`,
       html: `
@@ -234,7 +210,7 @@ export async function sendWalkInOrderEmail(
   }
   try {
     await transport.sendMail({
-      from: process.env.EMAIL_FROM ?? process.env.EMAIL_USER ?? process.env.GMAIL_USER,
+      from: process.env.GMAIL_USER,
       to: email,
       subject: `Lavanderia Sunrise – Your Order ${orderId} Has Been Created`,
       html: `
