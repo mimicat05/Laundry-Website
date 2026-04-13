@@ -521,9 +521,6 @@ export function CustomerDashboard() {
             </div>
           </Link>
           <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground hidden sm:block" data-testid="text-customer-name">
-              Hi, {customer?.name?.split(" ")[0]}
-            </span>
             <Button
               variant="ghost"
               size="sm"
