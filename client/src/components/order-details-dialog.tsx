@@ -119,6 +119,8 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsPr
 
   if (!order) return null;
 
+  const canEditWeight = ["requested", "pending", "received"].includes(order.status);
+
   const baseTotal = order.discountAmount
     ? parseFloat(String(order.total)) + parseFloat(String(order.discountAmount))
     : parseFloat(String(order.total));
@@ -311,8 +313,19 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsPr
                 )} />
                 <FormField control={form.control} name="weight" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Weight (KG)</FormLabel>
-                    <FormControl><Input type="number" step="0.1" className="rounded-xl bg-background/50 border-border/50" {...field} /></FormControl>
+                    <FormLabel>
+                      Weight (KG)
+                      {!canEditWeight && <span className="ml-2 text-xs text-muted-foreground font-normal">(locked after washing starts)</span>}
+                    </FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        step="0.1"
+                        readOnly={!canEditWeight}
+                        className={`rounded-xl border-border/50 ${canEditWeight ? "bg-background/50" : "bg-muted/40 cursor-not-allowed"}`}
+                        {...field}
+                      />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
