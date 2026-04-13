@@ -351,10 +351,7 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsPr
                   </div>
                   <div className="flex items-start gap-3">
                     <Mail className="w-4 h-4 mt-0.5 text-primary" />
-                    <div className="min-w-0">
-                      <p className="text-sm text-foreground truncate max-w-[200px]" title={order.email}>{order.email}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">Customer can track this order by logging in with this email at <span className="font-medium">/customer/login</span></p>
-                    </div>
+                    <p className="text-sm text-foreground truncate max-w-[200px]" title={order.email}>{order.email}</p>
                   </div>
                   <div className="flex items-start gap-3">
                     <MapPin className="w-4 h-4 mt-0.5 text-primary" />
@@ -402,7 +399,7 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsPr
                       disabled={isUpdating}
                       className={`ml-auto text-xs font-semibold px-3 py-1 rounded-full border transition-colors cursor-pointer ${order.paid ? "bg-emerald-100 text-emerald-700 border-emerald-300 hover:bg-red-50 hover:text-red-600 hover:border-red-300" : "bg-red-50 text-red-600 border-red-200 hover:bg-emerald-100 hover:text-emerald-700 hover:border-emerald-300"}`}
                     >
-                      {isUpdating ? "..." : order.paid ? "✓ Paid — click to undo" : "Mark as Paid"}
+                      {isUpdating ? "..." : order.paid ? "Paid" : "Not Paid"}
                     </button>
                   </div>
                   <div className="flex items-center gap-3">
