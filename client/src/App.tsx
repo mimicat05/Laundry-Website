@@ -158,6 +158,16 @@ function Router() {
         )} />}
       </Route>
 
+      <Route path="/cancelled">
+        {() => <ProtectedRoute component={() => (
+          <OrdersView
+            status="cancelled"
+            title="Cancelled Orders"
+            description="Orders cancelled by customers or staff."
+          />
+        )} />}
+      </Route>
+
       <Route path="/manage-staff">
         {() => <OwnerRoute component={ManageStaff} />}
       </Route>

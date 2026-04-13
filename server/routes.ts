@@ -43,10 +43,10 @@ async function seedDatabase() {
       address: "456 Avenue",
       contactNumber: "09123456789",
       email: "jane@gmail.com",
-      service: "Dry Cleaning",
+      service: "Dry-cleaning",
       weight: "2.50",
       total: "500.00",
-      status: "washed"
+      status: "washing"
     });
 
     await storage.createOrder({
@@ -67,7 +67,7 @@ async function seedDatabase() {
       address: "321 Road",
       contactNumber: "09223344556",
       email: "bob@gmail.com",
-      service: "Dry Cleaning",
+      service: "Dry-cleaning",
       weight: "1.50",
       total: "300.00",
       status: "completed"
@@ -193,8 +193,7 @@ export async function registerRoutes(
   });
 
   app.post("/api/customer/logout", (req, res) => {
-    req.session.customerId = undefined as any;
-    req.session.save(() => res.json({ ok: true }));
+    req.session.destroy(() => res.json({ ok: true }));
   });
 
   app.get("/api/customer/me", async (req, res) => {
@@ -388,7 +387,7 @@ export async function registerRoutes(
   });
 
   // ── Orders ────────────────────────────────────────────────────────────────
-  app.get(api.orders.list.path, async (req, res) => {
+  app.get(api.orders.list.path, requireAuth, async (req, res) => {
     try {
       const orders = await storage.getOrders();
       res.json(orders);
@@ -397,7 +396,7 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/orders/all", async (req, res) => {
+  app.get("/api/orders/all", requireOwner, async (req, res) => {
     try {
       const orders = await storage.getAllOrders();
       res.json(orders);
@@ -451,7 +450,7 @@ export async function registerRoutes(
     }
   });
 
-  app.get(api.orders.get.path, async (req, res) => {
+  app.get(api.orders.get.path, requireAuth, async (req, res) => {
     try {
       const id = Number(req.params.id);
       const order = await storage.getOrder(id);
@@ -504,7 +503,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post(api.orders.create.path, async (req, res) => {
+  app.post(api.orders.create.path, requireAuth, async (req, res) => {
     try {
       const bodySchema = api.orders.create.input.extend({
         weight: z.coerce.string(),
@@ -538,7 +537,7 @@ export async function registerRoutes(
     }
   });
 
-  app.put(api.orders.update.path, async (req, res) => {
+  app.put(api.orders.update.path, requireAuth, async (req, res) => {
     try {
       const id = Number(req.params.id);
       const existing = await storage.getOrder(id);
@@ -585,7 +584,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/orders/:id/email-receipt", async (req, res) => {
+  app.post("/api/orders/:id/email-receipt", requireAuth, async (req, res) => {
     try {
       const id = Number(req.params.id);
       const order = await storage.getOrder(id);
@@ -597,7 +596,7 @@ export async function registerRoutes(
     }
   });
 
-  app.delete(api.orders.delete.path, async (req, res) => {
+  app.delete(api.orders.delete.path, requireAuth, async (req, res) => {
     try {
       const id = Number(req.params.id);
       const existing = await storage.getOrder(id);
@@ -611,7 +610,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post(api.orders.restore.path, async (req, res) => {
+  app.post(api.orders.restore.path, requireOwner, async (req, res) => {
     try {
       const id = Number(req.params.id);
       const existing = await storage.getOrder(id);

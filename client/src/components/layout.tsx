@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { LayoutDashboard, Clock, PackageCheck, Archive, LogOut, Menu, Droplets, Trash2, InboxIcon, ShirtIcon, Wind, Layers, BarChart3, Wrench, Users, Crown, UserCircle } from "lucide-react";
+import { LayoutDashboard, Clock, PackageCheck, Archive, LogOut, Menu, Droplets, Trash2, InboxIcon, ShirtIcon, Wind, Layers, BarChart3, Wrench, Users, Crown, UserCircle, XCircle } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useOrders } from "@/hooks/use-orders";
 import { Button } from "@/components/ui/button";
@@ -33,8 +33,9 @@ const staffNavGroups = [
   {
     group: "Output",
     items: [
-      { href: "/pickup",  label: "Ready for Pickup", icon: PackageCheck },
-      { href: "/history", label: "Completed",        icon: Archive },
+      { href: "/pickup",    label: "Ready for Pickup", icon: PackageCheck },
+      { href: "/history",   label: "Completed",        icon: Archive },
+      { href: "/cancelled", label: "Cancelled",        icon: XCircle },
     ],
   },
 ];

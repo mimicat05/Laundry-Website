@@ -15,6 +15,7 @@ const STATUS_LABELS: Record<string, string> = {
   folding: "Folding",
   ready_for_pickup: "Ready for Pickup",
   completed: "Completed",
+  cancelled: "Cancelled",
 };
 
 const STATUS_COLORS: Record<string, string> = {
@@ -26,6 +27,7 @@ const STATUS_COLORS: Record<string, string> = {
   folding: "bg-violet-100 text-violet-700 border-violet-200",
   ready_for_pickup: "bg-indigo-100 text-indigo-700 border-indigo-200",
   completed: "bg-green-100 text-green-700 border-green-200",
+  cancelled: "bg-red-100 text-red-700 border-red-200",
 };
 
 const ACTION_LABELS: Record<string, { label: string; color: string }> = {

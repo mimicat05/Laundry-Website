@@ -96,7 +96,11 @@ export function RecentlyDeleted() {
                   </Button>
                   <Button
                     variant="destructive"
-                    onClick={() => permanentDelete(order.id)}
+                    onClick={() => {
+                      if (confirm(`Permanently delete ${order.orderId}? This cannot be undone.`)) {
+                        permanentDelete(order.id);
+                      }
+                    }}
                     disabled={isDeleting || isRestoring}
                     className="gap-2 rounded-xl"
                   >

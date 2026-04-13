@@ -7,7 +7,7 @@ export const STATUS_LABELS: Record<string, string> = {
   folding:          "Folding",
   ready_for_pickup: "Ready for Pickup",
   completed:        "Completed",
-  washed:           "In Progress",
+  cancelled:        "Cancelled",
 };
 
 export function statusLabel(status: string) {
