@@ -1,4 +1,10 @@
-import { sendOrderStatusEmail } from './server/email.js';
+import { config } from "dotenv";
+
+// Load environment variables
+config({ path: ".env.local", override: false });
+config({ path: ".env", override: false });
+
+import { sendOrderStatusEmail } from './server/email.ts';
 
 async function testEmail() {
   try {

@@ -26,6 +26,7 @@ function Get-FreePort {
 
 $freePort = Get-FreePort
 $env:PORT = $freePort
+$env:APP_BASE_URL = "http://localhost:$freePort"
 
 # Check if dependencies are installed
 if (!(Test-Path "node_modules")) {
