@@ -144,7 +144,7 @@ export function Reports() {
     }
 
     const byMonth: Record<string, { count: number; revenue: number }> = {};
-    for (const o of orders) {
+    for (const o of orders.filter((o) => !o.deletedAt)) {
       const month = new Date(o.createdAt).toLocaleDateString("en-PH", { year: "numeric", month: "short" });
       if (!byMonth[month]) byMonth[month] = { count: 0, revenue: 0 };
       byMonth[month].count += 1;
