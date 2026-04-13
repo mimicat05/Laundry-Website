@@ -273,6 +273,28 @@ export async function registerRoutes(
     }
   });
 
+  // ── Customer: Direct Password Reset (verify by email + contact number) ───
+  app.post("/api/customer/reset-password-direct", async (req, res) => {
+    try {
+      const schema = z.object({
+        email: z.string().email(),
+        contactNumber: z.string().min(1),
+        newPassword: z.string().min(6, "Password must be at least 6 characters"),
+      });
+      const { email, contactNumber, newPassword } = schema.parse(req.body);
+      const customer = await storage.getCustomerByEmail(email);
+      if (!customer || customer.contactNumber !== contactNumber) {
+        return res.status(400).json({ message: "No account found with that email and contact number combination." });
+      }
+      const hashed = await bcrypt.hash(newPassword, 10);
+      await storage.updateCustomer(customer.id, { password: hashed });
+      res.json({ message: "Password has been reset successfully. You can now log in." });
+    } catch (err) {
+      if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors[0].message });
+      res.status(500).json({ message: "Failed to reset password" });
+    }
+  });
+
   // ── Customer: Forgot Password ─────────────────────────────────────────────
   app.post("/api/customer/forgot-password", async (req, res) => {
     try {

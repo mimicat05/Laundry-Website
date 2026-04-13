@@ -25,6 +25,9 @@ export function CustomerAuth() {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotContact, setForgotContact] = useState("");
+  const [forgotNewPassword, setForgotNewPassword] = useState("");
+  const [forgotConfirm, setForgotConfirm] = useState("");
   const [forgotSent, setForgotSent] = useState(false);
 
   // Login form state
@@ -65,17 +68,29 @@ export function CustomerAuth() {
 
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
     setError("");
+    if (forgotNewPassword.length < 6) {
+      setError("Password must be at least 6 characters.");
+      return;
+    }
+    if (forgotNewPassword !== forgotConfirm) {
+      setError("Passwords do not match.");
+      return;
+    }
+    setIsLoading(true);
     try {
-      const res = await fetch("/api/customer/forgot-password", {
+      const res = await fetch("/api/customer/reset-password-direct", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: forgotEmail.trim() }),
+        body: JSON.stringify({
+          email: forgotEmail.trim(),
+          contactNumber: forgotContact.trim(),
+          newPassword: forgotNewPassword,
+        }),
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.message || "Request failed.");
+        setError(data.message || "Reset failed.");
         return;
       }
       setForgotSent(true);
@@ -235,10 +250,10 @@ export function CustomerAuth() {
 
           {/* Forgot Password Form */}
           {tab === "forgot" && !forgotSent && (
-            <form onSubmit={handleForgotPassword} className="space-y-5">
+            <form onSubmit={handleForgotPassword} className="space-y-4">
               <div className="mb-2">
                 <h2 className="font-display text-xl font-bold text-foreground mb-1">Reset Password</h2>
-                <p className="text-sm text-muted-foreground">Enter the Gmail address for your account and we'll send you a reset link.</p>
+                <p className="text-sm text-muted-foreground">Verify your identity with your registered email and contact number, then set a new password.</p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="forgot-email" className="text-foreground/80 ml-1">Gmail Address</Label>
@@ -253,14 +268,62 @@ export function CustomerAuth() {
                   autoComplete="email"
                 />
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="forgot-contact" className="text-foreground/80 ml-1">Contact Number</Label>
+                <Input
+                  id="forgot-contact"
+                  data-testid="input-forgot-contact"
+                  type="tel"
+                  placeholder="09XXXXXXXXX"
+                  className="rounded-xl h-11 bg-background/50 border-border/50 focus:bg-background transition-all"
+                  value={forgotContact}
+                  onChange={(e) => { setForgotContact(e.target.value); setError(""); }}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="forgot-new-password" className="text-foreground/80 ml-1">New Password</Label>
+                <div className="relative">
+                  <Input
+                    id="forgot-new-password"
+                    data-testid="input-forgot-new-password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="At least 6 characters"
+                    className="rounded-xl h-11 bg-background/50 border-border/50 focus:bg-background transition-all pr-11"
+                    value={forgotNewPassword}
+                    onChange={(e) => { setForgotNewPassword(e.target.value); setError(""); }}
+                    autoComplete="new-password"
+                  />
+                  <button
+                    type="button"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                    onClick={() => setShowPassword(!showPassword)}
+                    tabIndex={-1}
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="forgot-confirm" className="text-foreground/80 ml-1">Confirm New Password</Label>
+                <Input
+                  id="forgot-confirm"
+                  data-testid="input-forgot-confirm"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Re-enter your new password"
+                  className="rounded-xl h-11 bg-background/50 border-border/50 focus:bg-background transition-all"
+                  value={forgotConfirm}
+                  onChange={(e) => { setForgotConfirm(e.target.value); setError(""); }}
+                  autoComplete="new-password"
+                />
+              </div>
               <Button
                 type="submit"
                 data-testid="button-forgot-submit"
-                disabled={isLoading || !forgotEmail}
+                disabled={isLoading || !forgotEmail || !forgotContact || !forgotNewPassword || !forgotConfirm}
                 className="w-full rounded-xl h-11 shadow-md shadow-primary/20 hover:shadow-lg hover:-translate-y-0.5 transition-all"
               >
                 {isLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-                Send Reset Link
+                Reset Password
               </Button>
               <p className="text-center text-sm text-muted-foreground">
                 <button type="button" onClick={() => { setTab("login"); setError(""); }} className="text-primary hover:underline font-medium">
@@ -277,19 +340,18 @@ export function CustomerAuth() {
                 <CheckCircle2 className="w-7 h-7" />
               </div>
               <div>
-                <h2 className="font-display text-xl font-bold text-foreground mb-2">Check your email</h2>
+                <h2 className="font-display text-xl font-bold text-foreground mb-2">Password Reset!</h2>
                 <p className="text-sm text-muted-foreground">
-                  If an account exists for <span className="font-medium text-foreground">{forgotEmail}</span>, a password reset link has been sent. The link expires in 1 hour.
+                  Your password has been updated. You can now log in with your new password.
                 </p>
               </div>
               <Button
                 type="button"
-                variant="outline"
-                className="rounded-xl w-full"
-                onClick={() => { setTab("login"); setError(""); setForgotSent(false); }}
+                className="rounded-xl w-full h-11"
+                onClick={() => { setTab("login"); setError(""); setForgotSent(false); setForgotEmail(""); setForgotContact(""); setForgotNewPassword(""); setForgotConfirm(""); }}
                 data-testid="button-back-to-login"
               >
-                Back to Log In
+                Go to Log In
               </Button>
             </div>
           )}
