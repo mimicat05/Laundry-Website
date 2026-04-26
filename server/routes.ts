@@ -725,6 +725,33 @@ export async function registerRoutes(
     }
   });
 
+  // ── Shop Settings ─────────────────────────────────────────────────────────
+  app.get("/api/settings", async (_req, res) => {
+    try {
+      const settings = await storage.getShopSettings();
+      res.json(settings);
+    } catch {
+      res.status(500).json({ message: "Failed to fetch shop settings" });
+    }
+  });
+
+  app.put("/api/settings", requireOwner, async (req, res) => {
+    try {
+      const schema = z.object({
+        phone: z.string().max(50).optional(),
+        email: z.string().max(120).optional(),
+        address: z.string().max(250).optional(),
+        hours: z.string().max(250).optional(),
+      });
+      const data = schema.parse(req.body);
+      const updated = await storage.updateShopSettings(data);
+      res.json(updated);
+    } catch (err) {
+      if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors[0].message });
+      res.status(500).json({ message: "Failed to update shop settings" });
+    }
+  });
+
   app.delete("/api/promos/:id", requireOwner, async (req, res) => {
     try {
       await storage.deletePromo(Number(req.params.id));

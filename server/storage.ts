@@ -7,6 +7,7 @@ import {
   staff,
   customers,
   passwordResetTokens,
+  shopSettings,
   type InsertOrder,
   type Order,
   type OrderLog,
@@ -20,6 +21,8 @@ import {
   type InsertCustomer,
   type UpdateOrderRequest,
   type PasswordResetToken,
+  type ShopSettings,
+  type InsertShopSettings,
 } from "@shared/schema";
 import { eq, isNull, isNotNull, desc, lt } from "drizzle-orm";
 
@@ -62,6 +65,9 @@ export interface IStorage {
   getResetToken(token: string): Promise<PasswordResetToken | undefined>;
   deleteResetToken(token: string): Promise<void>;
   deleteExpiredTokens(): Promise<void>;
+  // Shop settings
+  getShopSettings(): Promise<ShopSettings>;
+  updateShopSettings(data: Partial<InsertShopSettings>): Promise<ShopSettings>;
 }
 
 async function logOrder(order: Order, action: string, staffName?: string) {
@@ -249,6 +255,31 @@ export class DatabaseStorage implements IStorage {
 
   async deleteExpiredTokens(): Promise<void> {
     await db.delete(passwordResetTokens).where(lt(passwordResetTokens.expiresAt, new Date()));
+  }
+
+  async getShopSettings(): Promise<ShopSettings> {
+    const [existing] = await db.select().from(shopSettings).orderBy(shopSettings.id);
+    if (existing) return existing;
+    const [created] = await db
+      .insert(shopSettings)
+      .values({
+        phone: "0955 921 8921",
+        email: "zareenans09@gmail.com",
+        address: "Dacanlao, Calaca, Philippines, 4212",
+        hours: "Mon–Sat: 7am – 8pm  |  Sun: 9am – 5pm",
+      })
+      .returning();
+    return created;
+  }
+
+  async updateShopSettings(data: Partial<InsertShopSettings>): Promise<ShopSettings> {
+    const current = await this.getShopSettings();
+    const [updated] = await db
+      .update(shopSettings)
+      .set(data)
+      .where(eq(shopSettings.id, current.id))
+      .returning();
+    return updated;
   }
 }
 

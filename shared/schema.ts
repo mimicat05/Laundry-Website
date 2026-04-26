@@ -102,6 +102,18 @@ export type UpdateOrderRequest = Partial<InsertOrder>;
 
 export type OrderResponse = Order;
 
+export const shopSettings = pgTable("shop_settings", {
+  id: serial("id").primaryKey(),
+  phone: text("phone").notNull().default(""),
+  email: text("email").notNull().default(""),
+  address: text("address").notNull().default(""),
+  hours: text("hours").notNull().default(""),
+});
+
+export const insertShopSettingsSchema = createInsertSchema(shopSettings).omit({ id: true });
+export type ShopSettings = typeof shopSettings.$inferSelect;
+export type InsertShopSettings = z.infer<typeof insertShopSettingsSchema>;
+
 export const passwordResetTokens = pgTable("password_reset_tokens", {
   id: serial("id").primaryKey(),
   token: text("token").notNull().unique(),

@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form";
 import { useQuery } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Droplets, Loader2, CheckCircle2 } from "lucide-react";
+import { Droplets, Loader2, CheckCircle2, Tag } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { type Service } from "@shared/schema";
+import { type Service, type Promo } from "@shared/schema";
 import { useCustomerAuth } from "@/hooks/use-customer-auth";
 
 const formSchema = z.object({
@@ -55,7 +55,9 @@ export function CustomerOrder() {
   const [isPending, setIsPending] = useState(false);
   const { toast } = useToast();
   const { data: serviceList } = useQuery<Service[]>({ queryKey: ["/api/services"] });
+  const { data: promoList } = useQuery<Promo[]>({ queryKey: ["/api/promos"] });
   const activeServices = (serviceList || []).filter((s) => s.active);
+  const activePromos = (promoList || []).filter((p) => p.active);
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -181,6 +183,35 @@ export function CustomerOrder() {
             Fill in your details below. Our staff will review your request and confirm via email before you drop off your clothes.
           </p>
         </div>
+
+        {activePromos.length > 0 && (
+          <div className="mb-6 grid grid-cols-1 gap-3" data-testid="section-active-promos">
+            {activePromos.map((promo) => (
+              <div
+                key={promo.id}
+                data-testid={`banner-promo-${promo.id}`}
+                className="flex items-center gap-3 rounded-2xl border border-green-200 bg-green-50 px-5 py-4"
+              >
+                <div className="w-10 h-10 rounded-xl bg-green-100 text-green-700 flex items-center justify-center shrink-0">
+                  <Tag className="w-5 h-5" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-green-900 text-sm">
+                    {promo.name}{" "}
+                    <span className="text-green-700">
+                      — {Number(promo.discount).toFixed(0)}% off
+                    </span>
+                  </p>
+                  <p className="text-xs text-green-700">{promo.description}</p>
+                </div>
+              </div>
+            ))}
+            <p className="text-xs text-muted-foreground px-1">
+              Active promo? Just mention it in Special Instructions and our staff will apply
+              the discount when confirming your order.
+            </p>
+          </div>
+        )}
 
         <div className="bg-card border border-border/50 rounded-3xl p-8 shadow-lg">
           <Form {...form}>

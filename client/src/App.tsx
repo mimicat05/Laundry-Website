@@ -18,6 +18,7 @@ import { RequestsView } from "@/pages/requests-view";
 import { Reports } from "@/pages/reports";
 import { ManageServices } from "@/pages/manage-services";
 import { ManageStaff } from "@/pages/manage-staff";
+import { ShopSettingsPage } from "@/pages/shop-settings";
 import { CustomerAuth } from "@/pages/customer-auth";
 import { CustomerDashboard } from "@/pages/customer-dashboard";
 import { CustomerResetPassword } from "@/pages/customer-reset-password";
@@ -174,6 +175,10 @@ function Router() {
 
       <Route path="/manage-services">
         {() => <OwnerRoute component={ManageServices} />}
+      </Route>
+
+      <Route path="/shop-settings">
+        {() => <OwnerRoute component={ShopSettingsPage} />}
       </Route>
 
       <Route path="/reports">

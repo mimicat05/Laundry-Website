@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { LayoutDashboard, Clock, PackageCheck, Archive, LogOut, Menu, Droplets, Trash2, InboxIcon, ShirtIcon, Wind, Layers, BarChart3, Wrench, Users, Crown, UserCircle, XCircle } from "lucide-react";
+import { LayoutDashboard, Clock, PackageCheck, Archive, LogOut, Menu, Droplets, Trash2, InboxIcon, ShirtIcon, Wind, Layers, BarChart3, Wrench, Users, Crown, UserCircle, XCircle, Settings as SettingsIcon } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useOrders } from "@/hooks/use-orders";
 import { Button } from "@/components/ui/button";
@@ -46,6 +46,7 @@ const ownerNavGroups = [
     items: [
       { href: "/manage-staff",   label: "Manage Staff",     icon: Users },
       { href: "/manage-services", label: "Services & Promos", icon: Wrench },
+      { href: "/shop-settings",  label: "Shop Settings",    icon: SettingsIcon },
       { href: "/reports",        label: "Reports",          icon: BarChart3 },
       { href: "/deleted",        label: "Recently Deleted", icon: Trash2 },
     ],

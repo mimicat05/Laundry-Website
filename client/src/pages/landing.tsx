@@ -3,40 +3,46 @@ import { useQuery } from "@tanstack/react-query";
 import { Droplets, Phone, Mail, MapPin, Clock, Shirt } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { type Service, type Promo } from "@shared/schema";
+import { type Service, type Promo, type ShopSettings } from "@shared/schema";
 
-const contactInfo = [
-  {
-    icon: Phone,
-    label: "Phone",
-    value: "0955 921 8921",
-    href: "tel:+639559218921",
-  },
-  {
-    icon: Mail,
-    label: "Email",
-    value: "zareenans09@gmail.com",
-    href: "mailto:zareenans09@gmail.com",
-  },
-  {
-    icon: MapPin,
-    label: "Address",
-    value: "Dacanlao, Calaca, Philippines, 4212",
-    href: "#",
-  },
-  {
-    icon: Clock,
-    label: "Hours",
-    value: "Mon–Sat: 7am – 8pm  |  Sun: 9am – 5pm",
-    href: "#",
-  },
-];
+function buildPhoneHref(phone: string) {
+  const digits = phone.replace(/[^0-9+]/g, "");
+  return digits ? `tel:${digits}` : "#";
+}
 
 export function Landing() {
   const { data: serviceList } = useQuery<Service[]>({ queryKey: ["/api/services"] });
   const { data: promoList } = useQuery<Promo[]>({ queryKey: ["/api/promos"] });
+  const { data: settings } = useQuery<ShopSettings>({ queryKey: ["/api/settings"] });
   const activeServices = (serviceList || []).filter((s) => s.active);
   const activePromos = (promoList || []).filter((p) => p.active);
+
+  const contactInfo = [
+    {
+      icon: Phone,
+      label: "Phone",
+      value: settings?.phone || "—",
+      href: settings?.phone ? buildPhoneHref(settings.phone) : "#",
+    },
+    {
+      icon: Mail,
+      label: "Email",
+      value: settings?.email || "—",
+      href: settings?.email ? `mailto:${settings.email}` : "#",
+    },
+    {
+      icon: MapPin,
+      label: "Address",
+      value: settings?.address || "—",
+      href: "#",
+    },
+    {
+      icon: Clock,
+      label: "Hours",
+      value: settings?.hours || "—",
+      href: "#",
+    },
+  ];
 
   return (
     <div className="min-h-screen bg-background">
