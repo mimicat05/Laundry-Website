@@ -44,6 +44,8 @@ script/         Build scripts
 5. **Promo Claim with Photo Verification** – Customers upload a proof photo to claim a promo on their active order; staff review, approve (auto-applies discount), or reject from the order details panel. Fields: `promoClaimName`, `promoPhoto` (base64), `promoClaimStatus` on `orders` table.
 6. **Reports** – Sales and order reports for owners
 7. **Email Notifications** – Order status updates, receipts, price updates, password reset
+8. **Customer Messaging** – Customers can send messages (subject + body) to staff via "Message Us" button in their dashboard; staff view and mark as read in the Inbox page (`/inbox`). `messages` table: id, customerId, customerName, subject, message, isRead, createdAt.
+9. **Customer Feedback** – Customers can leave star ratings (1–5) and optional comments on completed orders; staff view all feedback in Inbox with average rating stats. `feedback` table: id, orderId, customerId, customerName, rating, comment, createdAt.
 
 ## Running the App
 - **Dev**: `npm run dev` (starts Express + Vite middleware on port 5000)

@@ -8,6 +8,8 @@ import {
   customers,
   passwordResetTokens,
   shopSettings,
+  feedback,
+  messages,
   type InsertOrder,
   type Order,
   type OrderLog,
@@ -23,6 +25,10 @@ import {
   type PasswordResetToken,
   type ShopSettings,
   type InsertShopSettings,
+  type Feedback,
+  type InsertFeedback,
+  type Message,
+  type InsertMessage,
 } from "@shared/schema";
 import { eq, isNull, isNotNull, desc, lt } from "drizzle-orm";
 
@@ -68,6 +74,16 @@ export interface IStorage {
   // Shop settings
   getShopSettings(): Promise<ShopSettings>;
   updateShopSettings(data: Partial<InsertShopSettings>): Promise<ShopSettings>;
+  // Feedback
+  getFeedback(): Promise<Feedback[]>;
+  getFeedbackByOrderId(orderId: string): Promise<Feedback | undefined>;
+  createFeedback(data: InsertFeedback): Promise<Feedback>;
+  // Messages
+  getMessages(): Promise<Message[]>;
+  getUnreadMessageCount(): Promise<number>;
+  createMessage(data: InsertMessage): Promise<Message>;
+  markMessageRead(id: number): Promise<void>;
+  markAllMessagesRead(): Promise<void>;
 }
 
 async function logOrder(order: Order, action: string, staffName?: string) {
@@ -281,6 +297,42 @@ export class DatabaseStorage implements IStorage {
       .where(eq(shopSettings.id, current.id))
       .returning();
     return updated;
+  }
+
+  async getFeedback(): Promise<Feedback[]> {
+    return await db.select().from(feedback).orderBy(desc(feedback.createdAt));
+  }
+
+  async getFeedbackByOrderId(orderId: string): Promise<Feedback | undefined> {
+    const [f] = await db.select().from(feedback).where(eq(feedback.orderId, orderId));
+    return f;
+  }
+
+  async createFeedback(data: InsertFeedback): Promise<Feedback> {
+    const [f] = await db.insert(feedback).values(data).returning();
+    return f;
+  }
+
+  async getMessages(): Promise<Message[]> {
+    return await db.select().from(messages).orderBy(desc(messages.createdAt));
+  }
+
+  async getUnreadMessageCount(): Promise<number> {
+    const unread = await db.select().from(messages).where(eq(messages.isRead, false));
+    return unread.length;
+  }
+
+  async createMessage(data: InsertMessage): Promise<Message> {
+    const [m] = await db.insert(messages).values(data).returning();
+    return m;
+  }
+
+  async markMessageRead(id: number): Promise<void> {
+    await db.update(messages).set({ isRead: true }).where(eq(messages.id, id));
+  }
+
+  async markAllMessagesRead(): Promise<void> {
+    await db.update(messages).set({ isRead: true }).where(eq(messages.isRead, false));
   }
 }
 

@@ -129,3 +129,31 @@ export const passwordResetTokens = pgTable("password_reset_tokens", {
 });
 
 export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
+
+export const feedback = pgTable("feedback", {
+  id: serial("id").primaryKey(),
+  orderId: text("order_id").notNull(),
+  customerId: integer("customer_id").notNull(),
+  customerName: text("customer_name").notNull(),
+  rating: integer("rating").notNull(), // 1–5
+  comment: text("comment"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertFeedbackSchema = createInsertSchema(feedback).omit({ id: true, createdAt: true });
+export type Feedback = typeof feedback.$inferSelect;
+export type InsertFeedback = z.infer<typeof insertFeedbackSchema>;
+
+export const messages = pgTable("messages", {
+  id: serial("id").primaryKey(),
+  customerId: integer("customer_id").notNull(),
+  customerName: text("customer_name").notNull(),
+  subject: text("subject").notNull(),
+  message: text("message").notNull(),
+  isRead: boolean("is_read").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertMessageSchema = createInsertSchema(messages).omit({ id: true, createdAt: true });
+export type Message = typeof messages.$inferSelect;
+export type InsertMessage = z.infer<typeof insertMessageSchema>;

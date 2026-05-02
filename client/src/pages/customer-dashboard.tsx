@@ -4,7 +4,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import {
   Droplets, LogOut, Plus, Package, CheckCircle2,
   ChevronRight, ClipboardList, Wind, Layers, ShoppingBag, Star, UserCog, XCircle,
-  BadgePercent, ImagePlus, Clock, CheckCircle, Loader2,
+  BadgePercent, ImagePlus, Clock, CheckCircle, Loader2, MessageSquare, Send,
 } from "lucide-react";
 import { useCustomerAuth } from "@/hooks/use-customer-auth";
 import { Button } from "@/components/ui/button";
@@ -32,7 +32,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { type Order, type PublicCustomer, type Promo } from "@shared/schema";
+import { type Order, type PublicCustomer, type Promo, type Feedback } from "@shared/schema";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const STAGES: { key: string; label: string; icon: React.ElementType }[] = [
@@ -282,6 +283,108 @@ function EditProfileDialog({
   );
 }
 
+function StarPicker({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+  const [hovered, setHovered] = useState(0);
+  return (
+    <div className="flex gap-1">
+      {[1, 2, 3, 4, 5].map((s) => (
+        <button
+          key={s}
+          type="button"
+          onMouseEnter={() => setHovered(s)}
+          onMouseLeave={() => setHovered(0)}
+          onClick={() => onChange(s)}
+          data-testid={`star-${s}`}
+          className="transition-transform hover:scale-110"
+        >
+          <Star
+            className={`w-7 h-7 transition-colors ${
+              s <= (hovered || value) ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground/30"
+            }`}
+          />
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function SendMessageDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { toast } = useToast();
+  const [form, setForm] = useState({ subject: "", message: "" });
+
+  const sendMutation = useMutation({
+    mutationFn: () => apiRequest("POST", "/api/customer/messages", form).then((r) => r.json()),
+    onSuccess: () => {
+      toast({ title: "Message sent!", description: "Our staff will get back to you soon." });
+      setForm({ subject: "", message: "" });
+      onClose();
+    },
+    onError: (err: any) => {
+      toast({ title: "Could not send message", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.subject.trim() || !form.message.trim()) return;
+    sendMutation.mutate();
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => { if (!v) { setForm({ subject: "", message: "" }); onClose(); } }}>
+      <DialogContent className="max-w-md rounded-3xl">
+        <DialogHeader>
+          <DialogTitle className="font-display text-xl flex items-center gap-2">
+            <MessageSquare className="w-5 h-5 text-primary" />
+            Send a Message
+          </DialogTitle>
+        </DialogHeader>
+        <p className="text-sm text-muted-foreground">Have a question or concern? Send us a message and we'll get back to you.</p>
+        <form onSubmit={handleSubmit} className="space-y-4 mt-1">
+          <div className="space-y-1.5">
+            <Label htmlFor="msg-subject">Subject</Label>
+            <Input
+              id="msg-subject"
+              data-testid="input-message-subject"
+              placeholder="e.g. Question about my order"
+              value={form.subject}
+              onChange={(e) => setForm((f) => ({ ...f, subject: e.target.value }))}
+              className="rounded-xl"
+              required
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="msg-body">Message</Label>
+            <Textarea
+              id="msg-body"
+              data-testid="input-message-body"
+              placeholder="Write your message here..."
+              value={form.message}
+              onChange={(e) => setForm((f) => ({ ...f, message: e.target.value }))}
+              className="rounded-xl min-h-[120px] resize-none"
+              required
+            />
+          </div>
+          <DialogFooter className="pt-1">
+            <Button type="button" variant="outline" className="rounded-xl" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              className="rounded-xl gap-2"
+              disabled={sendMutation.isPending || !form.subject.trim() || !form.message.trim()}
+              data-testid="button-send-message"
+            >
+              {sendMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+              Send Message
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function OrderTrackingDialog({
   order, open, onClose,
 }: {
@@ -295,8 +398,37 @@ function OrderTrackingDialog({
   const [selectedPromoId, setSelectedPromoId] = useState("");
   const [photoDataUrl, setPhotoDataUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [showFeedbackForm, setShowFeedbackForm] = useState(false);
+  const [rating, setRating] = useState(0);
+  const [comment, setComment] = useState("");
 
   const { data: promos } = useQuery<Promo[]>({ queryKey: ["/api/promos"] });
+
+  const { data: existingFeedback } = useQuery<Feedback | null>({
+    queryKey: ["/api/feedback/order", order?.orderId],
+    queryFn: () =>
+      order
+        ? fetch(`/api/feedback/order/${order.orderId}`).then((r) => r.json())
+        : Promise.resolve(null),
+    enabled: !!order && order.status === "completed",
+  });
+
+  const feedbackMutation = useMutation({
+    mutationFn: () =>
+      apiRequest("POST", "/api/customer/feedback", {
+        orderId: order!.orderId,
+        rating,
+        comment: comment.trim() || null,
+      }).then((r) => r.json()),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/feedback/order", order?.orderId] });
+      toast({ title: "Thank you for your feedback!", description: "Your rating has been submitted." });
+      setShowFeedbackForm(false);
+    },
+    onError: (err: any) => {
+      toast({ title: "Could not submit feedback", description: err.message, variant: "destructive" });
+    },
+  });
   const activePromos = (promos || []).filter((p) => p.active);
 
   const cancelMutation = useMutation({
@@ -568,6 +700,73 @@ function OrderTrackingDialog({
             </div>
           )}
 
+          {/* Feedback section for completed orders */}
+          {order.status === "completed" && (
+            <div className="border-t border-border/50 pt-4 mt-2">
+              {existingFeedback ? (
+                <div className="bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-2xl px-4 py-3 space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle className="w-4 h-4 text-green-600" />
+                    <p className="text-sm font-semibold text-green-800 dark:text-green-300">Feedback Submitted</p>
+                  </div>
+                  <div className="flex gap-0.5">
+                    {[1,2,3,4,5].map((s) => (
+                      <Star key={s} className={`w-4 h-4 ${s <= existingFeedback.rating ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground/30"}`} />
+                    ))}
+                  </div>
+                  {existingFeedback.comment && (
+                    <p className="text-sm text-muted-foreground">"{existingFeedback.comment}"</p>
+                  )}
+                </div>
+              ) : !showFeedbackForm ? (
+                <Button
+                  variant="outline"
+                  className="w-full rounded-xl gap-2 border-yellow-300 text-yellow-700 hover:bg-yellow-50 dark:border-yellow-700 dark:text-yellow-400 dark:hover:bg-yellow-950/20"
+                  onClick={() => setShowFeedbackForm(true)}
+                  data-testid="button-leave-feedback"
+                >
+                  <Star className="w-4 h-4" />
+                  Leave Feedback
+                </Button>
+              ) : (
+                <div className="space-y-3">
+                  <p className="text-sm font-semibold text-foreground">How was your experience?</p>
+                  <StarPicker value={rating} onChange={setRating} />
+                  <div className="space-y-1">
+                    <Label htmlFor="feedback-comment" className="text-xs text-muted-foreground">Comment (optional)</Label>
+                    <Textarea
+                      id="feedback-comment"
+                      data-testid="input-feedback-comment"
+                      placeholder="Tell us about your experience..."
+                      value={comment}
+                      onChange={(e) => setComment(e.target.value)}
+                      className="rounded-xl min-h-[80px] resize-none text-sm"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      className="flex-1 rounded-xl"
+                      onClick={() => { setShowFeedbackForm(false); setRating(0); setComment(""); }}
+                      disabled={feedbackMutation.isPending}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      className="flex-1 rounded-xl gap-2"
+                      onClick={() => feedbackMutation.mutate()}
+                      disabled={rating === 0 || feedbackMutation.isPending}
+                      data-testid="button-submit-feedback"
+                    >
+                      {feedbackMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                      Submit
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Cancel button */}
           {canCancel && (
             <div className="border-t border-border/50 pt-4 mt-2">
@@ -653,6 +852,7 @@ export function CustomerDashboard() {
   const { customer, logoutCustomer, loginCustomer } = useCustomerAuth();
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [editProfileOpen, setEditProfileOpen] = useState(false);
+  const [sendMessageOpen, setSendMessageOpen] = useState(false);
 
   const { data: orders, isLoading } = useQuery<Order[]>({
     queryKey: ["/api/customer/orders"],
@@ -682,6 +882,16 @@ export function CustomerDashboard() {
             </div>
           </Link>
           <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="rounded-xl gap-1.5 text-muted-foreground"
+              onClick={() => setSendMessageOpen(true)}
+              data-testid="button-send-message-nav"
+            >
+              <MessageSquare className="w-4 h-4" />
+              <span className="hidden sm:inline">Message Us</span>
+            </Button>
             <Button
               variant="ghost"
               size="sm"
@@ -812,6 +1022,8 @@ export function CustomerDashboard() {
           onSaved={(updated) => loginCustomer(updated)}
         />
       )}
+
+      <SendMessageDialog open={sendMessageOpen} onClose={() => setSendMessageOpen(false)} />
     </div>
   );
 }

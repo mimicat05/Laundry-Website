@@ -1,17 +1,19 @@
 import { Link, useLocation } from "wouter";
-import { LayoutDashboard, Clock, PackageCheck, Archive, LogOut, Menu, Droplets, Trash2, InboxIcon, ShirtIcon, Wind, Layers, BarChart3, Wrench, Users, Crown, UserCircle, XCircle, Settings as SettingsIcon } from "lucide-react";
+import { LayoutDashboard, Clock, PackageCheck, Archive, LogOut, Menu, Droplets, Trash2, InboxIcon, ShirtIcon, Wind, Layers, BarChart3, Wrench, Users, Crown, UserCircle, XCircle, Settings as SettingsIcon, MessageSquare } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useOrders } from "@/hooks/use-orders";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 
 const staffNavGroups = [
   {
     group: null,
     items: [
       { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+      { href: "/inbox",     label: "Inbox",     icon: MessageSquare, showMessageBadge: true },
     ],
   },
   {
@@ -59,6 +61,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   const { data: orders } = useOrders();
   const requestCount = (orders || []).filter((o) => o.status === "requested").length;
+  const { data: unreadData } = useQuery<{ count: number }>({
+    queryKey: ["/api/messages/unread-count"],
+    refetchInterval: 30000,
+  });
+  const unreadMessageCount = unreadData?.count ?? 0;
 
   const allNavGroups = isOwner ? [...staffNavGroups, ...ownerNavGroups] : staffNavGroups;
 
@@ -74,7 +81,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <div className="space-y-1">
             {section.items.map((item) => {
               const isActive = location === item.href;
-              const count = item.showBadge ? requestCount : 0;
+              const count = (item as any).showBadge ? requestCount : (item as any).showMessageBadge ? unreadMessageCount : 0;
               return (
                 <Link
                   key={item.href}

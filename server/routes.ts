@@ -2,7 +2,7 @@ import type { Express } from "express";
 import type { Server } from "http";
 import { storage } from "./storage";
 import { api, errorSchemas } from "@shared/routes";
-import { insertCustomerSchema } from "@shared/schema";
+import { insertCustomerSchema, insertFeedbackSchema, insertMessageSchema } from "@shared/schema";
 import { sendOrderStatusEmail, sendReceiptEmail, sendPasswordResetEmail, sendPriceUpdateEmail, sendWalkInOrderEmail } from "./email";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
@@ -855,6 +855,99 @@ export async function registerRoutes(
       res.status(204).send();
     } catch {
       res.status(500).json({ message: "Failed to delete promo" });
+    }
+  });
+
+  // Feedback
+  app.get("/api/feedback", requireAuth, async (_req, res) => {
+    try {
+      const all = await storage.getFeedback();
+      res.json(all);
+    } catch {
+      res.status(500).json({ message: "Failed to fetch feedback" });
+    }
+  });
+
+  app.post("/api/customer/feedback", requireCustomer, async (req, res) => {
+    try {
+      const customer = await storage.getCustomerById(req.session.customerId!);
+      if (!customer) return res.status(401).json({ message: "Not authenticated" });
+      const body = insertFeedbackSchema.parse({
+        ...req.body,
+        customerId: customer.id,
+        customerName: customer.name,
+      });
+      const existing = await storage.getFeedbackByOrderId(body.orderId);
+      if (existing) return res.status(409).json({ message: "Feedback already submitted for this order" });
+      const result = await storage.createFeedback(body);
+      res.status(201).json(result);
+    } catch (err) {
+      if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors[0].message });
+      res.status(500).json({ message: "Failed to submit feedback" });
+    }
+  });
+
+  app.get("/api/feedback/order/:orderId", requireCustomer, async (req, res) => {
+    try {
+      const existing = await storage.getFeedbackByOrderId(req.params.orderId);
+      res.json(existing ?? null);
+    } catch {
+      res.status(500).json({ message: "Failed to fetch feedback" });
+    }
+  });
+
+  // Messages
+  app.get("/api/messages", requireAuth, async (_req, res) => {
+    try {
+      const all = await storage.getMessages();
+      res.json(all);
+    } catch {
+      res.status(500).json({ message: "Failed to fetch messages" });
+    }
+  });
+
+  app.get("/api/messages/unread-count", requireAuth, async (_req, res) => {
+    try {
+      const count = await storage.getUnreadMessageCount();
+      res.json({ count });
+    } catch {
+      res.status(500).json({ message: "Failed to fetch unread count" });
+    }
+  });
+
+  app.post("/api/customer/messages", requireCustomer, async (req, res) => {
+    try {
+      const customer = await storage.getCustomerById(req.session.customerId!);
+      if (!customer) return res.status(401).json({ message: "Not authenticated" });
+      const body = insertMessageSchema.parse({
+        ...req.body,
+        customerId: customer.id,
+        customerName: customer.name,
+        isRead: false,
+      });
+      const result = await storage.createMessage(body);
+      res.status(201).json(result);
+    } catch (err) {
+      if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors[0].message });
+      res.status(500).json({ message: "Failed to send message" });
+    }
+  });
+
+  app.put("/api/messages/:id/read", requireAuth, async (req, res) => {
+    try {
+      await storage.markMessageRead(Number(req.params.id));
+      res.status(204).send();
+    } catch {
+      res.status(500).json({ message: "Failed to mark message as read" });
+    }
+  });
+
+  app.put("/api/messages/read-all", requireAuth, async (_req, res) => {
+    try {
+      await storage.markAllMessagesRead();
+      res.status(204).send();
+    } catch {
+      res.status(500).json({ message: "Failed to mark all messages as read" });
     }
   });
 

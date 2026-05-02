@@ -22,6 +22,7 @@ import { ShopSettingsPage } from "@/pages/shop-settings";
 import { CustomerAuth } from "@/pages/customer-auth";
 import { CustomerDashboard } from "@/pages/customer-dashboard";
 import { CustomerResetPassword } from "@/pages/customer-reset-password";
+import InboxPage from "@/pages/inbox";
 
 const ProtectedRoute = ({ component: Component, ...rest }: any) => {
   const { isAuthenticated } = useAuth();
@@ -98,6 +99,10 @@ function Router() {
       {/* Protected Staff Routes */}
       <Route path="/dashboard">
         {() => <ProtectedRoute component={Dashboard} />}
+      </Route>
+
+      <Route path="/inbox">
+        {() => <ProtectedRoute component={InboxPage} />}
       </Route>
 
       <Route path="/requests">
