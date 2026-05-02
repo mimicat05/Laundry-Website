@@ -79,7 +79,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 <Link
                   key={item.href}
                   href={item.href}
-                  onClick={() => setOpen(false)}
+                  onClick={() => {
+                    setOpen(false);
+                    const main = document.getElementById("main-scroll");
+                    if (main) main.scrollTop = 0;
+                  }}
                   className={`flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-200 ${
                     isActive
                       ? "bg-primary text-primary-foreground shadow-md"
