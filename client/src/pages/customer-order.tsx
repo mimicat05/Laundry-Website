@@ -1,9 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { useQuery } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Droplets, Loader2, CheckCircle2, Tag } from "lucide-react";
+import { Droplets, Loader2, CheckCircle2, Tag, BadgePercent, ImagePlus, XCircle } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -54,6 +54,9 @@ export function CustomerOrder() {
   const [orderId, setOrderId] = useState("");
   const [isPending, setIsPending] = useState(false);
   const { toast } = useToast();
+  const [selectedPromoId, setSelectedPromoId] = useState("");
+  const [promoPhotoDataUrl, setPromoPhotoDataUrl] = useState<string | null>(null);
+  const promoFileInputRef = useRef<HTMLInputElement>(null);
   const { data: serviceList } = useQuery<Service[]>({ queryKey: ["/api/services"] });
   const { data: promoList } = useQuery<Promo[]>({ queryKey: ["/api/promos"] });
   const activeServices = (serviceList || []).filter((s) => s.active);
@@ -103,16 +106,36 @@ export function CustomerOrder() {
     return null;
   })();
 
+  const handlePromoPhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 3 * 1024 * 1024) {
+      toast({ title: "File too large", description: "Please upload a photo smaller than 3MB.", variant: "destructive" });
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (ev) => setPromoPhotoDataUrl(ev.target?.result as string);
+    reader.readAsDataURL(file);
+  };
+
+  const selectedPromo = activePromos.find((p) => String(p.id) === selectedPromoId);
+
   const onSubmit = async (data: FormValues) => {
+    if (selectedPromoId && !promoPhotoDataUrl) {
+      toast({ title: "Photo required", description: "Please upload a proof photo for your promo claim.", variant: "destructive" });
+      return;
+    }
     setIsPending(true);
     try {
+      const body: Record<string, any> = { ...data, total: computedTotal || "0" };
+      if (selectedPromo && promoPhotoDataUrl) {
+        body.promoClaimName = selectedPromo.name;
+        body.promoPhoto = promoPhotoDataUrl;
+      }
       const res = await fetch("/api/orders/request", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...data,
-          total: computedTotal || "0",
-        }),
+        body: JSON.stringify(body),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({ message: "Failed to submit" }));
@@ -185,31 +208,91 @@ export function CustomerOrder() {
         </div>
 
         {activePromos.length > 0 && (
-          <div className="mb-6 grid grid-cols-1 gap-3" data-testid="section-active-promos">
-            {activePromos.map((promo) => (
-              <div
-                key={promo.id}
-                data-testid={`banner-promo-${promo.id}`}
-                className="flex items-center gap-3 rounded-2xl border border-green-200 bg-green-50 px-5 py-4"
-              >
-                <div className="w-10 h-10 rounded-xl bg-green-100 text-green-700 flex items-center justify-center shrink-0">
-                  <Tag className="w-5 h-5" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-green-900 text-sm">
-                    {promo.name}{" "}
-                    <span className="text-green-700">
-                      — {Number(promo.discount).toFixed(0)}% off
-                    </span>
-                  </p>
-                  <p className="text-xs text-green-700">{promo.description}</p>
-                </div>
-              </div>
-            ))}
-            <p className="text-xs text-muted-foreground px-1">
-              Active promo? Just mention it in Special Instructions and our staff will apply
-              the discount when confirming your order.
+          <div className="mb-6 bg-card border border-border/50 rounded-3xl p-6 shadow-sm" data-testid="section-active-promos">
+            <div className="flex items-center gap-2 mb-4">
+              <BadgePercent className="w-5 h-5 text-primary" />
+              <h3 className="font-semibold text-foreground">Have a Promo?</h3>
+            </div>
+            <p className="text-sm text-muted-foreground mb-4">
+              Select the promo you qualify for and upload a photo as proof (e.g. senior ID, student ID, coupon). Our staff will review and apply the discount.
             </p>
+
+            {/* Promo selector */}
+            <div className="grid grid-cols-1 gap-3 mb-4">
+              {activePromos.map((promo) => (
+                <button
+                  key={promo.id}
+                  type="button"
+                  data-testid={`button-promo-${promo.id}`}
+                  onClick={() => setSelectedPromoId(selectedPromoId === String(promo.id) ? "" : String(promo.id))}
+                  className={`flex items-center gap-3 rounded-2xl border px-5 py-4 text-left transition-all ${
+                    selectedPromoId === String(promo.id)
+                      ? "border-primary bg-primary/5 ring-2 ring-primary/20"
+                      : "border-border/50 bg-background hover:border-primary/40 hover:bg-primary/3"
+                  }`}
+                >
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                    selectedPromoId === String(promo.id) ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+                  }`}>
+                    <Tag className="w-5 h-5" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-foreground text-sm">
+                      {promo.name}{" "}
+                      <span className="text-primary">— {Number(promo.discount).toFixed(0)}% off</span>
+                    </p>
+                    <p className="text-xs text-muted-foreground">{promo.description}</p>
+                  </div>
+                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                    selectedPromoId === String(promo.id) ? "border-primary bg-primary" : "border-border"
+                  }`}>
+                    {selectedPromoId === String(promo.id) && <div className="w-2 h-2 rounded-full bg-white" />}
+                  </div>
+                </button>
+              ))}
+            </div>
+
+            {/* Photo upload — only shown when a promo is selected */}
+            {selectedPromoId && (
+              <div className="space-y-2">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Upload Proof Photo <span className="text-red-500">*</span></p>
+                <input
+                  ref={promoFileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handlePromoPhotoChange}
+                  data-testid="input-promo-photo"
+                />
+                {promoPhotoDataUrl ? (
+                  <div className="relative rounded-xl overflow-hidden border border-border">
+                    <img src={promoPhotoDataUrl} alt="Promo proof" className="w-full max-h-48 object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => { setPromoPhotoDataUrl(null); if (promoFileInputRef.current) promoFileInputRef.current.value = ""; }}
+                      className="absolute top-2 right-2 bg-black/60 text-white rounded-full p-1 hover:bg-black/80"
+                      data-testid="button-remove-promo-photo"
+                    >
+                      <XCircle className="w-4 h-4" />
+                    </button>
+                    <div className="absolute bottom-2 left-2 bg-black/50 text-white text-xs px-2 py-1 rounded-lg">
+                      Photo uploaded
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => promoFileInputRef.current?.click()}
+                    className="w-full border-2 border-dashed border-border rounded-xl py-8 flex flex-col items-center gap-2 text-muted-foreground hover:border-primary/40 hover:text-primary transition-colors"
+                    data-testid="button-upload-promo-photo"
+                  >
+                    <ImagePlus className="w-7 h-7" />
+                    <span className="text-sm font-medium">Tap to upload proof photo</span>
+                    <span className="text-xs">Max 3MB · JPG, PNG, etc.</span>
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         )}
 

@@ -535,8 +535,15 @@ export async function registerRoutes(
         notes: z.string().optional(),
         weight: z.coerce.string().optional(),
         total: z.coerce.string().optional(),
+        promoClaimName: z.string().optional(),
+        promoPhoto: z.string().optional(),
       });
       const input = bodySchema.parse(req.body);
+
+      if (input.promoPhoto && input.promoPhoto.length > 4 * 1024 * 1024) {
+        return res.status(400).json({ message: "Photo is too large. Please upload a smaller image." });
+      }
+
       const orderId = `ORD${Math.floor(1000 + Math.random() * 9000)}`;
       const order = await storage.createOrder({
         customerName: input.customerName,
@@ -549,6 +556,9 @@ export async function registerRoutes(
         weight: input.weight || "0",
         total: input.total || "0",
         status: "requested",
+        ...(input.promoClaimName && input.promoPhoto
+          ? { promoClaimName: input.promoClaimName, promoPhoto: input.promoPhoto, promoClaimStatus: "pending" }
+          : {}),
       });
       await storage.logOrderAction(order, "created");
       await sendOrderStatusEmail(order.email, order.customerName, order.orderId, "requested");
