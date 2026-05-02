@@ -1,12 +1,13 @@
 import { useState, useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { format } from "date-fns";
-import { Loader2, Trash2, ArrowRight, User, MapPin, Phone, Mail, Scale, DollarSign, Tag, CalendarClock, Pencil, X, Printer, Sticker, CheckCircle2, XCircle, Percent, BadgePercent, ClipboardCheck, ReceiptText } from "lucide-react";
+import { Loader2, Trash2, ArrowRight, User, MapPin, Phone, Mail, Scale, DollarSign, Tag, CalendarClock, Pencil, X, Printer, Sticker, CheckCircle2, XCircle, Percent, BadgePercent, ClipboardCheck, ReceiptText, Clock, ImageIcon } from "lucide-react";
 import { useUpdateOrder, useDeleteOrder } from "@/hooks/use-orders";
 import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -178,6 +179,41 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsPr
     }
   };
 
+  const [showPhotoModal, setShowPhotoModal] = useState(false);
+
+  const claimReviewMutation = useMutation({
+    mutationFn: ({ action, promoId, promoName, discount }: { action: "approve" | "reject"; promoId?: number; promoName?: string; discount?: number }) =>
+      apiRequest("POST", `/api/orders/${order!.id}/promo-claim-review`, { action, promoId, promoName, discount }).then((r) => r.json()),
+    onSuccess: (_, vars) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/orders", order!.id] });
+      toast({
+        title: vars.action === "approve" ? "Promo Claim Approved" : "Promo Claim Rejected",
+        description: vars.action === "approve"
+          ? "The discount has been applied to this order."
+          : "The customer's promo claim has been rejected.",
+      });
+    },
+    onError: (err: any) => {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const handleApproveClaim = () => {
+    if (!order) return;
+    const matchingPromo = activePromos.find((p) => p.name === order.promoClaimName);
+    claimReviewMutation.mutate({
+      action: "approve",
+      promoId: matchingPromo?.id,
+      promoName: matchingPromo?.name ?? order.promoClaimName ?? "",
+      discount: matchingPromo ? Number(matchingPromo.discount) : 0,
+    });
+  };
+
+  const handleRejectClaim = () => {
+    claimReviewMutation.mutate({ action: "reject" });
+  };
+
   const handleSaveEdit = (data: EditValues) => {
     updateOrder(
       { id: order.id, ...data },
@@ -221,6 +257,7 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsPr
   };
 
   return (
+    <>
     <Dialog open={open} onOpenChange={(o) => { onOpenChange(o); if (!o) { setIsEditing(false); setShowPrintMenu(false); } }}>
       <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto rounded-3xl border-border/50 sleek-shadow bg-card/95 backdrop-blur-xl p-6">
         <DialogHeader className="mb-2">
@@ -453,6 +490,63 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsPr
                 </div>
               )}
 
+              {/* Promo Claim Review Section — visible when customer has submitted a pending claim */}
+              {order.promoClaimStatus === "pending" && order.promoPhoto && (
+                <div className="bg-amber-50/80 rounded-2xl p-5 border border-amber-200">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Clock className="w-4 h-4 text-amber-600" />
+                    <h4 className="text-xs font-semibold text-amber-800 uppercase tracking-wider">Promo Claim — Awaiting Review</h4>
+                  </div>
+                  <p className="text-sm text-amber-900 mb-4">
+                    Customer is claiming: <strong>{order.promoClaimName}</strong>
+                  </p>
+                  <div className="relative rounded-xl overflow-hidden border border-amber-200 mb-4 cursor-pointer" onClick={() => setShowPhotoModal(true)}>
+                    <img src={order.promoPhoto} alt="Promo proof" className="w-full max-h-48 object-cover" />
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/0 hover:bg-black/20 transition-colors">
+                      <ImageIcon className="w-6 h-6 text-white opacity-0 hover:opacity-100" />
+                    </div>
+                    <div className="absolute bottom-2 right-2 bg-black/50 text-white text-xs px-2 py-1 rounded-lg flex items-center gap-1">
+                      <ImageIcon className="w-3 h-3" /> View full size
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      data-testid="button-reject-promo-claim"
+                      variant="outline"
+                      className="flex-1 rounded-xl border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 text-sm"
+                      onClick={handleRejectClaim}
+                      disabled={claimReviewMutation.isPending}
+                    >
+                      {claimReviewMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <XCircle className="w-3.5 h-3.5 mr-1" />}
+                      Reject
+                    </Button>
+                    <Button
+                      data-testid="button-approve-promo-claim"
+                      className="flex-1 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm"
+                      onClick={handleApproveClaim}
+                      disabled={claimReviewMutation.isPending}
+                    >
+                      {claimReviewMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <CheckCircle2 className="w-3.5 h-3.5 mr-1" />}
+                      Approve & Apply
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* Promo Claim approved/rejected badge */}
+              {order.promoClaimStatus === "approved" && order.promoId && (
+                <div className="flex items-center gap-3 bg-emerald-50 border border-emerald-200 rounded-2xl px-4 py-3">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <p className="text-sm text-emerald-800">Promo claim for <strong>{order.promoClaimName}</strong> was approved and discount applied.</p>
+                </div>
+              )}
+              {order.promoClaimStatus === "rejected" && (
+                <div className="flex items-center gap-3 bg-red-50 border border-red-200 rounded-2xl px-4 py-3">
+                  <XCircle className="w-4 h-4 text-red-500 shrink-0" />
+                  <p className="text-sm text-red-700">Promo claim for <strong>{order.promoClaimName}</strong> was rejected.</p>
+                </div>
+              )}
+
               {/* Promo Discount Section — visible only for pending (accepted) orders */}
               {order.status === "pending" && (
                 <div className="bg-background/50 rounded-2xl p-5 border border-border/50">
@@ -624,5 +718,18 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsPr
         )}
       </DialogContent>
     </Dialog>
+
+    {/* Photo lightbox */}
+    {showPhotoModal && order?.promoPhoto && (
+      <Dialog open={showPhotoModal} onOpenChange={setShowPhotoModal}>
+        <DialogContent className="sm:max-w-[700px] rounded-2xl p-4">
+          <DialogHeader>
+            <DialogTitle className="text-base">Promo Proof Photo</DialogTitle>
+          </DialogHeader>
+          <img src={order.promoPhoto} alt="Promo proof full size" className="w-full rounded-xl object-contain max-h-[70vh]" />
+        </DialogContent>
+      </Dialog>
+    )}
+    </>
   );
 }

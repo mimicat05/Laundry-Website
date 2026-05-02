@@ -90,6 +90,9 @@ export const orders = pgTable("orders", {
   promoName: text("promo_name"),
   discountAmount: numeric("discount_amount", { precision: 10, scale: 2 }),
   actualWeight: numeric("actual_weight", { precision: 10, scale: 2 }),
+  promoClaimName: text("promo_claim_name"),
+  promoPhoto: text("promo_photo"),
+  promoClaimStatus: text("promo_claim_status"), // "pending" | "approved" | "rejected"
   createdAt: timestamp("created_at").defaultNow().notNull(),
   completedAt: timestamp("completed_at"),
   deletedAt: timestamp("deleted_at"),

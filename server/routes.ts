@@ -253,6 +253,42 @@ export async function registerRoutes(
     }
   });
 
+  // ── Customer: Submit Promo Claim ──────────────────────────────────────────
+  app.post("/api/customer/orders/:id/promo-claim", requireCustomer, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const customer = await storage.getCustomerById(req.session.customerId);
+      if (!customer) return res.status(401).json({ message: "Not authenticated" });
+      const order = await storage.getOrder(id);
+      if (!order) return res.status(404).json({ message: "Order not found" });
+      if (order.email !== customer.email) return res.status(403).json({ message: "Not your order" });
+      if (!["requested", "pending"].includes(order.status)) {
+        return res.status(400).json({ message: "Promo claims can only be submitted for active orders." });
+      }
+      if (order.promoId) {
+        return res.status(400).json({ message: "A discount is already applied to this order." });
+      }
+      const schema = z.object({
+        promoClaimName: z.string().min(1, "Please select a promo"),
+        promoPhoto: z.string().min(1, "Please upload a photo"),
+      });
+      const { promoClaimName, promoPhoto } = schema.parse(req.body);
+      // Limit base64 image size to ~3MB
+      if (promoPhoto.length > 4 * 1024 * 1024) {
+        return res.status(400).json({ message: "Image is too large. Please upload a smaller photo." });
+      }
+      const updated = await storage.updateOrder(id, {
+        promoClaimName,
+        promoPhoto,
+        promoClaimStatus: "pending",
+      });
+      res.json(updated);
+    } catch (err) {
+      if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors[0].message });
+      res.status(500).json({ message: "Failed to submit promo claim" });
+    }
+  });
+
   // ── Customer: Change Password ─────────────────────────────────────────────
   app.post("/api/customer/change-password", requireCustomer, async (req, res) => {
     try {
@@ -604,6 +640,52 @@ export async function registerRoutes(
         });
       }
       res.status(500).json({ message: "Failed to update order" });
+    }
+  });
+
+  // ── Staff: Review Promo Claim ─────────────────────────────────────────────
+  app.post("/api/orders/:id/promo-claim-review", requireAuth, async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      const order = await storage.getOrder(id);
+      if (!order) return res.status(404).json({ message: "Order not found" });
+      if (order.promoClaimStatus !== "pending") {
+        return res.status(400).json({ message: "No pending promo claim on this order." });
+      }
+      const schema = z.object({
+        action: z.enum(["approve", "reject"]),
+        promoId: z.number().optional(),
+        promoName: z.string().optional(),
+        discount: z.number().optional(),
+      });
+      const { action, promoId, promoName, discount } = schema.parse(req.body);
+      let updates: Record<string, any> = { promoClaimStatus: action === "approve" ? "approved" : "rejected" };
+
+      if (action === "approve" && promoId && promoName && discount !== undefined) {
+        const baseTotal = order.discountAmount
+          ? Number(order.total) + Number(order.discountAmount)
+          : Number(order.total);
+        const discountAmount = (baseTotal * discount / 100).toFixed(2);
+        const newTotal = (baseTotal - Number(discountAmount)).toFixed(2);
+        updates = {
+          ...updates,
+          promoId,
+          promoName,
+          discountAmount,
+          total: newTotal,
+        };
+      }
+
+      const updated = await storage.updateOrder(id, updates);
+      await storage.logOrderAction(
+        updated,
+        action === "approve" ? "discount_applied" : "discount_removed",
+        req.session.staffName
+      );
+      res.json(updated);
+    } catch (err) {
+      if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors[0].message });
+      res.status(500).json({ message: "Failed to review promo claim" });
     }
   });
 

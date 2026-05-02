@@ -41,8 +41,9 @@ script/         Build scripts
 2. **Customer Portal** – Registration, login, order tracking, password reset via email
 3. **Staff Dashboard** – Role-based (Owner vs Staff), order CRUD, staff management
 4. **Services & Promos** – Configurable laundry services and discount codes
-5. **Reports** – Sales and order reports for owners
-6. **Email Notifications** – Order status updates, receipts, price updates, password reset
+5. **Promo Claim with Photo Verification** – Customers upload a proof photo to claim a promo on their active order; staff review, approve (auto-applies discount), or reject from the order details panel. Fields: `promoClaimName`, `promoPhoto` (base64), `promoClaimStatus` on `orders` table.
+6. **Reports** – Sales and order reports for owners
+7. **Email Notifications** – Order status updates, receipts, price updates, password reset
 
 ## Running the App
 - **Dev**: `npm run dev` (starts Express + Vite middleware on port 5000)

@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Link, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import {
   Droplets, LogOut, Plus, Package, CheckCircle2,
   ChevronRight, ClipboardList, Wind, Layers, ShoppingBag, Star, UserCog, XCircle,
+  BadgePercent, ImagePlus, Clock, CheckCircle, Loader2,
 } from "lucide-react";
 import { useCustomerAuth } from "@/hooks/use-customer-auth";
 import { Button } from "@/components/ui/button";
@@ -31,7 +32,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { type Order, type PublicCustomer } from "@shared/schema";
+import { type Order, type PublicCustomer, type Promo } from "@shared/schema";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const STAGES: { key: string; label: string; icon: React.ElementType }[] = [
   { key: "requested",        label: "Order Submitted",    icon: ClipboardList },
@@ -289,6 +291,13 @@ function OrderTrackingDialog({
 }) {
   const { toast } = useToast();
   const [confirmCancel, setConfirmCancel] = useState(false);
+  const [showPromoForm, setShowPromoForm] = useState(false);
+  const [selectedPromoId, setSelectedPromoId] = useState("");
+  const [photoDataUrl, setPhotoDataUrl] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const { data: promos } = useQuery<Promo[]>({ queryKey: ["/api/promos"] });
+  const activePromos = (promos || []).filter((p) => p.active);
 
   const cancelMutation = useMutation({
     mutationFn: (id: number) =>
@@ -303,15 +312,50 @@ function OrderTrackingDialog({
     },
   });
 
+  const claimMutation = useMutation({
+    mutationFn: ({ id, promoClaimName, promoPhoto }: { id: number; promoClaimName: string; promoPhoto: string }) =>
+      apiRequest("POST", `/api/customer/orders/${id}/promo-claim`, { promoClaimName, promoPhoto }).then((r) => r.json()),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/customer/orders"] });
+      toast({ title: "Promo claim submitted", description: "Our staff will review your photo and apply the discount." });
+      setShowPromoForm(false);
+      setSelectedPromoId("");
+      setPhotoDataUrl(null);
+    },
+    onError: (err: any) => {
+      toast({ title: "Could not submit claim", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 3 * 1024 * 1024) {
+      toast({ title: "File too large", description: "Please upload a photo smaller than 3MB.", variant: "destructive" });
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (ev) => setPhotoDataUrl(ev.target?.result as string);
+    reader.readAsDataURL(file);
+  };
+
+  const handleSubmitClaim = () => {
+    if (!order || !selectedPromoId || !photoDataUrl) return;
+    const promo = activePromos.find((p) => String(p.id) === selectedPromoId);
+    if (!promo) return;
+    claimMutation.mutate({ id: order.id, promoClaimName: promo.name, promoPhoto: photoDataUrl });
+  };
+
   if (!order) return null;
 
   const isCancelled = order.status === "cancelled";
   const canCancel = CANCELLABLE.includes(order.status);
+  const canClaimPromo = ["requested", "pending"].includes(order.status) && !order.promoId && !order.promoClaimStatus;
   const currentIdx = STAGE_KEYS.indexOf(order.status);
 
   return (
     <>
-      <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+      <Dialog open={open} onOpenChange={(v) => { if (!v) { onClose(); setShowPromoForm(false); setPhotoDataUrl(null); setSelectedPromoId(""); } }}>
         <DialogContent className="max-w-md rounded-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="font-display text-xl">
@@ -406,6 +450,123 @@ function OrderTrackingDialog({
               </div>
             )}
           </div>
+
+          {/* Promo Claim Status */}
+          {order.promoClaimStatus === "pending" && !order.promoId && (
+            <div className="border-t border-border/50 pt-4 mt-2">
+              <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3">
+                <Clock className="w-5 h-5 text-amber-500 shrink-0" />
+                <div>
+                  <p className="text-sm font-semibold text-amber-800">Promo Claim Under Review</p>
+                  <p className="text-xs text-amber-600">Your claim for <strong>{order.promoClaimName}</strong> is being reviewed by our staff.</p>
+                </div>
+              </div>
+            </div>
+          )}
+          {order.promoClaimStatus === "rejected" && !order.promoId && (
+            <div className="border-t border-border/50 pt-4 mt-2">
+              <div className="flex items-center gap-3 bg-red-50 border border-red-200 rounded-2xl px-4 py-3">
+                <XCircle className="w-5 h-5 text-red-500 shrink-0" />
+                <div>
+                  <p className="text-sm font-semibold text-red-800">Promo Claim Rejected</p>
+                  <p className="text-xs text-red-600">Your claim for <strong>{order.promoClaimName}</strong> was not approved by our staff.</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Claim Promo Section */}
+          {canClaimPromo && activePromos.length > 0 && (
+            <div className="border-t border-border/50 pt-4 mt-2">
+              {!showPromoForm ? (
+                <Button
+                  variant="outline"
+                  className="w-full rounded-xl gap-2 border-primary/30 text-primary hover:bg-primary/5"
+                  onClick={() => setShowPromoForm(true)}
+                  data-testid="button-claim-promo"
+                >
+                  <BadgePercent className="w-4 h-4" />
+                  Claim a Promo
+                </Button>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    <BadgePercent className="w-4 h-4 text-primary" />
+                    <p className="text-sm font-semibold text-foreground">Claim a Promo Discount</p>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Select the promo you qualify for and upload a photo as proof (e.g. coupon, ID, screenshot). Our staff will review and apply it.</p>
+
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground uppercase tracking-wide">Select Promo</Label>
+                    <Select value={selectedPromoId} onValueChange={setSelectedPromoId}>
+                      <SelectTrigger data-testid="select-promo-claim" className="rounded-xl">
+                        <SelectValue placeholder="Choose a promo..." />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-xl">
+                        {activePromos.map((p) => (
+                          <SelectItem key={p.id} value={String(p.id)}>
+                            {p.name} — {p.discount}% off
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground uppercase tracking-wide">Upload Proof Photo</Label>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handlePhotoChange}
+                      data-testid="input-promo-photo"
+                    />
+                    {photoDataUrl ? (
+                      <div className="relative rounded-xl overflow-hidden border border-border">
+                        <img src={photoDataUrl} alt="Promo proof" className="w-full max-h-40 object-cover" />
+                        <button
+                          onClick={() => { setPhotoDataUrl(null); if (fileInputRef.current) fileInputRef.current.value = ""; }}
+                          className="absolute top-2 right-2 bg-black/60 text-white rounded-full p-1 hover:bg-black/80"
+                        >
+                          <XCircle className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => fileInputRef.current?.click()}
+                        className="w-full border-2 border-dashed border-border rounded-xl py-6 flex flex-col items-center gap-2 text-muted-foreground hover:border-primary/40 hover:text-primary transition-colors"
+                        data-testid="button-upload-photo"
+                      >
+                        <ImagePlus className="w-6 h-6" />
+                        <span className="text-xs">Tap to upload photo (max 3MB)</span>
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      className="flex-1 rounded-xl"
+                      onClick={() => { setShowPromoForm(false); setSelectedPromoId(""); setPhotoDataUrl(null); }}
+                      disabled={claimMutation.isPending}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      className="flex-1 rounded-xl"
+                      onClick={handleSubmitClaim}
+                      disabled={!selectedPromoId || !photoDataUrl || claimMutation.isPending}
+                      data-testid="button-submit-promo-claim"
+                    >
+                      {claimMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                      Submit Claim
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Cancel button */}
           {canCancel && (
