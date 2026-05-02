@@ -180,7 +180,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           </Sheet>
         </header>
 
-        <main className="flex-1 p-4 md:p-8 lg:p-10 overflow-auto">
+        <main id="main-scroll" className="flex-1 p-4 md:p-8 lg:p-10 overflow-auto">
           <div className="max-w-6xl mx-auto">
             {children}
           </div>

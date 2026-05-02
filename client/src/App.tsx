@@ -66,7 +66,12 @@ const OwnerRoute = ({ component: Component, ...rest }: any) => {
 function ScrollToTop() {
   const [location] = useLocation();
   useEffect(() => {
-    window.scrollTo(0, 0);
+    const main = document.getElementById("main-scroll");
+    if (main) {
+      main.scrollTop = 0;
+    } else {
+      window.scrollTo(0, 0);
+    }
   }, [location]);
   return null;
 }
