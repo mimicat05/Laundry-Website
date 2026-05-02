@@ -76,9 +76,11 @@ async function logOrder(order: Order, action: string, staffName?: string) {
     customerName: order.customerName,
     contactNumber: order.contactNumber,
     email: order.email,
+    address: order.address ?? null,
     service: order.service,
     weight: order.weight,
     total: order.total,
+    paid: order.paid,
     status: order.status,
     action,
     notes: order.notes ?? null,
@@ -110,7 +112,6 @@ export class DatabaseStorage implements IStorage {
 
   async createOrder(insertOrder: InsertOrder): Promise<Order> {
     const [order] = await db.insert(orders).values(insertOrder).returning();
-    await logOrder(order, "created");
     return order;
   }
 

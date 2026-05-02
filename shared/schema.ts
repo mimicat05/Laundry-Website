@@ -59,11 +59,13 @@ export const orderLogs = pgTable("order_logs", {
   customerName: text("customer_name").notNull(),
   contactNumber: text("contact_number").notNull(),
   email: text("email").notNull(),
+  address: text("address"),
   service: text("service").notNull(),
   weight: numeric("weight", { precision: 10, scale: 2 }).notNull(),
   total: numeric("total", { precision: 10, scale: 2 }).notNull(),
+  paid: boolean("paid").notNull().default(false),
   status: text("status").notNull(),
-  action: text("action").notNull(), // created | status_changed | deleted | restored | permanently_deleted | paid | unpaid | discount_applied | discount_removed | edited
+  action: text("action").notNull(), // created | status_changed | deleted | restored | permanently_deleted | paid | unpaid | discount_applied | discount_removed | edited | cancelled
   notes: text("notes"),
   staffName: text("staff_name"),
   loggedAt: timestamp("logged_at").defaultNow().notNull(),
@@ -89,6 +91,7 @@ export const orders = pgTable("orders", {
   discountAmount: numeric("discount_amount", { precision: 10, scale: 2 }),
   actualWeight: numeric("actual_weight", { precision: 10, scale: 2 }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  completedAt: timestamp("completed_at"),
   deletedAt: timestamp("deleted_at"),
 });
 

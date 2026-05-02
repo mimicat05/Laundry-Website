@@ -246,6 +246,7 @@ export async function registerRoutes(
         return res.status(400).json({ message: "Order can no longer be cancelled at this stage." });
       }
       const updated = await storage.updateOrder(id, { status: "cancelled" });
+      await storage.logOrderAction(updated, "cancelled", `customer:${customer.name}`);
       res.json(updated);
     } catch {
       res.status(500).json({ message: "Failed to cancel order" });
@@ -513,6 +514,7 @@ export async function registerRoutes(
         total: input.total || "0",
         status: "requested",
       });
+      await storage.logOrderAction(order, "created");
       await sendOrderStatusEmail(order.email, order.customerName, order.orderId, "requested");
       res.status(201).json(order);
     } catch (err) {
@@ -566,7 +568,10 @@ export async function registerRoutes(
       const input = api.orders.update.input.parse(req.body);
       const staffName = req.session.staffName;
 
-      const order = await storage.updateOrder(id, input);
+      const completedAt = input.status === "completed" && existing.status !== "completed"
+        ? new Date()
+        : undefined;
+      const order = await storage.updateOrder(id, { ...input, ...(completedAt ? { completedAt } : {}) });
 
       // Determine what action to log
       let action = "edited";
