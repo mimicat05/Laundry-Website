@@ -1,9 +1,9 @@
 import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { Droplets, Phone, Mail, MapPin, Clock, Shirt } from "lucide-react";
+import { Droplets, Phone, Mail, MapPin, Clock, Shirt, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { type Service, type Promo, type ShopSettings } from "@shared/schema";
+import { type Service, type Promo, type ShopSettings, type Feedback } from "@shared/schema";
 
 function buildPhoneHref(phone: string) {
   const digits = phone.replace(/[^0-9+]/g, "");
@@ -14,8 +14,10 @@ export function Landing() {
   const { data: serviceList } = useQuery<Service[]>({ queryKey: ["/api/services"] });
   const { data: promoList } = useQuery<Promo[]>({ queryKey: ["/api/promos"] });
   const { data: settings } = useQuery<ShopSettings>({ queryKey: ["/api/settings"] });
+  const { data: feedbackList = [] } = useQuery<Feedback[]>({ queryKey: ["/api/public/feedback"] });
   const activeServices = (serviceList || []).filter((s) => s.active);
   const activePromos = (promoList || []).filter((p) => p.active);
+  const publicReviews = feedbackList.filter((f) => f.comment && f.rating >= 4).slice(0, 6);
 
   const contactInfo = [
     {
@@ -136,6 +138,45 @@ export function Landing() {
           )}
         </div>
       </section>
+
+      {/* Testimonials */}
+      {publicReviews.length > 0 && (
+        <section id="reviews" className="py-20 px-6 bg-muted/40">
+          <div className="max-w-5xl mx-auto">
+            <div className="text-center mb-12">
+              <h2 className="font-display text-3xl font-bold text-foreground mb-3">What Our Customers Say</h2>
+              <p className="text-muted-foreground max-w-md mx-auto">
+                Real feedback from people who trust us with their laundry.
+              </p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+              {publicReviews.map((review) => (
+                <Card
+                  key={review.id}
+                  className="border border-border/50 rounded-2xl p-6 bg-card hover:shadow-md transition-shadow"
+                  data-testid={`card-review-${review.id}`}
+                >
+                  <div className="flex gap-0.5 mb-3">
+                    {[1, 2, 3, 4, 5].map((s) => (
+                      <Star
+                        key={s}
+                        className={`w-4 h-4 ${s <= review.rating ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground/20"}`}
+                      />
+                    ))}
+                  </div>
+                  <p className="text-sm text-foreground leading-relaxed mb-4">"{review.comment}"</p>
+                  <div className="flex items-center gap-2 mt-auto">
+                    <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold">
+                      {review.customerName.charAt(0).toUpperCase()}
+                    </div>
+                    <span className="text-sm font-medium text-foreground">{review.customerName}</span>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Contact */}
       <section id="contact" className="py-20 px-6">

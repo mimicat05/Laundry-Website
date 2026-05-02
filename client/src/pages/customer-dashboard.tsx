@@ -32,7 +32,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { type Order, type PublicCustomer, type Promo, type Feedback } from "@shared/schema";
+import { type Order, type PublicCustomer, type Promo, type Feedback, type Message } from "@shared/schema";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
@@ -317,6 +317,7 @@ function SendMessageDialog({ open, onClose }: { open: boolean; onClose: () => vo
     onSuccess: () => {
       toast({ title: "Message sent!", description: "Our staff will get back to you soon." });
       setForm({ subject: "", message: "" });
+      queryClient.invalidateQueries({ queryKey: ["/api/customer/messages"] });
       onClose();
     },
     onError: (err: any) => {
@@ -859,6 +860,13 @@ export function CustomerDashboard() {
     enabled: !!customer,
   });
 
+  const { data: myMessages = [] } = useQuery<Message[]>({
+    queryKey: ["/api/customer/messages"],
+    enabled: !!customer,
+  });
+
+  const unreadReplies = myMessages.filter((m) => m.staffReply).length;
+
   const handleLogout = async () => {
     await logoutCustomer();
     setLocation("/");
@@ -885,12 +893,17 @@ export function CustomerDashboard() {
             <Button
               variant="ghost"
               size="sm"
-              className="rounded-xl gap-1.5 text-muted-foreground"
+              className="rounded-xl gap-1.5 text-muted-foreground relative"
               onClick={() => setSendMessageOpen(true)}
               data-testid="button-send-message-nav"
             >
               <MessageSquare className="w-4 h-4" />
               <span className="hidden sm:inline">Message Us</span>
+              {unreadReplies > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-primary text-primary-foreground text-[10px] font-bold rounded-full flex items-center justify-center">
+                  {unreadReplies}
+                </span>
+              )}
             </Button>
             <Button
               variant="ghost"
@@ -1007,6 +1020,55 @@ export function CustomerDashboard() {
           </div>
         )}
       </div>
+
+      {/* My Messages section */}
+      {myMessages.length > 0 && (
+        <div className="max-w-3xl mx-auto px-6 pb-10">
+          <h2 className="font-display font-semibold text-sm uppercase tracking-wide text-muted-foreground mb-3 mt-2">
+            My Messages
+          </h2>
+          <div className="space-y-3">
+            {myMessages.map((msg) => (
+              <Card key={msg.id} className="rounded-2xl border border-border/50" data-testid={`card-my-message-${msg.id}`}>
+                <div className="px-5 py-4 space-y-3">
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                      <MessageSquare className="w-4 h-4 text-primary" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                        <span className="text-sm font-semibold text-foreground">{msg.subject}</span>
+                        {msg.staffReply && (
+                          <Badge className="bg-green-500 text-white text-[10px] px-1.5 py-0 h-4 rounded-full">Replied</Badge>
+                        )}
+                        <span className="text-xs text-muted-foreground ml-auto">
+                          {new Date(msg.createdAt).toLocaleDateString("en-PH", { month: "short", day: "numeric" })}
+                        </span>
+                      </div>
+                      <p className="text-sm text-muted-foreground leading-relaxed">{msg.message}</p>
+                    </div>
+                  </div>
+                  {msg.staffReply && (
+                    <div className="ml-11 pl-3 border-l-2 border-primary/30 bg-primary/5 rounded-r-xl py-2 pr-3">
+                      <p className="text-xs font-medium text-primary mb-1">
+                        Reply from {msg.repliedByName}
+                        {msg.repliedAt && (
+                          <span className="text-muted-foreground font-normal ml-1">
+                            · {new Date(msg.repliedAt).toLocaleDateString("en-PH", { month: "short", day: "numeric" })}
+                          </span>
+                        )}
+                      </p>
+                      <p className="text-sm text-foreground leading-relaxed" data-testid={`text-staff-reply-${msg.id}`}>
+                        {msg.staffReply}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
 
       <OrderTrackingDialog
         order={selectedOrder}

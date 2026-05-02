@@ -80,10 +80,12 @@ export interface IStorage {
   createFeedback(data: InsertFeedback): Promise<Feedback>;
   // Messages
   getMessages(): Promise<Message[]>;
+  getMessagesByCustomerId(customerId: number): Promise<Message[]>;
   getUnreadMessageCount(): Promise<number>;
   createMessage(data: InsertMessage): Promise<Message>;
   markMessageRead(id: number): Promise<void>;
   markAllMessagesRead(): Promise<void>;
+  replyToMessage(id: number, staffReply: string, repliedByName: string): Promise<Message>;
 }
 
 async function logOrder(order: Order, action: string, staffName?: string) {
@@ -333,6 +335,18 @@ export class DatabaseStorage implements IStorage {
 
   async markAllMessagesRead(): Promise<void> {
     await db.update(messages).set({ isRead: true }).where(eq(messages.isRead, false));
+  }
+
+  async getMessagesByCustomerId(customerId: number): Promise<Message[]> {
+    return await db.select().from(messages).where(eq(messages.customerId, customerId)).orderBy(desc(messages.createdAt));
+  }
+
+  async replyToMessage(id: number, staffReply: string, repliedByName: string): Promise<Message> {
+    const [m] = await db.update(messages)
+      .set({ staffReply, repliedByName, repliedAt: new Date(), isRead: true })
+      .where(eq(messages.id, id))
+      .returning();
+    return m;
   }
 }
 

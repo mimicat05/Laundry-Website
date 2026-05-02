@@ -951,5 +951,38 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/messages/:id/reply", requireAuth, async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      const { reply } = req.body as { reply: string };
+      if (!reply || !reply.trim()) return res.status(400).json({ message: "Reply cannot be empty" });
+      const staffName = req.session.staffName || "Staff";
+      const updated = await storage.replyToMessage(id, reply.trim(), staffName);
+      res.json(updated);
+    } catch {
+      res.status(500).json({ message: "Failed to send reply" });
+    }
+  });
+
+  app.get("/api/customer/messages", requireCustomer, async (req, res) => {
+    try {
+      const customer = await storage.getCustomerById(req.session.customerId!);
+      if (!customer) return res.status(401).json({ message: "Not authenticated" });
+      const msgs = await storage.getMessagesByCustomerId(customer.id);
+      res.json(msgs);
+    } catch {
+      res.status(500).json({ message: "Failed to fetch messages" });
+    }
+  });
+
+  app.get("/api/public/feedback", async (_req, res) => {
+    try {
+      const all = await storage.getFeedback();
+      res.json(all);
+    } catch {
+      res.status(500).json({ message: "Failed to fetch feedback" });
+    }
+  });
+
   return httpServer;
 }
