@@ -3,7 +3,7 @@ import type { Server } from "http";
 import { storage } from "./storage";
 import { api, errorSchemas } from "@shared/routes";
 import { insertCustomerSchema, insertFeedbackSchema, insertMessageSchema, insertMessageReplySchema } from "@shared/schema";
-import { sendOrderStatusEmail, sendReceiptEmail, sendPasswordResetEmail, sendPriceUpdateEmail, sendWalkInOrderEmail } from "./email";
+import { sendOrderStatusEmail, sendOrderConfirmedEmail, sendReceiptEmail, sendPasswordResetEmail, sendWalkInOrderEmail } from "./email";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
 
@@ -561,7 +561,6 @@ export async function registerRoutes(
           : {}),
       });
       await storage.logOrderAction(order, "created");
-      await sendOrderStatusEmail(order.email, order.customerName, order.orderId, "requested");
       res.status(201).json(order);
     } catch (err) {
       if (err instanceof z.ZodError) {
@@ -623,21 +622,15 @@ export async function registerRoutes(
       let action = "edited";
       if (input.status && input.status !== existing.status) {
         action = "status_changed";
-        await sendOrderStatusEmail(order.email, order.customerName, order.orderId, order.status);
+        if (input.status === "pending") {
+          await sendOrderConfirmedEmail(order);
+        } else if (input.status === "ready_for_pickup") {
+          await sendOrderStatusEmail(order.email, order.customerName, order.orderId, "ready_for_pickup");
+        }
       } else if (input.paid !== undefined && input.paid !== existing.paid) {
         action = input.paid ? "paid" : "unpaid";
       } else if (input.promoId !== undefined && input.promoId !== existing.promoId) {
         action = input.promoId ? "discount_applied" : "discount_removed";
-      } else if (input.actualWeight && input.total && String(input.total) !== String(existing.total)) {
-        action = "edited";
-        await sendPriceUpdateEmail(
-          order.email,
-          order.customerName,
-          order.orderId,
-          String(existing.total),
-          String(order.total),
-          String(input.actualWeight)
-        );
       }
 
       await storage.logOrderAction(order, action, staffName);

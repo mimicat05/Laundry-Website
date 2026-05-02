@@ -123,6 +123,119 @@ Thank you for choosing Lavanderia Sunrise!
   }
 }
 
+export async function sendOrderConfirmedEmail(order: {
+  email: string;
+  customerName: string;
+  orderId: string;
+  contactNumber: string;
+  address: string;
+  service: string;
+  weight: string;
+  total: string;
+  notes: string | null;
+  createdAt: Date | string;
+}) {
+  const transport = getTransporter();
+  const totalFormatted = `₱${Number(order.total).toLocaleString("en-PH", { minimumFractionDigits: 2 })}`;
+  const dateReceived = new Date(order.createdAt).toLocaleString("en-PH", {
+    year: "numeric", month: "short", day: "numeric",
+    hour: "2-digit", minute: "2-digit",
+  });
+
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; background: #f9f9f9; padding: 20px; border-radius: 8px;">
+      <div style="text-align: center; margin-bottom: 20px;">
+        <h2 style="color: #333; margin: 0;">Lavanderia Sunrise</h2>
+        <p style="color: #666; margin: 5px 0;">Dacanlao, Calaca, Batangas 4212</p>
+        <p style="color: #666; margin: 5px 0; font-size: 14px;">0955 921 8921 · zareenans09@gmail.com</p>
+      </div>
+
+      <div style="background: white; padding: 20px; border-radius: 8px; border: 1px solid #ddd;">
+        <div style="text-align: center; background: #e8f5e9; border: 2px solid #4caf50; border-radius: 8px; padding: 12px; margin-bottom: 20px;">
+          <strong style="color: #2e7d32; font-size: 16px;">✓ Order Confirmed</strong>
+        </div>
+
+        <p style="color: #333;">Hi <strong>${order.customerName}</strong>,</p>
+        <p style="color: #555;">Your laundry order has been accepted! You may now drop off your clothes at our shop.</p>
+
+        <table style="width:100%;border-collapse:collapse;margin:20px 0;">
+          <tr style="background:#f5f5f5;">
+            <td style="padding:10px;color:#666;width:40%;">Order ID</td>
+            <td style="padding:10px;font-weight:bold;color:#333;">${order.orderId}</td>
+          </tr>
+          <tr>
+            <td style="padding:10px;color:#666;">Service</td>
+            <td style="padding:10px;color:#333;">${order.service}</td>
+          </tr>
+          <tr style="background:#f5f5f5;">
+            <td style="padding:10px;color:#666;">Contact</td>
+            <td style="padding:10px;color:#333;">${order.contactNumber}</td>
+          </tr>
+          <tr>
+            <td style="padding:10px;color:#666;">Address</td>
+            <td style="padding:10px;color:#333;">${order.address}</td>
+          </tr>
+          ${order.notes ? `
+          <tr style="background:#f5f5f5;">
+            <td style="padding:10px;color:#666;">Notes</td>
+            <td style="padding:10px;color:#333;">${order.notes}</td>
+          </tr>` : ""}
+          <tr style="background:#f5f5f5;">
+            <td style="padding:10px;color:#666;">Date</td>
+            <td style="padding:10px;color:#333;">${dateReceived}</td>
+          </tr>
+          <tr>
+            <td style="padding:10px;color:#666;font-weight:bold;">Estimated Total</td>
+            <td style="padding:10px;font-weight:bold;color:#333;font-size:16px;">${totalFormatted}</td>
+          </tr>
+        </table>
+
+        <p style="color:#666;font-size:13px;">The final total may vary based on the actual weight of your laundry.</p>
+        <hr style="border:none;border-top:1px solid #eee;margin:20px 0;">
+        <p style="color:#999;font-size:12px;text-align:center;">Thank you for choosing Lavanderia Sunrise!</p>
+      </div>
+    </div>
+  `;
+
+  const text = `
+ORDER CONFIRMED – Lavanderia Sunrise
+Dacanlao, Calaca, Batangas 4212
+
+Hi ${order.customerName},
+
+Your laundry order has been accepted! You may now drop off your clothes at our shop.
+
+Order ID:          ${order.orderId}
+Service:           ${order.service}
+Contact:           ${order.contactNumber}
+Address:           ${order.address}${order.notes ? `\nNotes:             ${order.notes}` : ""}
+Date:              ${dateReceived}
+Estimated Total:   ${totalFormatted}
+
+The final total may vary based on the actual weight of your laundry.
+
+Thank you for choosing Lavanderia Sunrise!
+  `;
+
+  if (!transport) {
+    console.log(`[Email Disabled] Would send order confirmation to ${order.email}`);
+    return;
+  }
+
+  try {
+    await transport.sendMail({
+      from: process.env.GMAIL_USER,
+      to: order.email,
+      subject: `Lavanderia Sunrise – Order Confirmed (${order.orderId})`,
+      html,
+      text,
+    });
+    console.log(`✅ Order confirmation email sent to ${order.email}`);
+  } catch (error) {
+    console.error(`❌ Failed to send order confirmation email to ${order.email}:`, error);
+  }
+}
+
 export async function sendPasswordResetEmail(email: string, customerName: string, resetLink: string) {
   const transport = getTransporter();
   if (!transport) {
