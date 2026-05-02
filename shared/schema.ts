@@ -160,3 +160,16 @@ export const messages = pgTable("messages", {
 export const insertMessageSchema = createInsertSchema(messages).omit({ id: true, createdAt: true, subject: true, staffReply: true, repliedAt: true, repliedByName: true });
 export type Message = typeof messages.$inferSelect;
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
+
+export const messageReplies = pgTable("message_replies", {
+  id: serial("id").primaryKey(),
+  messageId: integer("message_id").notNull(),
+  senderType: text("sender_type").notNull(), // "customer" | "staff"
+  senderName: text("sender_name").notNull(),
+  body: text("body").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertMessageReplySchema = createInsertSchema(messageReplies).omit({ id: true, createdAt: true });
+export type MessageReply = typeof messageReplies.$inferSelect;
+export type InsertMessageReply = z.infer<typeof insertMessageReplySchema>;

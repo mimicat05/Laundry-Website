@@ -32,7 +32,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { type Order, type PublicCustomer, type Promo, type Feedback, type Message } from "@shared/schema";
+import { type Order, type PublicCustomer, type Promo, type Feedback, type Message, type MessageReply } from "@shared/schema";
+import { format } from "date-fns";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
@@ -305,6 +306,122 @@ function StarPicker({ value, onChange }: { value: number; onChange: (v: number) 
         </button>
       ))}
     </div>
+  );
+}
+
+function MessageThread({ msg }: { msg: Message }) {
+  const [expanded, setExpanded] = useState(false);
+  const [replyText, setReplyText] = useState("");
+  const { toast } = useToast();
+
+  const { data: replies = [], isLoading: loadingReplies } = useQuery<MessageReply[]>({
+    queryKey: ["/api/customer/messages", msg.id, "replies"],
+    queryFn: () => fetch(`/api/customer/messages/${msg.id}/replies`).then((r) => r.json()),
+    enabled: expanded,
+    refetchInterval: expanded ? 4000 : false,
+  });
+
+  const sendReply = useMutation({
+    mutationFn: (reply: string) =>
+      apiRequest("POST", `/api/customer/messages/${msg.id}/reply`, { reply }).then((r) => r.json()),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/customer/messages", msg.id, "replies"] });
+      setReplyText("");
+    },
+    onError: (err: Error) => {
+      toast({ title: "Failed to send reply", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      if (replyText.trim()) sendReply.mutate(replyText);
+    }
+  };
+
+  return (
+    <Card className="rounded-2xl border border-border/50" data-testid={`card-my-message-${msg.id}`}>
+      {/* Header – click to expand */}
+      <button
+        className="w-full text-left px-5 pt-4 pb-3"
+        onClick={() => setExpanded((v) => !v)}
+        data-testid={`button-expand-thread-${msg.id}`}
+      >
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+            <MessageSquare className="w-4 h-4 text-primary" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap mb-0.5">
+              <span className="text-xs font-semibold text-foreground">Your message</span>
+              <span className="text-xs text-muted-foreground ml-auto">
+                {format(new Date(msg.createdAt), "MMM d, yyyy · h:mm a")}
+              </span>
+            </div>
+            {!expanded && (
+              <p className="text-sm text-muted-foreground truncate">{msg.message}</p>
+            )}
+          </div>
+        </div>
+      </button>
+
+      {/* Thread */}
+      {expanded && (
+        <div className="px-5 pb-4 border-t border-border/40 pt-3 space-y-3">
+          {/* Original bubble (customer) */}
+          <div className="flex justify-end">
+            <div className="max-w-[80%] bg-primary text-primary-foreground rounded-2xl rounded-tr-sm px-3 py-2">
+              <p className="text-[11px] font-semibold text-primary-foreground/70 mb-1">You</p>
+              <p className="text-sm leading-relaxed">{msg.message}</p>
+              <p className="text-[10px] text-primary-foreground/60 mt-1">{format(new Date(msg.createdAt), "MMM d · h:mm a")}</p>
+            </div>
+          </div>
+
+          {/* Reply bubbles */}
+          {loadingReplies ? (
+            <div className="flex justify-center py-2">
+              <span className="text-xs text-muted-foreground animate-pulse">Loading…</span>
+            </div>
+          ) : (
+            replies.map((r) => (
+              <div key={r.id} className={`flex ${r.senderType === "customer" ? "justify-end" : "justify-start"}`}>
+                <div className={`max-w-[80%] rounded-2xl px-3 py-2 ${r.senderType === "customer" ? "bg-primary text-primary-foreground rounded-tr-sm" : "bg-muted text-foreground rounded-tl-sm"}`}>
+                  <p className={`text-[11px] font-semibold mb-1 ${r.senderType === "customer" ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
+                    {r.senderType === "customer" ? "You" : r.senderName}
+                  </p>
+                  <p className="text-sm leading-relaxed">{r.body}</p>
+                  <p className={`text-[10px] mt-1 ${r.senderType === "customer" ? "text-primary-foreground/60" : "text-muted-foreground"}`}>
+                    {format(new Date(r.createdAt), "MMM d · h:mm a")}
+                  </p>
+                </div>
+              </div>
+            ))
+          )}
+
+          {/* Reply input */}
+          <div className="flex gap-2 pt-1">
+            <Textarea
+              value={replyText}
+              onChange={(e) => setReplyText(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Reply… (Enter to send)"
+              className="text-sm min-h-[56px] resize-none"
+              data-testid={`input-thread-reply-${msg.id}`}
+            />
+            <Button
+              size="sm"
+              className="self-end h-9 px-3"
+              onClick={() => sendReply.mutate(replyText)}
+              disabled={sendReply.isPending || !replyText.trim()}
+              data-testid={`button-send-thread-reply-${msg.id}`}
+            >
+              <Send className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+      )}
+    </Card>
   );
 }
 
@@ -853,7 +970,7 @@ export function CustomerDashboard() {
     enabled: !!customer,
   });
 
-  const unreadReplies = myMessages.filter((m) => m.staffReply).length;
+  const unreadReplies = myMessages.length;
 
   const handleLogout = async () => {
     await logoutCustomer();
@@ -1017,41 +1134,7 @@ export function CustomerDashboard() {
           </h2>
           <div className="space-y-3">
             {myMessages.map((msg) => (
-              <Card key={msg.id} className="rounded-2xl border border-border/50" data-testid={`card-my-message-${msg.id}`}>
-                <div className="px-5 py-4 space-y-3">
-                  <div className="flex items-start gap-3">
-                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                      <MessageSquare className="w-4 h-4 text-primary" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap mb-1">
-                        {msg.staffReply && (
-                          <Badge className="bg-green-500 text-white text-[10px] px-1.5 py-0 h-4 rounded-full">Replied</Badge>
-                        )}
-                        <span className="text-xs text-muted-foreground ml-auto">
-                          {new Date(msg.createdAt).toLocaleDateString("en-PH", { month: "short", day: "numeric" })}
-                        </span>
-                      </div>
-                      <p className="text-sm text-muted-foreground leading-relaxed">{msg.message}</p>
-                    </div>
-                  </div>
-                  {msg.staffReply && (
-                    <div className="ml-11 pl-3 border-l-2 border-primary/30 bg-primary/5 rounded-r-xl py-2 pr-3">
-                      <p className="text-xs font-medium text-primary mb-1">
-                        Reply from {msg.repliedByName}
-                        {msg.repliedAt && (
-                          <span className="text-muted-foreground font-normal ml-1">
-                            · {new Date(msg.repliedAt).toLocaleDateString("en-PH", { month: "short", day: "numeric" })}
-                          </span>
-                        )}
-                      </p>
-                      <p className="text-sm text-foreground leading-relaxed" data-testid={`text-staff-reply-${msg.id}`}>
-                        {msg.staffReply}
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </Card>
+              <MessageThread key={msg.id} msg={msg} />
             ))}
           </div>
         </div>

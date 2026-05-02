@@ -2,7 +2,7 @@ import type { Express } from "express";
 import type { Server } from "http";
 import { storage } from "./storage";
 import { api, errorSchemas } from "@shared/routes";
-import { insertCustomerSchema, insertFeedbackSchema, insertMessageSchema } from "@shared/schema";
+import { insertCustomerSchema, insertFeedbackSchema, insertMessageSchema, insertMessageReplySchema } from "@shared/schema";
 import { sendOrderStatusEmail, sendReceiptEmail, sendPasswordResetEmail, sendPriceUpdateEmail, sendWalkInOrderEmail } from "./email";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
@@ -960,16 +960,33 @@ export async function registerRoutes(
     }
   });
 
+  // Staff sends a reply to a message thread
   app.post("/api/messages/:id/reply", requireAuth, async (req, res) => {
     try {
       const id = Number(req.params.id);
       const { reply } = req.body as { reply: string };
       if (!reply || !reply.trim()) return res.status(400).json({ message: "Reply cannot be empty" });
       const staffName = req.session.staffName || "Staff";
-      const updated = await storage.replyToMessage(id, reply.trim(), staffName);
-      res.json(updated);
+      const newReply = await storage.createMessageReply({
+        messageId: id,
+        senderType: "staff",
+        senderName: staffName,
+        body: reply.trim(),
+      });
+      await storage.markMessageRead(id);
+      res.json(newReply);
     } catch {
       res.status(500).json({ message: "Failed to send reply" });
+    }
+  });
+
+  // Staff fetches replies for a thread
+  app.get("/api/messages/:id/replies", requireAuth, async (req, res) => {
+    try {
+      const replies = await storage.getMessageReplies(Number(req.params.id));
+      res.json(replies);
+    } catch {
+      res.status(500).json({ message: "Failed to fetch replies" });
     }
   });
 
@@ -981,6 +998,42 @@ export async function registerRoutes(
       res.json(msgs);
     } catch {
       res.status(500).json({ message: "Failed to fetch messages" });
+    }
+  });
+
+  // Customer fetches replies for their own thread
+  app.get("/api/customer/messages/:id/replies", requireCustomer, async (req, res) => {
+    try {
+      const customer = await storage.getCustomerById(req.session.customerId!);
+      if (!customer) return res.status(401).json({ message: "Not authenticated" });
+      const msg = await storage.getMessages().then(all => all.find(m => m.id === Number(req.params.id)));
+      if (!msg || msg.customerId !== customer.id) return res.status(403).json({ message: "Not your message" });
+      const replies = await storage.getMessageReplies(Number(req.params.id));
+      res.json(replies);
+    } catch {
+      res.status(500).json({ message: "Failed to fetch replies" });
+    }
+  });
+
+  // Customer sends a reply in an existing thread
+  app.post("/api/customer/messages/:id/reply", requireCustomer, async (req, res) => {
+    try {
+      const customer = await storage.getCustomerById(req.session.customerId!);
+      if (!customer) return res.status(401).json({ message: "Not authenticated" });
+      const msg = await storage.getMessages().then(all => all.find(m => m.id === Number(req.params.id)));
+      if (!msg || msg.customerId !== customer.id) return res.status(403).json({ message: "Not your message" });
+      const { reply } = req.body as { reply: string };
+      if (!reply || !reply.trim()) return res.status(400).json({ message: "Reply cannot be empty" });
+      const newReply = await storage.createMessageReply({
+        messageId: Number(req.params.id),
+        senderType: "customer",
+        senderName: customer.name,
+        body: reply.trim(),
+      });
+      await storage.markMessageUnread(Number(req.params.id));
+      res.json(newReply);
+    } catch {
+      res.status(500).json({ message: "Failed to send reply" });
     }
   });
 

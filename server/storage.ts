@@ -10,6 +10,7 @@ import {
   shopSettings,
   feedback,
   messages,
+  messageReplies,
   type InsertOrder,
   type Order,
   type OrderLog,
@@ -29,8 +30,10 @@ import {
   type InsertFeedback,
   type Message,
   type InsertMessage,
+  type MessageReply,
+  type InsertMessageReply,
 } from "@shared/schema";
-import { eq, isNull, isNotNull, desc, lt } from "drizzle-orm";
+import { eq, isNull, isNotNull, desc, asc, lt } from "drizzle-orm";
 
 export interface IStorage {
   getOrders(): Promise<Order[]>;
@@ -87,6 +90,10 @@ export interface IStorage {
   markMessageRead(id: number): Promise<void>;
   markAllMessagesRead(): Promise<void>;
   replyToMessage(id: number, staffReply: string, repliedByName: string): Promise<Message>;
+  // Message Replies (threaded)
+  getMessageReplies(messageId: number): Promise<MessageReply[]>;
+  createMessageReply(data: InsertMessageReply): Promise<MessageReply>;
+  markMessageUnread(id: number): Promise<void>;
 }
 
 async function logOrder(order: Order, action: string, staffName?: string) {
@@ -352,6 +359,19 @@ export class DatabaseStorage implements IStorage {
       .where(eq(messages.id, id))
       .returning();
     return m;
+  }
+
+  async getMessageReplies(messageId: number): Promise<MessageReply[]> {
+    return await db.select().from(messageReplies).where(eq(messageReplies.messageId, messageId)).orderBy(asc(messageReplies.createdAt));
+  }
+
+  async createMessageReply(data: InsertMessageReply): Promise<MessageReply> {
+    const [r] = await db.insert(messageReplies).values(data).returning();
+    return r;
+  }
+
+  async markMessageUnread(id: number): Promise<void> {
+    await db.update(messages).set({ isRead: false }).where(eq(messages.id, id));
   }
 }
 
