@@ -83,7 +83,6 @@ function MessageCard({ msg }: { msg: Message }) {
                 {format(new Date(msg.createdAt), "MMM d, yyyy · h:mm a")}
               </span>
             </div>
-            <p className="text-sm font-medium text-foreground mt-0.5">{msg.subject}</p>
             <p className="text-sm text-muted-foreground mt-1 leading-relaxed">{msg.message}</p>
 
             {msg.staffReply && (

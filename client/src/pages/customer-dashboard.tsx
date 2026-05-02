@@ -310,13 +310,13 @@ function StarPicker({ value, onChange }: { value: number; onChange: (v: number) 
 
 function SendMessageDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { toast } = useToast();
-  const [form, setForm] = useState({ subject: "", message: "" });
+  const [message, setMessage] = useState("");
 
   const sendMutation = useMutation({
-    mutationFn: () => apiRequest("POST", "/api/customer/messages", form).then((r) => r.json()),
+    mutationFn: () => apiRequest("POST", "/api/customer/messages", { message }).then((r) => r.json()),
     onSuccess: () => {
       toast({ title: "Message sent!", description: "Our staff will get back to you soon." });
-      setForm({ subject: "", message: "" });
+      setMessage("");
       queryClient.invalidateQueries({ queryKey: ["/api/customer/messages"] });
       onClose();
     },
@@ -327,12 +327,12 @@ function SendMessageDialog({ open, onClose }: { open: boolean; onClose: () => vo
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.subject.trim() || !form.message.trim()) return;
+    if (!message.trim()) return;
     sendMutation.mutate();
   };
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { if (!v) { setForm({ subject: "", message: "" }); onClose(); } }}>
+    <Dialog open={open} onOpenChange={(v) => { if (!v) { setMessage(""); onClose(); } }}>
       <DialogContent className="max-w-md rounded-3xl">
         <DialogHeader>
           <DialogTitle className="font-display text-xl flex items-center gap-2">
@@ -343,25 +343,13 @@ function SendMessageDialog({ open, onClose }: { open: boolean; onClose: () => vo
         <p className="text-sm text-muted-foreground">Have a question or concern? Send us a message and we'll get back to you.</p>
         <form onSubmit={handleSubmit} className="space-y-4 mt-1">
           <div className="space-y-1.5">
-            <Label htmlFor="msg-subject">Subject</Label>
-            <Input
-              id="msg-subject"
-              data-testid="input-message-subject"
-              placeholder="e.g. Question about my order"
-              value={form.subject}
-              onChange={(e) => setForm((f) => ({ ...f, subject: e.target.value }))}
-              className="rounded-xl"
-              required
-            />
-          </div>
-          <div className="space-y-1.5">
             <Label htmlFor="msg-body">Message</Label>
             <Textarea
               id="msg-body"
               data-testid="input-message-body"
               placeholder="Write your message here..."
-              value={form.message}
-              onChange={(e) => setForm((f) => ({ ...f, message: e.target.value }))}
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
               className="rounded-xl min-h-[120px] resize-none"
               required
             />
@@ -373,7 +361,7 @@ function SendMessageDialog({ open, onClose }: { open: boolean; onClose: () => vo
             <Button
               type="submit"
               className="rounded-xl gap-2"
-              disabled={sendMutation.isPending || !form.subject.trim() || !form.message.trim()}
+              disabled={sendMutation.isPending || !message.trim()}
               data-testid="button-send-message"
             >
               {sendMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
@@ -1036,8 +1024,7 @@ export function CustomerDashboard() {
                       <MessageSquare className="w-4 h-4 text-primary" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap mb-0.5">
-                        <span className="text-sm font-semibold text-foreground">{msg.subject}</span>
+                      <div className="flex items-center gap-2 flex-wrap mb-1">
                         {msg.staffReply && (
                           <Badge className="bg-green-500 text-white text-[10px] px-1.5 py-0 h-4 rounded-full">Replied</Badge>
                         )}

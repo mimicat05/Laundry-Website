@@ -148,7 +148,7 @@ export const messages = pgTable("messages", {
   id: serial("id").primaryKey(),
   customerId: integer("customer_id").notNull(),
   customerName: text("customer_name").notNull(),
-  subject: text("subject").notNull(),
+  subject: text("subject").notNull().default(""),
   message: text("message").notNull(),
   isRead: boolean("is_read").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -157,6 +157,6 @@ export const messages = pgTable("messages", {
   repliedByName: text("replied_by_name"),
 });
 
-export const insertMessageSchema = createInsertSchema(messages).omit({ id: true, createdAt: true, staffReply: true, repliedAt: true, repliedByName: true });
+export const insertMessageSchema = createInsertSchema(messages).omit({ id: true, createdAt: true, subject: true, staffReply: true, repliedAt: true, repliedByName: true });
 export type Message = typeof messages.$inferSelect;
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
