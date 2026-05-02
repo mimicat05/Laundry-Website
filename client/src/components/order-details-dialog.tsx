@@ -104,7 +104,40 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsPr
     }
   }, [watchedService, watchedWeight, isEditing, form, activeServices]);
 
+  const [showPhotoModal, setShowPhotoModal] = useState(false);
+
+  const claimReviewMutation = useMutation({
+    mutationFn: ({ action, promoId, promoName, discount }: { action: "approve" | "reject"; promoId?: number; promoName?: string; discount?: number }) =>
+      apiRequest("POST", `/api/orders/${order!.id}/promo-claim-review`, { action, promoId, promoName, discount }).then((r) => r.json()),
+    onSuccess: (_, vars) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
+      toast({
+        title: vars.action === "approve" ? "Promo Claim Approved" : "Promo Claim Rejected",
+        description: vars.action === "approve"
+          ? "The discount has been applied to this order."
+          : "The customer's promo claim has been rejected.",
+      });
+    },
+    onError: (err: any) => {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    },
+  });
+
   if (!order) return null;
+
+  const handleApproveClaim = () => {
+    const matchingPromo = activePromos.find((p) => p.name === order.promoClaimName);
+    claimReviewMutation.mutate({
+      action: "approve",
+      promoId: matchingPromo?.id,
+      promoName: matchingPromo?.name ?? order.promoClaimName ?? "",
+      discount: matchingPromo ? Number(matchingPromo.discount) : 0,
+    });
+  };
+
+  const handleRejectClaim = () => {
+    claimReviewMutation.mutate({ action: "reject" });
+  };
 
   const baseTotal = order.discountAmount
     ? parseFloat(String(order.total)) + parseFloat(String(order.discountAmount))
@@ -177,41 +210,6 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsPr
         onError: (err) => toast({ title: "Error", description: err.message, variant: "destructive" }),
       });
     }
-  };
-
-  const [showPhotoModal, setShowPhotoModal] = useState(false);
-
-  const claimReviewMutation = useMutation({
-    mutationFn: ({ action, promoId, promoName, discount }: { action: "approve" | "reject"; promoId?: number; promoName?: string; discount?: number }) =>
-      apiRequest("POST", `/api/orders/${order!.id}/promo-claim-review`, { action, promoId, promoName, discount }).then((r) => r.json()),
-    onSuccess: (_, vars) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/orders", order!.id] });
-      toast({
-        title: vars.action === "approve" ? "Promo Claim Approved" : "Promo Claim Rejected",
-        description: vars.action === "approve"
-          ? "The discount has been applied to this order."
-          : "The customer's promo claim has been rejected.",
-      });
-    },
-    onError: (err: any) => {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
-    },
-  });
-
-  const handleApproveClaim = () => {
-    if (!order) return;
-    const matchingPromo = activePromos.find((p) => p.name === order.promoClaimName);
-    claimReviewMutation.mutate({
-      action: "approve",
-      promoId: matchingPromo?.id,
-      promoName: matchingPromo?.name ?? order.promoClaimName ?? "",
-      discount: matchingPromo ? Number(matchingPromo.discount) : 0,
-    });
-  };
-
-  const handleRejectClaim = () => {
-    claimReviewMutation.mutate({ action: "reject" });
   };
 
   const handleSaveEdit = (data: EditValues) => {
