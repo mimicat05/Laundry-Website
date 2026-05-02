@@ -63,8 +63,18 @@ const OwnerRoute = ({ component: Component, ...rest }: any) => {
   );
 };
 
+function ScrollToTop() {
+  const [location] = useLocation();
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [location]);
+  return null;
+}
+
 function Router() {
   return (
+    <>
+      <ScrollToTop />
     <Switch>
       {/* Public landing page */}
       <Route path="/" component={Landing} />
@@ -191,6 +201,7 @@ function Router() {
 
       <Route component={NotFound} />
     </Switch>
+    </>
   );
 }
 
