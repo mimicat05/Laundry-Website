@@ -32,8 +32,9 @@ import {
   type InsertMessage,
   type MessageReply,
   type InsertMessageReply,
+  type ConversationEntry,
 } from "@shared/schema";
-import { eq, isNull, isNotNull, desc, asc, lt } from "drizzle-orm";
+import { eq, isNull, isNotNull, desc, asc, lt, inArray } from "drizzle-orm";
 
 export interface IStorage {
   getOrders(): Promise<Order[]>;
@@ -94,6 +95,9 @@ export interface IStorage {
   getMessageReplies(messageId: number): Promise<MessageReply[]>;
   createMessageReply(data: InsertMessageReply): Promise<MessageReply>;
   markMessageUnread(id: number): Promise<void>;
+  // Unified conversation
+  getCustomerConversation(customerId: number): Promise<ConversationEntry[]>;
+  sendConversationMessage(customerId: number, customerName: string, body: string): Promise<void>;
 }
 
 async function logOrder(order: Order, action: string, staffName?: string) {
@@ -372,6 +376,49 @@ export class DatabaseStorage implements IStorage {
 
   async markMessageUnread(id: number): Promise<void> {
     await db.update(messages).set({ isRead: false }).where(eq(messages.id, id));
+  }
+
+  async getCustomerConversation(customerId: number): Promise<ConversationEntry[]> {
+    const msgs = await db.select().from(messages).where(eq(messages.customerId, customerId));
+    const entries: ConversationEntry[] = msgs.map((m) => ({
+      id: m.id,
+      entryType: "message" as const,
+      senderType: "customer" as const,
+      senderName: m.customerName,
+      body: m.message,
+      createdAt: m.createdAt.toISOString(),
+    }));
+    if (msgs.length > 0) {
+      const msgIds = msgs.map((m) => m.id);
+      const replies = await db.select().from(messageReplies).where(inArray(messageReplies.messageId, msgIds));
+      replies.forEach((r) =>
+        entries.push({
+          id: r.id,
+          entryType: "reply" as const,
+          senderType: r.senderType as "customer" | "staff",
+          senderName: r.senderName,
+          body: r.body,
+          createdAt: r.createdAt.toISOString(),
+        })
+      );
+    }
+    return entries.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+  }
+
+  async sendConversationMessage(customerId: number, customerName: string, body: string): Promise<void> {
+    const existing = await db
+      .select()
+      .from(messages)
+      .where(eq(messages.customerId, customerId))
+      .orderBy(asc(messages.id))
+      .limit(1);
+    if (existing.length === 0) {
+      await db.insert(messages).values({ customerId, customerName, message: body, subject: "", isRead: false });
+    } else {
+      const threadId = existing[0].id;
+      await db.insert(messageReplies).values({ messageId: threadId, senderType: "customer", senderName: customerName, body });
+      await db.update(messages).set({ isRead: false }).where(eq(messages.id, threadId));
+    }
   }
 }
 

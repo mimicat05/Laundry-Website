@@ -173,3 +173,12 @@ export const messageReplies = pgTable("message_replies", {
 export const insertMessageReplySchema = createInsertSchema(messageReplies).omit({ id: true, createdAt: true });
 export type MessageReply = typeof messageReplies.$inferSelect;
 export type InsertMessageReply = z.infer<typeof insertMessageReplySchema>;
+
+export type ConversationEntry = {
+  id: number;
+  entryType: "message" | "reply";
+  senderType: "customer" | "staff";
+  senderName: string;
+  body: string;
+  createdAt: string;
+};

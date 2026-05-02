@@ -1037,6 +1037,31 @@ export async function registerRoutes(
     }
   });
 
+  // Unified customer conversation
+  app.get("/api/customer/conversation", requireCustomer, async (req, res) => {
+    try {
+      const customer = await storage.getCustomerById(req.session.customerId!);
+      if (!customer) return res.status(401).json({ message: "Not authenticated" });
+      const entries = await storage.getCustomerConversation(customer.id);
+      res.json(entries);
+    } catch {
+      res.status(500).json({ message: "Failed to fetch conversation" });
+    }
+  });
+
+  app.post("/api/customer/conversation", requireCustomer, async (req, res) => {
+    try {
+      const customer = await storage.getCustomerById(req.session.customerId!);
+      if (!customer) return res.status(401).json({ message: "Not authenticated" });
+      const { message } = req.body as { message: string };
+      if (!message || !message.trim()) return res.status(400).json({ message: "Message cannot be empty" });
+      await storage.sendConversationMessage(customer.id, customer.name, message.trim());
+      res.status(201).json({ ok: true });
+    } catch {
+      res.status(500).json({ message: "Failed to send message" });
+    }
+  });
+
   app.get("/api/public/feedback", async (_req, res) => {
     try {
       const all = await storage.getFeedback();

@@ -32,7 +32,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { type Order, type PublicCustomer, type Promo, type Feedback, type Message, type MessageReply } from "@shared/schema";
+import { type Order, type PublicCustomer, type Promo, type Feedback, type Message, type ConversationEntry } from "@shared/schema";
 import { format } from "date-fns";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -309,183 +309,105 @@ function StarPicker({ value, onChange }: { value: number; onChange: (v: number) 
   );
 }
 
-function MessageThread({ msg }: { msg: Message }) {
-  const [expanded, setExpanded] = useState(false);
-  const [replyText, setReplyText] = useState("");
+function ConversationDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const [text, setText] = useState("");
   const { toast } = useToast();
+  const bottomRef = useRef<HTMLDivElement>(null);
 
-  const { data: replies = [], isLoading: loadingReplies } = useQuery<MessageReply[]>({
-    queryKey: ["/api/customer/messages", msg.id, "replies"],
-    queryFn: () => fetch(`/api/customer/messages/${msg.id}/replies`).then((r) => r.json()),
-    enabled: expanded,
-    refetchInterval: expanded ? 4000 : false,
+  const { data: entries = [], isLoading } = useQuery<ConversationEntry[]>({
+    queryKey: ["/api/customer/conversation"],
+    queryFn: () => fetch("/api/customer/conversation").then((r) => r.json()),
+    enabled: open,
+    refetchInterval: open ? 4000 : false,
   });
 
-  const sendReply = useMutation({
-    mutationFn: (reply: string) =>
-      apiRequest("POST", `/api/customer/messages/${msg.id}/reply`, { reply }).then((r) => r.json()),
+  const sendMutation = useMutation({
+    mutationFn: (message: string) =>
+      apiRequest("POST", "/api/customer/conversation", { message }).then((r) => r.json()),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/customer/messages", msg.id, "replies"] });
-      setReplyText("");
+      queryClient.invalidateQueries({ queryKey: ["/api/customer/conversation"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/customer/messages"] });
+      setText("");
     },
     onError: (err: Error) => {
-      toast({ title: "Failed to send reply", description: err.message, variant: "destructive" });
+      toast({ title: "Failed to send", description: err.message, variant: "destructive" });
     },
   });
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      if (replyText.trim()) sendReply.mutate(replyText);
+      if (text.trim()) sendMutation.mutate(text);
     }
   };
 
-  return (
-    <Card className="rounded-2xl border border-border/50" data-testid={`card-my-message-${msg.id}`}>
-      {/* Header – click to expand */}
-      <button
-        className="w-full text-left px-5 pt-4 pb-3"
-        onClick={() => setExpanded((v) => !v)}
-        data-testid={`button-expand-thread-${msg.id}`}
-      >
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-            <MessageSquare className="w-4 h-4 text-primary" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap mb-0.5">
-              <span className="text-xs font-semibold text-foreground">Your message</span>
-              <span className="text-xs text-muted-foreground ml-auto">
-                {format(new Date(msg.createdAt), "MMM d, yyyy · h:mm a")}
-              </span>
-            </div>
-            {!expanded && (
-              <p className="text-sm text-muted-foreground truncate">{msg.message}</p>
-            )}
-          </div>
-        </div>
-      </button>
-
-      {/* Thread */}
-      {expanded && (
-        <div className="px-5 pb-4 border-t border-border/40 pt-3 space-y-3">
-          {/* Original bubble (customer) */}
-          <div className="flex justify-end">
-            <div className="max-w-[80%] bg-primary text-primary-foreground rounded-2xl rounded-tr-sm px-3 py-2">
-              <p className="text-[11px] font-semibold text-primary-foreground/70 mb-1">You</p>
-              <p className="text-sm leading-relaxed">{msg.message}</p>
-              <p className="text-[10px] text-primary-foreground/60 mt-1">{format(new Date(msg.createdAt), "MMM d · h:mm a")}</p>
-            </div>
-          </div>
-
-          {/* Reply bubbles */}
-          {loadingReplies ? (
-            <div className="flex justify-center py-2">
-              <span className="text-xs text-muted-foreground animate-pulse">Loading…</span>
-            </div>
-          ) : (
-            replies.map((r) => (
-              <div key={r.id} className={`flex ${r.senderType === "customer" ? "justify-end" : "justify-start"}`}>
-                <div className={`max-w-[80%] rounded-2xl px-3 py-2 ${r.senderType === "customer" ? "bg-primary text-primary-foreground rounded-tr-sm" : "bg-muted text-foreground rounded-tl-sm"}`}>
-                  <p className={`text-[11px] font-semibold mb-1 ${r.senderType === "customer" ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
-                    {r.senderType === "customer" ? "You" : r.senderName}
-                  </p>
-                  <p className="text-sm leading-relaxed">{r.body}</p>
-                  <p className={`text-[10px] mt-1 ${r.senderType === "customer" ? "text-primary-foreground/60" : "text-muted-foreground"}`}>
-                    {format(new Date(r.createdAt), "MMM d · h:mm a")}
-                  </p>
-                </div>
-              </div>
-            ))
-          )}
-
-          {/* Reply input */}
-          <div className="flex gap-2 pt-1">
-            <Textarea
-              value={replyText}
-              onChange={(e) => setReplyText(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Reply… (Enter to send)"
-              className="text-sm min-h-[56px] resize-none"
-              data-testid={`input-thread-reply-${msg.id}`}
-            />
-            <Button
-              size="sm"
-              className="self-end h-9 px-3"
-              onClick={() => sendReply.mutate(replyText)}
-              disabled={sendReply.isPending || !replyText.trim()}
-              data-testid={`button-send-thread-reply-${msg.id}`}
-            >
-              <Send className="w-4 h-4" />
-            </Button>
-          </div>
-        </div>
-      )}
-    </Card>
-  );
-}
-
-function SendMessageDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { toast } = useToast();
-  const [message, setMessage] = useState("");
-
-  const sendMutation = useMutation({
-    mutationFn: () => apiRequest("POST", "/api/customer/messages", { message }).then((r) => r.json()),
-    onSuccess: () => {
-      toast({ title: "Message sent!", description: "Our staff will get back to you soon." });
-      setMessage("");
-      queryClient.invalidateQueries({ queryKey: ["/api/customer/messages"] });
-      onClose();
-    },
-    onError: (err: any) => {
-      toast({ title: "Could not send message", description: err.message, variant: "destructive" });
-    },
+  useState(() => {
+    if (entries.length > 0) {
+      setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
+    }
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!message.trim()) return;
-    sendMutation.mutate();
-  };
-
   return (
-    <Dialog open={open} onOpenChange={(v) => { if (!v) { setMessage(""); onClose(); } }}>
-      <DialogContent className="max-w-md rounded-3xl">
-        <DialogHeader>
-          <DialogTitle className="font-display text-xl flex items-center gap-2">
+    <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
+      <DialogContent className="max-w-md rounded-3xl p-0 overflow-hidden flex flex-col" style={{ maxHeight: "80vh" }}>
+        <DialogHeader className="px-5 pt-5 pb-3 border-b border-border/50 shrink-0">
+          <DialogTitle className="font-display text-lg flex items-center gap-2">
             <MessageSquare className="w-5 h-5 text-primary" />
-            Send a Message
+            Chat with us
           </DialogTitle>
         </DialogHeader>
-        <p className="text-sm text-muted-foreground">Have a question or concern? Send us a message and we'll get back to you.</p>
-        <form onSubmit={handleSubmit} className="space-y-4 mt-1">
-          <div className="space-y-1.5">
-            <Label htmlFor="msg-body">Message</Label>
-            <Textarea
-              id="msg-body"
-              data-testid="input-message-body"
-              placeholder="Write your message here..."
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              className="rounded-xl min-h-[120px] resize-none"
-              required
-            />
-          </div>
-          <DialogFooter className="pt-1">
-            <Button type="button" variant="outline" className="rounded-xl" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              className="rounded-xl gap-2"
-              disabled={sendMutation.isPending || !message.trim()}
-              data-testid="button-send-message"
-            >
-              {sendMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-              Send Message
-            </Button>
-          </DialogFooter>
-        </form>
+
+        {/* Chat area */}
+        <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3 min-h-0">
+          {isLoading ? (
+            <div className="flex justify-center items-center h-32">
+              <span className="text-sm text-muted-foreground animate-pulse">Loading…</span>
+            </div>
+          ) : entries.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-32 gap-2 text-center">
+              <MessageSquare className="w-8 h-8 text-muted-foreground/30" />
+              <p className="text-sm text-muted-foreground">No messages yet. Say hello!</p>
+            </div>
+          ) : (
+            entries.map((e) => {
+              const isMe = e.senderType === "customer";
+              return (
+                <div key={`${e.entryType}-${e.id}`} className={`flex ${isMe ? "justify-end" : "justify-start"}`}>
+                  <div className={`max-w-[78%] rounded-2xl px-3 py-2 ${isMe ? "bg-primary text-primary-foreground rounded-tr-sm" : "bg-muted text-foreground rounded-tl-sm"}`}>
+                    {!isMe && (
+                      <p className="text-[11px] font-semibold text-muted-foreground mb-1">{e.senderName}</p>
+                    )}
+                    <p className="text-sm leading-relaxed">{e.body}</p>
+                    <p className={`text-[10px] mt-1 ${isMe ? "text-primary-foreground/60" : "text-muted-foreground"}`}>
+                      {format(new Date(e.createdAt), "MMM d · h:mm a")}
+                    </p>
+                  </div>
+                </div>
+              );
+            })
+          )}
+          <div ref={bottomRef} />
+        </div>
+
+        {/* Single input bar */}
+        <div className="shrink-0 border-t border-border/50 px-4 py-3 flex gap-2">
+          <Textarea
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Type a message… (Enter to send)"
+            className="text-sm min-h-[44px] max-h-[120px] resize-none rounded-xl"
+            data-testid="input-conversation-message"
+          />
+          <Button
+            className="self-end h-10 w-10 p-0 rounded-xl shrink-0"
+            onClick={() => sendMutation.mutate(text)}
+            disabled={sendMutation.isPending || !text.trim()}
+            data-testid="button-send-conversation"
+          >
+            {sendMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+          </Button>
+        </div>
       </DialogContent>
     </Dialog>
   );
@@ -958,7 +880,7 @@ export function CustomerDashboard() {
   const { customer, logoutCustomer, loginCustomer } = useCustomerAuth();
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [editProfileOpen, setEditProfileOpen] = useState(false);
-  const [sendMessageOpen, setSendMessageOpen] = useState(false);
+  const [conversationOpen, setConversationOpen] = useState(false);
 
   const { data: orders, isLoading } = useQuery<Order[]>({
     queryKey: ["/api/customer/orders"],
@@ -970,7 +892,7 @@ export function CustomerDashboard() {
     enabled: !!customer,
   });
 
-  const unreadReplies = myMessages.length;
+  const hasConversation = myMessages.length > 0;
 
   const handleLogout = async () => {
     await logoutCustomer();
@@ -999,15 +921,13 @@ export function CustomerDashboard() {
               variant="ghost"
               size="sm"
               className="rounded-xl gap-1.5 text-muted-foreground relative"
-              onClick={() => setSendMessageOpen(true)}
+              onClick={() => setConversationOpen(true)}
               data-testid="button-send-message-nav"
             >
               <MessageSquare className="w-4 h-4" />
               <span className="hidden sm:inline">Message Us</span>
-              {unreadReplies > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-primary text-primary-foreground text-[10px] font-bold rounded-full flex items-center justify-center">
-                  {unreadReplies}
-                </span>
+              {hasConversation && (
+                <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-primary rounded-full" />
               )}
             </Button>
             <Button
@@ -1126,20 +1046,6 @@ export function CustomerDashboard() {
         )}
       </div>
 
-      {/* My Messages section */}
-      {myMessages.length > 0 && (
-        <div className="max-w-3xl mx-auto px-6 pb-10">
-          <h2 className="font-display font-semibold text-sm uppercase tracking-wide text-muted-foreground mb-3 mt-2">
-            My Messages
-          </h2>
-          <div className="space-y-3">
-            {myMessages.map((msg) => (
-              <MessageThread key={msg.id} msg={msg} />
-            ))}
-          </div>
-        </div>
-      )}
-
       <OrderTrackingDialog
         order={selectedOrder}
         open={!!selectedOrder}
@@ -1155,7 +1061,7 @@ export function CustomerDashboard() {
         />
       )}
 
-      <SendMessageDialog open={sendMessageOpen} onClose={() => setSendMessageOpen(false)} />
+      <ConversationDialog open={conversationOpen} onClose={() => setConversationOpen(false)} />
     </div>
   );
 }
