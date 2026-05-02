@@ -4,11 +4,9 @@ import { useQuery } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { format } from "date-fns";
-import { Loader2, Trash2, ArrowRight, User, MapPin, Phone, Mail, Scale, DollarSign, Tag, CalendarClock, Pencil, X, Printer, Sticker, Send, CheckCircle2, XCircle, Percent, BadgePercent, ClipboardCheck } from "lucide-react";
+import { Loader2, Trash2, ArrowRight, User, MapPin, Phone, Mail, Scale, DollarSign, Tag, CalendarClock, Pencil, X, Printer, Sticker, CheckCircle2, XCircle, Percent, BadgePercent, ClipboardCheck, ReceiptText } from "lucide-react";
 import { useUpdateOrder, useDeleteOrder } from "@/hooks/use-orders";
 import { useToast } from "@/hooks/use-toast";
-import { useMutation } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -28,7 +26,7 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { type Order, type Service, type Promo } from "@shared/schema";
-import { printSticker } from "@/lib/print-receipt";
+import { printSticker, printReceipt } from "@/lib/print-receipt";
 import { statusLabel } from "@/lib/order-utils";
 
 const editSchema = z.object({
@@ -62,18 +60,6 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsPr
   const { mutate: updateOrder, isPending: isUpdating } = useUpdateOrder();
   const { mutate: deleteOrder, isPending: isDeleting } = useDeleteOrder();
   const { toast } = useToast();
-
-  const { mutate: emailReceipt, isPending: isEmailing } = useMutation({
-    mutationFn: () =>
-      apiRequest("POST", `/api/orders/${order?.id}/email-receipt`, {}),
-    onSuccess: () => {
-      toast({ title: "Receipt Sent", description: `Receipt emailed to ${order?.email}.` });
-      setShowPrintMenu(false);
-    },
-    onError: () => {
-      toast({ title: "Failed to Send", description: "Could not send the receipt email.", variant: "destructive" });
-    },
-  });
 
   const { data: serviceList } = useQuery<Service[]>({ queryKey: ["/api/services"] });
   const { data: promoList } = useQuery<Promo[]>({ queryKey: ["/api/promos"] });
@@ -564,7 +550,7 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsPr
               {/* Print / Email Menu */}
               {showPrintMenu && (
                 <div className="bg-background/50 rounded-2xl p-4 border border-border/50">
-                  <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Print / Email</h4>
+                  <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Print</h4>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <button
                       data-testid="print-sticker"
@@ -576,14 +562,13 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsPr
                       <span className="text-xs text-muted-foreground text-center">Print & attach to bag</span>
                     </button>
                     <button
-                      data-testid="email-receipt"
-                      onClick={() => emailReceipt()}
-                      disabled={isEmailing}
-                      className="flex flex-col items-center gap-2 p-3 rounded-xl border border-border/50 hover:bg-muted/50 hover:border-primary/40 transition-all text-sm disabled:opacity-50"
+                      data-testid="print-receipt"
+                      onClick={() => { printReceipt(order, order.status === "completed" ? "pickup" : "dropoff"); setShowPrintMenu(false); }}
+                      className="flex flex-col items-center gap-2 p-3 rounded-xl border border-border/50 hover:bg-muted/50 hover:border-primary/40 transition-all text-sm"
                     >
-                      {isEmailing ? <Loader2 className="w-5 h-5 animate-spin text-primary" /> : <Send className="w-5 h-5 text-primary" />}
-                      <span className="font-medium">Email Receipt</span>
-                      <span className="text-xs text-muted-foreground text-center">Send to {order.email}</span>
+                      <ReceiptText className="w-5 h-5 text-primary" />
+                      <span className="font-medium">Print Receipt</span>
+                      <span className="text-xs text-muted-foreground text-center">Print customer receipt</span>
                     </button>
                   </div>
                 </div>
