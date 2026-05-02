@@ -1,8 +1,12 @@
 import { config } from "dotenv";
+import { fileURLToPath } from "url";
+import { dirname, resolve } from "path";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 // Load environment variables from .env.local (and fall back to .env)
-config({ path: "../.env.local", override: false });
-config({ path: "../.env", override: false });
+config({ path: resolve(__dirname, "../.env.local"), override: false });
+config({ path: resolve(__dirname, "../.env"), override: false });
 
 import express, { type Request, Response, NextFunction } from "express";
 import session from "express-session";
