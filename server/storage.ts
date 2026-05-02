@@ -78,6 +78,7 @@ export interface IStorage {
   getFeedback(): Promise<Feedback[]>;
   getFeedbackByOrderId(orderId: string): Promise<Feedback | undefined>;
   createFeedback(data: InsertFeedback): Promise<Feedback>;
+  deleteFeedback(id: number): Promise<void>;
   // Messages
   getMessages(): Promise<Message[]>;
   getMessagesByCustomerId(customerId: number): Promise<Message[]>;
@@ -313,6 +314,10 @@ export class DatabaseStorage implements IStorage {
   async createFeedback(data: InsertFeedback): Promise<Feedback> {
     const [f] = await db.insert(feedback).values(data).returning();
     return f;
+  }
+
+  async deleteFeedback(id: number): Promise<void> {
+    await db.delete(feedback).where(eq(feedback.id, id));
   }
 
   async getMessages(): Promise<Message[]> {

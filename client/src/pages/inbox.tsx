@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { MessageSquare, Star, CheckCheck, Mail, MailOpen, Send, Reply } from "lucide-react";
+import { MessageSquare, Star, CheckCheck, Mail, MailOpen, Send, Reply, Trash2 } from "lucide-react";
 import { queryClient } from "@/lib/queryClient";
 import { apiRequest } from "@/lib/queryClient";
 import type { Message, Feedback } from "@shared/schema";
@@ -155,6 +155,89 @@ function MessageCard({ msg }: { msg: Message }) {
                   </Button>
                 </div>
               </div>
+            )}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function FeedbackCard({ fb }: { fb: Feedback }) {
+  const [confirming, setConfirming] = useState(false);
+  const { toast } = useToast();
+
+  const deleteMutation = useMutation({
+    mutationFn: () => apiRequest("DELETE", `/api/feedback/${fb.id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/feedback"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/public/feedback"] });
+      toast({ title: "Feedback deleted" });
+    },
+    onError: () => {
+      toast({ title: "Failed to delete feedback", variant: "destructive" });
+    },
+  });
+
+  return (
+    <Card data-testid={`card-feedback-${fb.id}`}>
+      <CardContent className="pt-4 pb-4">
+        <div className="flex items-start gap-3">
+          <div className="w-8 h-8 rounded-full bg-yellow-100 dark:bg-yellow-900/30 flex items-center justify-center shrink-0 mt-0.5">
+            <Star className="w-4 h-4 text-yellow-600 dark:text-yellow-400" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-semibold text-foreground text-sm" data-testid={`text-reviewer-${fb.id}`}>
+                {fb.customerName}
+              </span>
+              <Badge variant="outline" className="text-xs">
+                Order #{fb.orderId}
+              </Badge>
+              <span className="text-xs text-muted-foreground ml-auto">
+                {format(new Date(fb.createdAt), "MMM d, yyyy")}
+              </span>
+            </div>
+            <div className="mt-1">
+              <StarRating rating={fb.rating} />
+            </div>
+            {fb.comment && (
+              <p className="text-sm text-muted-foreground mt-2 leading-relaxed">"{fb.comment}"</p>
+            )}
+
+            {confirming ? (
+              <div className="flex items-center gap-2 mt-3">
+                <span className="text-xs text-muted-foreground">Delete this feedback?</span>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  className="h-7 text-xs"
+                  onClick={() => deleteMutation.mutate()}
+                  disabled={deleteMutation.isPending}
+                  data-testid={`button-confirm-delete-feedback-${fb.id}`}
+                >
+                  {deleteMutation.isPending ? "Deleting..." : "Yes, delete"}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 text-xs"
+                  onClick={() => setConfirming(false)}
+                >
+                  Cancel
+                </Button>
+              </div>
+            ) : (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="mt-2 h-7 text-xs text-muted-foreground hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 gap-1"
+                onClick={() => setConfirming(true)}
+                data-testid={`button-delete-feedback-${fb.id}`}
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                Delete
+              </Button>
             )}
           </div>
         </div>
@@ -316,36 +399,7 @@ export default function InboxPage() {
                 </CardContent>
               </Card>
             ) : (
-              feedbackList.map((fb) => (
-                <Card key={fb.id} data-testid={`card-feedback-${fb.id}`}>
-                  <CardContent className="pt-4 pb-4">
-                    <div className="flex items-start gap-3">
-                      <div className="w-8 h-8 rounded-full bg-yellow-100 dark:bg-yellow-900/30 flex items-center justify-center shrink-0 mt-0.5">
-                        <Star className="w-4 h-4 text-yellow-600 dark:text-yellow-400" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-semibold text-foreground text-sm" data-testid={`text-reviewer-${fb.id}`}>
-                            {fb.customerName}
-                          </span>
-                          <Badge variant="outline" className="text-xs">
-                            Order #{fb.orderId}
-                          </Badge>
-                          <span className="text-xs text-muted-foreground ml-auto">
-                            {format(new Date(fb.createdAt), "MMM d, yyyy")}
-                          </span>
-                        </div>
-                        <div className="mt-1">
-                          <StarRating rating={fb.rating} />
-                        </div>
-                        {fb.comment && (
-                          <p className="text-sm text-muted-foreground mt-2 leading-relaxed">"{fb.comment}"</p>
-                        )}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))
+              feedbackList.map((fb) => <FeedbackCard key={fb.id} fb={fb} />)
             )}
           </TabsContent>
         </Tabs>

@@ -887,6 +887,15 @@ export async function registerRoutes(
     }
   });
 
+  app.delete("/api/feedback/:id", requireAuth, async (req, res) => {
+    try {
+      await storage.deleteFeedback(Number(req.params.id));
+      res.status(204).send();
+    } catch {
+      res.status(500).json({ message: "Failed to delete feedback" });
+    }
+  });
+
   app.get("/api/feedback/order/:orderId", requireCustomer, async (req, res) => {
     try {
       const existing = await storage.getFeedbackByOrderId(req.params.orderId);
