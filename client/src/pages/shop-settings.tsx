@@ -72,9 +72,6 @@ export function ShopSettingsPage() {
         </div>
         <div>
           <h1 className="font-display text-3xl font-bold text-foreground">Shop Settings</h1>
-          <p className="text-muted-foreground mt-1">
-            Update the contact details shown on your public landing page.
-          </p>
         </div>
       </div>
 

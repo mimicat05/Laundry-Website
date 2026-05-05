@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { type Order, type OrderLog } from "@shared/schema";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 import { BarChart3, History, TrendingUp, Package, DollarSign, Weight, FileSpreadsheet } from "lucide-react";
 import * as XLSX from "xlsx";
 
@@ -57,42 +58,66 @@ function formatCurrency(amount: string | number) {
   return `₱${Number(amount).toLocaleString("en-PH", { minimumFractionDigits: 2 })}`;
 }
 
-function exportToExcel(orders: Order[], from: string, to: string) {
-  const fromDate = from ? new Date(from) : null;
-  const toDate = to ? new Date(to + "T23:59:59") : null;
+function exportToExcel(orders: Order[], from: string, to: string, onSuccess: () => void, onError: (error: string) => void) {
+  try {
+    const fromDate = from ? new Date(from) : null;
+    const toDate = to ? new Date(to + "T23:59:59") : null;
 
-  const filtered = orders.filter((o) => {
-    if (o.status !== "completed" || o.deletedAt) return false;
-    const d = new Date(o.createdAt);
-    if (fromDate && d < fromDate) return false;
-    if (toDate && d > toDate) return false;
-    return true;
-  });
+    const filtered = orders.filter((o) => {
+      if (o.status !== "completed" || o.deletedAt) return false;
+      const d = new Date(o.createdAt);
+      if (fromDate && d < fromDate) return false;
+      if (toDate && d > toDate) return false;
+      return true;
+    });
 
-  const rows = filtered.map((o) => ({
-    "Order ID": o.orderId,
-    "Customer Name": o.customerName,
-    "Contact": o.contactNumber,
-    "Email": o.email,
-    "Address": o.address,
-    "Service": o.service,
-    "Est. Weight (kg)": Number(o.weight),
-    "Actual Weight (kg)": o.actualWeight ? Number(o.actualWeight) : "",
-    "Promo": o.promoName || "",
-    "Discount (₱)": o.discountAmount ? Number(o.discountAmount) : 0,
-    "Total (₱)": Number(o.total),
-    "Paid": o.paid ? "Yes" : "No",
-    "Date": new Date(o.createdAt).toLocaleDateString("en-PH"),
-  }));
+    if (filtered.length === 0) {
+      onError("No completed orders found for the selected date range");
+      return;
+    }
 
-  const ws = XLSX.utils.json_to_sheet(rows);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "Completed Orders");
-  const label = from && to ? `${from}_to_${to}` : from ? `from_${from}` : to ? `to_${to}` : "all";
-  XLSX.writeFile(wb, `completed_orders_${label}.xlsx`);
+    const rows = filtered.map((o) => ({
+      "Order ID": o.orderId,
+      "Customer Name": o.customerName,
+      "Contact": o.contactNumber,
+      "Email": o.email,
+      "Address": o.address,
+      "Service": o.service,
+      "Est. Weight (kg)": Number(o.weight),
+      "Actual Weight (kg)": o.actualWeight ? Number(o.actualWeight) : "",
+      "Promo": o.promoName || "",
+      "Discount (₱)": o.discountAmount ? Number(o.discountAmount) : 0,
+      "Total (₱)": Number(o.total),
+      "Paid": o.paid ? "Yes" : "No",
+      "Date": new Date(o.createdAt).toLocaleDateString("en-PH"),
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(rows);
+    
+    // Auto-fit column widths
+    const colWidths = Object.keys(rows[0] || {}).map(key => {
+      return { wch: Math.max(key.length, 15) };
+    });
+    ws["!cols"] = colWidths;
+    
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Completed Orders");
+    
+    const label = from && to ? `${from}_to_${to}` : from ? `from_${from}` : to ? `to_${to}` : "all";
+    const fileName = `completed_orders_${label}.xlsx`;
+    
+    // Use writeFile which is the recommended method
+    XLSX.writeFile(wb, fileName);
+    
+    onSuccess();
+  } catch (error) {
+    console.error("Export error:", error);
+    onError(error instanceof Error ? error.message : "Failed to export to Excel. Please try again.");
+  }
 }
 
 export function Reports() {
+  const { toast } = useToast();
   const [tab, setTab] = useState<"history" | "analytics">("history");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -249,10 +274,10 @@ export function Reports() {
 
           {/* Table */}
           <div className="bg-card border border-border/50 rounded-3xl overflow-hidden sleek-shadow">
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
               <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border/50 bg-muted/30">
+                <thead className="sticky top-0 bg-card border-b border-border/50 z-10">
+                  <tr className="bg-muted/30">
                     <th className="text-left px-5 py-3.5 font-semibold text-muted-foreground">Order ID</th>
                     <th className="text-left px-5 py-3.5 font-semibold text-muted-foreground">Customer</th>
                     <th className="text-left px-5 py-3.5 font-semibold text-muted-foreground hidden md:table-cell">Service</th>
@@ -347,7 +372,24 @@ export function Reports() {
               <Button
                 data-testid="button-export-excel"
                 className="rounded-xl gap-2 shrink-0"
-                onClick={() => exportToExcel(orders, exportFrom, exportTo)}
+                onClick={() => exportToExcel(
+                  orders, 
+                  exportFrom, 
+                  exportTo,
+                  () => {
+                    toast({
+                      title: "Success",
+                      description: "Orders exported to Excel successfully"
+                    });
+                  },
+                  (error) => {
+                    toast({
+                      title: "Error",
+                      description: error,
+                      variant: "destructive"
+                    });
+                  }
+                )}
                 disabled={orders.filter((o) => o.status === "completed" && !o.deletedAt).length === 0}
               >
                 <FileSpreadsheet className="w-4 h-4" />

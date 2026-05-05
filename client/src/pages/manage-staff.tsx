@@ -150,7 +150,7 @@ export function ManageStaff() {
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <h1 className="font-display text-3xl font-bold text-foreground">Manage Staff</h1>
-          <p className="text-muted-foreground mt-1">Create and manage staff accounts and their access levels.</p>
+          
         </div>
         <Button
           data-testid="button-add-staff"
