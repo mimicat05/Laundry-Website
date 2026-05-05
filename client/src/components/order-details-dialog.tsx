@@ -466,7 +466,7 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsPr
               </div>
 
               {/* Actual Weight Recording — visible once order is received at the shop */}
-              {["received", "washing", "drying", "folding", "ready_for_pickup", "completed"].includes(order.status) && (
+              {["requested", "pending", "received"].includes(order.status) && (
                 <div className="bg-background/50 rounded-2xl p-5 border border-border/50">
                   <div className="flex items-center gap-2 mb-4">
                     <ClipboardCheck className="w-4 h-4 text-primary" />
