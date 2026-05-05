@@ -20,10 +20,19 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { ShopSettings } from "@shared/schema";
 
 const settingsSchema = z.object({
-  phone: z.string().min(1, "Phone is required").max(50),
+  phone: z
+    .string()
+    .min(1, "Phone number is required")
+    .refine((val) => {
+      const cleaned = val.replace(/[\s\-().]/g, "");
+      return (
+        /^(\+639|09)\d{9}$/.test(cleaned) ||
+        /^0\d{9,10}$/.test(cleaned)
+      );
+    }, "Enter a valid Philippine phone number (e.g. 09XX XXX XXXX or 0XX XXXX XXXX)"),
   email: z.string().email("Enter a valid email address").max(120),
-  address: z.string().min(1, "Address is required").max(250),
-  hours: z.string().min(1, "Hours are required").max(250),
+  address: z.string().min(5, "Address is required").max(250),
+  hours: z.string().min(1, "Business hours are required").max(250),
 });
 
 type SettingsForm = z.infer<typeof settingsSchema>;
@@ -92,13 +101,18 @@ export function ShopSettingsPage() {
                     <FormLabel>Phone</FormLabel>
                     <FormControl>
                       <Input
-                        placeholder="0955 921 8921"
+                        placeholder="09XX XXX XXXX or 0XX XXXX XXXX"
                         className="rounded-xl"
                         data-testid="input-settings-phone"
+                        maxLength={16}
                         {...field}
+                        onChange={(e) => {
+                          const filtered = e.target.value.replace(/[^\d\s\-+().]/g, "");
+                          field.onChange(filtered);
+                        }}
                       />
                     </FormControl>
-                    <FormDescription>Customers can tap this to call you.</FormDescription>
+                    <FormDescription>Philippine mobile (09XX XXX XXXX) or landline (0XX XXXX XXXX). Customers can tap this to call you.</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}

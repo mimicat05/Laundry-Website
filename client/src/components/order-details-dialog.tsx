@@ -470,7 +470,7 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsPr
                           const newDiscount = promoRatio > 0 ? (baseTotal * promoRatio).toFixed(2) : order.discountAmount;
                           const newTotal = promoRatio > 0 ? (baseTotal - Number(newDiscount)).toFixed(2) : baseTotal.toFixed(2);
                           updateOrder(
-                            { id: order.id, actualWeight: actualWeightInput, weight: actualWeightInput, total: newTotal, ...(promoRatio > 0 ? { discountAmount: newDiscount } : {}) },
+                            { id: order.id, actualWeight: actualWeightInput, total: newTotal, ...(promoRatio > 0 ? { discountAmount: newDiscount } : {}) },
                             {
                               onSuccess: () => toast({ title: "Weight Recorded", description: `Actual weight set to ${kg.toFixed(2)} kg. Total updated to ₱${newTotal}.` }),
                               onError: (err) => toast({ title: "Error", description: err.message, variant: "destructive" }),

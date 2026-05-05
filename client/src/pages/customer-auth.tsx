@@ -38,6 +38,7 @@ export function CustomerAuth() {
   const [signupName, setSignupName] = useState("");
   const [signupEmail, setSignupEmail] = useState("");
   const [signupPassword, setSignupPassword] = useState("");
+  const [signupConfirm, setSignupConfirm] = useState("");
   const [signupContact, setSignupContact] = useState("");
   const [signupAddress, setSignupAddress] = useState("");
 
@@ -103,8 +104,16 @@ export function CustomerAuth() {
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
     setError("");
+    if (signupPassword.length < 6) {
+      setError("Password must be at least 6 characters.");
+      return;
+    }
+    if (signupPassword !== signupConfirm) {
+      setError("Passwords do not match.");
+      return;
+    }
+    setIsLoading(true);
     try {
       const res = await fetch("/api/customer/register", {
         method: "POST",
@@ -408,6 +417,19 @@ export function CustomerAuth() {
                 </div>
               </div>
               <div className="space-y-2">
+                <Label htmlFor="signup-confirm" className="text-foreground/80 ml-1">Confirm Password</Label>
+                <Input
+                  id="signup-confirm"
+                  data-testid="input-signup-confirm"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Re-enter your password"
+                  className="rounded-xl h-11 bg-background/50 border-border/50 focus:bg-background transition-all"
+                  value={signupConfirm}
+                  onChange={(e) => { setSignupConfirm(e.target.value); setError(""); }}
+                  autoComplete="new-password"
+                />
+              </div>
+              <div className="space-y-2">
                 <Label htmlFor="signup-contact" className="text-foreground/80 ml-1">Contact Number</Label>
                 <Input
                   id="signup-contact"
@@ -433,7 +455,7 @@ export function CustomerAuth() {
               <Button
                 type="submit"
                 data-testid="button-signup-submit"
-                disabled={isLoading || !signupName || !signupEmail || !signupPassword || !signupContact || !signupAddress}
+                disabled={isLoading || !signupName || !signupEmail || !signupPassword || !signupConfirm || !signupContact || !signupAddress}
                 className="w-full rounded-xl h-11 shadow-md shadow-primary/20 hover:shadow-lg hover:-translate-y-0.5 transition-all mt-1"
               >
                 {isLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
