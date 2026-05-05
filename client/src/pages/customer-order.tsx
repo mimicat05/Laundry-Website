@@ -432,7 +432,7 @@ export function CustomerOrder() {
                         <Input
                           type="number"
                           step="0.1"
-                          min="0"
+                          min="0.1"
                           placeholder="e.g. 3.5"
                           className="rounded-xl"
                           {...field}
