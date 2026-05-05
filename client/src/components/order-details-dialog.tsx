@@ -4,7 +4,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { format } from "date-fns";
-import { Loader2, Trash2, ArrowRight, User, MapPin, Phone, Mail, Scale, DollarSign, Tag, CalendarClock, Pencil, X, Printer, Sticker, CheckCircle2, XCircle, Percent, BadgePercent, ClipboardCheck, ReceiptText, Clock, ImageIcon, ImagePlus } from "lucide-react";
+import { Loader2, Trash2, ArrowRight, ArrowLeft, User, MapPin, Phone, Mail, Scale, DollarSign, Tag, CalendarClock, Pencil, X, Printer, Sticker, CheckCircle2, XCircle, Percent, BadgePercent, ClipboardCheck, ReceiptText, Clock, ImageIcon, ImagePlus } from "lucide-react";
 import { useUpdateOrder, useDeleteOrder } from "@/hooks/use-orders";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -265,7 +265,20 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsPr
     }
   };
 
+  const getPrevStatusAction = () => {
+    switch (order.status) {
+      case "received":         return { label: "Revert to Accepted",         prev: "pending" };
+      case "washing":          return { label: "Revert to Received",         prev: "received" };
+      case "drying":           return { label: "Revert to Washing",          prev: "washing" };
+      case "folding":          return { label: "Revert to Drying",           prev: "drying" };
+      case "ready_for_pickup": return { label: "Revert to Folding",          prev: "folding" };
+      case "completed":        return { label: "Revert to Ready for Pickup", prev: "ready_for_pickup" };
+      default: return null;
+    }
+  };
+
   const action = getNextStatusAction();
+  const revertAction = getPrevStatusAction();
 
   const getStatusColor = (status: string) => {
     switch(status) {
@@ -786,18 +799,34 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsPr
                     Payment required before completing this order.
                   </p>
                 )}
-                {action && (
-                  <Button
-                    className="rounded-xl shadow-lg shadow-primary/20"
-                    onClick={() => handleStatusChange(action.next)}
-                    disabled={isUpdating || (action.next === "completed" && !order.paid)}
-                    title={action.next === "completed" && !order.paid ? "Mark the order as paid first" : undefined}
-                  >
-                    {isUpdating ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                    {action.label}
-                    {!isUpdating && <ArrowRight className="w-4 h-4 ml-2" />}
-                  </Button>
-                )}
+                <div className="flex items-center gap-2">
+                  {revertAction && (
+                    <Button
+                      data-testid="button-revert-status"
+                      variant="outline"
+                      className="rounded-xl gap-2 text-muted-foreground hover:text-foreground"
+                      onClick={() => handleStatusChange(revertAction.prev)}
+                      disabled={isUpdating}
+                      title={revertAction.label}
+                    >
+                      <ArrowLeft className="w-4 h-4" />
+                      {revertAction.label}
+                    </Button>
+                  )}
+                  {action && (
+                    <Button
+                      data-testid="button-advance-status"
+                      className="rounded-xl shadow-lg shadow-primary/20"
+                      onClick={() => handleStatusChange(action.next)}
+                      disabled={isUpdating || (action.next === "completed" && !order.paid)}
+                      title={action.next === "completed" && !order.paid ? "Mark the order as paid first" : undefined}
+                    >
+                      {isUpdating ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                      {action.label}
+                      {!isUpdating && <ArrowRight className="w-4 h-4 ml-2" />}
+                    </Button>
+                  )}
+                </div>
               </div>
             </div>
           </>
