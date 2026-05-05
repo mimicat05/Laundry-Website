@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import {
@@ -341,11 +341,11 @@ function ConversationDialog({ open, onClose }: { open: boolean; onClose: () => v
     }
   };
 
-  useState(() => {
+  useEffect(() => {
     if (entries.length > 0) {
       setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
     }
-  });
+  }, [entries]);
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
