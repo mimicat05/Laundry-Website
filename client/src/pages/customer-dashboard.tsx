@@ -855,8 +855,10 @@ function OrderCard({ order, onClick }: { order: Order; onClick: () => void }) {
               <Badge variant="outline" className={`text-xs px-2 py-0.5 ${badgeClass}`} data-testid={`badge-status-${order.id}`}>
                 {statusLabel}
               </Badge>
-              {order.paid && (
-                <span className="text-xs text-green-600 font-medium">Paid</span>
+              {order.status !== "cancelled" && (
+                order.paid
+                  ? <span className="text-xs font-medium text-green-600 bg-green-50 border border-green-200 px-2 py-0.5 rounded-lg" data-testid={`badge-paid-${order.id}`}>Paid</span>
+                  : <span className="text-xs font-medium text-red-600 bg-red-50 border border-red-200 px-2 py-0.5 rounded-lg" data-testid={`badge-unpaid-${order.id}`}>Unpaid</span>
               )}
             </div>
             <p className="text-sm text-muted-foreground">{order.service}</p>

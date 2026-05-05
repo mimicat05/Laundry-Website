@@ -135,9 +135,16 @@ export function OrdersTable({
                     {format(new Date(order.createdAt), "MMM dd")}
                   </TableCell>
                   <TableCell>
-                    <Badge variant="outline" className={`rounded-full font-medium border ${getStatusColor(order.status)}`}>
-                      {statusLabel(order.status)}
-                    </Badge>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <Badge variant="outline" className={`rounded-full font-medium border ${getStatusColor(order.status)}`}>
+                        {statusLabel(order.status)}
+                      </Badge>
+                      {order.status !== "cancelled" && !order.paid && (
+                        <Badge variant="outline" className="rounded-full font-medium border bg-red-50 text-red-600 border-red-200">
+                          Unpaid
+                        </Badge>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell className="text-right">
                     <Button variant="ghost" size="icon" className="rounded-full hover:bg-primary/10 hover:text-primary">
