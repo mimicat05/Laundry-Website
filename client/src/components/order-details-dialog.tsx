@@ -529,8 +529,8 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsPr
                 </div>
               )}
 
-              {/* Promo Claim Review Section — visible when customer has submitted a pending claim */}
-              {order.promoClaimStatus === "pending" && order.promoPhoto && (
+              {/* Promo Claim Review Section — visible when customer has submitted a pending claim (only for requested/pending orders) */}
+              {order.promoClaimStatus === "pending" && order.promoPhoto && ["requested", "pending"].includes(order.status) && (
                 <div className="bg-amber-50/80 rounded-2xl p-5 border border-amber-200">
                   <div className="flex items-center gap-2 mb-3">
                     <Clock className="w-4 h-4 text-amber-600" />
