@@ -211,7 +211,7 @@ export function Reports() {
     <div className="space-y-8 animate-in fade-in duration-500 pb-12">
       <div>
         <h1 className="font-display text-3xl font-bold text-foreground">Reports</h1>
-        <p className="text-muted-foreground mt-1">Full transaction history and shop analytics.</p>
+        
       </div>
 
       {/* Tabs */}
