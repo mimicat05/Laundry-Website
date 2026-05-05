@@ -278,10 +278,6 @@ export function Reports() {
             </select>
           </div>
 
-          <p className="text-xs text-muted-foreground px-1">
-            Showing <strong>{filteredLogs.length}</strong> of <strong>{logs.length}</strong> total audit entries — includes permanently deleted orders.
-          </p>
-
           {/* Table */}
           <div className="bg-card border border-border/50 rounded-3xl overflow-hidden sleek-shadow">
             <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
