@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
-import { Droplets, ArrowLeft, Eye, EyeOff, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
+import { Droplets, Eye, EyeOff, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -181,7 +181,6 @@ export function CustomerResetPassword() {
         <div className="text-center mt-6">
           <Link href="/customer/login">
             <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary transition-colors cursor-pointer">
-              <ArrowLeft className="w-3.5 h-3.5" />
               Back to Log In
             </span>
           </Link>

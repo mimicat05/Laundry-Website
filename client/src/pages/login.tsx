@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { Droplets, ArrowRight, ArrowLeft, Loader2 } from "lucide-react";
+import { Droplets, ArrowRight, Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -110,7 +110,6 @@ export function Login() {
         <div className="text-center mt-8">
           <Link href="/">
             <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary transition-colors cursor-pointer" data-testid="link-back-home">
-              <ArrowLeft className="w-3.5 h-3.5" />
               Back to Home
             </span>
           </Link>

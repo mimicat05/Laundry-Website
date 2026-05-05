@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
-import { Droplets, ArrowLeft, Eye, EyeOff, Loader2, CheckCircle2 } from "lucide-react";
+import { Droplets, Eye, EyeOff, Loader2, CheckCircle2 } from "lucide-react";
 import { useCustomerAuth } from "@/hooks/use-customer-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -474,7 +474,6 @@ export function CustomerAuth() {
         <div className="text-center mt-6">
           <Link href="/">
             <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary transition-colors cursor-pointer">
-              <ArrowLeft className="w-3.5 h-3.5" />
               Back to Home
             </span>
           </Link>
