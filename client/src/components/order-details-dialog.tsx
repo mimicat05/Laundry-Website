@@ -339,9 +339,9 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsPr
                 <FormField control={form.control} name="service" render={({ field }) => (
                   <FormItem className="md:col-span-2">
                     <FormLabel>Service</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value} disabled={!["requested","pending","received"].includes(order.status)}>
                       <FormControl>
-                        <SelectTrigger className="rounded-xl bg-background/50 border-border/50"><SelectValue /></SelectTrigger>
+                        <SelectTrigger className="rounded-xl bg-background/50 border-border/50 disabled:opacity-50 disabled:cursor-not-allowed"><SelectValue /></SelectTrigger>
                       </FormControl>
                       <SelectContent className="rounded-xl border-border/50">
                         {activeServices.map((svc) => (
@@ -354,8 +354,21 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsPr
                 )} />
                 <FormField control={form.control} name="weight" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Weight (KG)</FormLabel>
-                    <FormControl><Input type="number" step="0.1" className="rounded-xl bg-background/50 border-border/50" {...field} /></FormControl>
+                    <FormLabel>
+                      Weight (KG)
+                      {!["requested","pending","received"].includes(order.status) && (
+                        <span className="ml-1 text-xs text-muted-foreground font-normal">(locked)</span>
+                      )}
+                    </FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        step="0.1"
+                        readOnly={!["requested","pending","received"].includes(order.status)}
+                        className={`rounded-xl border-border/50 ${!["requested","pending","received"].includes(order.status) ? "bg-muted/40 cursor-not-allowed" : "bg-background/50"}`}
+                        {...field}
+                      />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
