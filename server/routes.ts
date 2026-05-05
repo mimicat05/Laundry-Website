@@ -613,6 +613,10 @@ export async function registerRoutes(
       const input = api.orders.update.input.parse(req.body);
       const staffName = req.session.staffName;
 
+      if (input.status === "completed" && !existing.paid && input.paid !== true) {
+        return res.status(400).json({ message: "Order must be paid before it can be completed." });
+      }
+
       const completedAt = input.status === "completed" && existing.status !== "completed"
         ? new Date()
         : undefined;

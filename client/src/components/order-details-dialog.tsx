@@ -698,12 +698,19 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsPr
                 </Button>
               </div>
 
-              <div className="flex gap-3">
+              <div className="flex flex-col items-end gap-2">
+                {action?.next === "completed" && !order.paid && (
+                  <p className="text-xs text-red-600 font-medium flex items-center gap-1">
+                    <XCircle className="w-3.5 h-3.5" />
+                    Payment required before completing this order.
+                  </p>
+                )}
                 {action && (
                   <Button
                     className="rounded-xl shadow-lg shadow-primary/20"
                     onClick={() => handleStatusChange(action.next)}
-                    disabled={isUpdating}
+                    disabled={isUpdating || (action.next === "completed" && !order.paid)}
+                    title={action.next === "completed" && !order.paid ? "Mark the order as paid first" : undefined}
                   >
                     {isUpdating ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
                     {action.label}
