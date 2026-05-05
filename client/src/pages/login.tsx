@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { Droplets, ArrowRight, Loader2 } from "lucide-react";
+import { Droplets, Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -102,7 +102,6 @@ export function Login() {
             >
               {isLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
               Access Portal
-              {!isLoading && <ArrowRight className="w-4 h-4 ml-2" />}
             </Button>
           </form>
         </div>
