@@ -623,9 +623,12 @@ export async function registerRoutes(
       const order = await storage.updateOrder(id, { ...input, ...(completedAt ? { completedAt } : {}) });
 
       // Determine what action to log
+      const STATUS_ORDER = ["requested", "pending", "received", "washing", "drying", "folding", "ready_for_pickup", "completed"];
       let action = "edited";
       if (input.status && input.status !== existing.status) {
-        action = "status_changed";
+        const oldIdx = STATUS_ORDER.indexOf(existing.status);
+        const newIdx = STATUS_ORDER.indexOf(input.status);
+        action = oldIdx > -1 && newIdx > -1 && newIdx < oldIdx ? "status_reverted" : "status_changed";
         if (input.status === "pending") {
           await sendOrderConfirmedEmail(order);
         } else if (input.status === "ready_for_pickup") {

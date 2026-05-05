@@ -34,6 +34,7 @@ const STATUS_COLORS: Record<string, string> = {
 const ACTION_LABELS: Record<string, { label: string; color: string }> = {
   created: { label: "Created", color: "bg-green-100 text-green-700 border-green-200" },
   status_changed: { label: "Status Changed", color: "bg-blue-100 text-blue-700 border-blue-200" },
+  status_reverted: { label: "Status Reverted", color: "bg-orange-100 text-orange-700 border-orange-200" },
   edited: { label: "Edited", color: "bg-sky-100 text-sky-700 border-sky-200" },
   paid: { label: "Marked Paid", color: "bg-emerald-100 text-emerald-700 border-emerald-200" },
   unpaid: { label: "Marked Unpaid", color: "bg-yellow-100 text-yellow-700 border-yellow-200" },
