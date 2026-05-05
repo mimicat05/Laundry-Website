@@ -100,9 +100,18 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsPr
     const pricePerKg = svc ? Number(svc.pricePerKg) : 0;
     const kg = parseFloat(watchedWeight);
     if (pricePerKg > 0 && !isNaN(kg) && kg > 0) {
-      form.setValue("total", (pricePerKg * kg).toFixed(2), { shouldValidate: true });
+      const rawTotal = pricePerKg * kg;
+      // Preserve existing promo discount proportionally
+      if (order.discountAmount && Number(order.discountAmount) > 0) {
+        const preDiscountTotal = Number(order.total) + Number(order.discountAmount);
+        const promoRatio = Number(order.discountAmount) / preDiscountTotal;
+        const newDiscount = rawTotal * promoRatio;
+        form.setValue("total", (rawTotal - newDiscount).toFixed(2), { shouldValidate: true });
+      } else {
+        form.setValue("total", rawTotal.toFixed(2), { shouldValidate: true });
+      }
     }
-  }, [watchedService, watchedWeight, isEditing, form, activeServices]);
+  }, [watchedService, watchedWeight, isEditing, form, activeServices, order]);
 
   const [showPhotoModal, setShowPhotoModal] = useState(false);
 
@@ -213,8 +222,21 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsPr
   };
 
   const handleSaveEdit = (data: EditValues) => {
+    // If a promo discount is active, recalculate discountAmount proportionally to the new weight/service
+    let extraUpdates: Record<string, any> = {};
+    if (order.discountAmount && Number(order.discountAmount) > 0) {
+      const svc = (serviceList || []).find((s) => s.name === data.service);
+      const pricePerKg = svc ? Number(svc.pricePerKg) : 0;
+      const kg = parseFloat(data.weight);
+      if (pricePerKg > 0 && kg > 0) {
+        const rawTotal = pricePerKg * kg;
+        const preDiscountTotal = Number(order.total) + Number(order.discountAmount);
+        const promoRatio = Number(order.discountAmount) / preDiscountTotal;
+        extraUpdates.discountAmount = (rawTotal * promoRatio).toFixed(2);
+      }
+    }
     updateOrder(
-      { id: order.id, ...data },
+      { id: order.id, ...data, ...extraUpdates },
       {
         onSuccess: () => {
           toast({ title: "Updated", description: "Order details have been saved." });
