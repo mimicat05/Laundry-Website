@@ -143,17 +143,27 @@ export function Reports() {
       }
     }
 
-    const byMonth: Record<string, { count: number; revenue: number }> = {};
+    const byMonthRaw: Record<string, { count: number; revenue: number; paidRevenue: number; ts: number }> = {};
     for (const o of orders.filter((o) => !o.deletedAt)) {
-      const month = new Date(o.createdAt).toLocaleDateString("en-PH", { year: "numeric", month: "short" });
-      if (!byMonth[month]) byMonth[month] = { count: 0, revenue: 0 };
-      byMonth[month].count += 1;
-      if (o.status === "completed") byMonth[month].revenue += Number(o.total);
+      const d = new Date(o.createdAt);
+      const month = d.toLocaleDateString("en-PH", { year: "numeric", month: "short" });
+      const ts = new Date(d.getFullYear(), d.getMonth(), 1).getTime();
+      if (!byMonthRaw[month]) byMonthRaw[month] = { count: 0, revenue: 0, paidRevenue: 0, ts };
+      byMonthRaw[month].count += 1;
+      if (o.status === "completed") {
+        byMonthRaw[month].revenue += Number(o.total);
+        if (o.paid) byMonthRaw[month].paidRevenue += Number(o.total);
+      }
     }
+    const byMonth = Object.fromEntries(
+      Object.entries(byMonthRaw).sort((a, b) => a[1].ts - b[1].ts)
+    );
 
+    const collectedRevenue = completed.filter((o) => o.paid).reduce((sum, o) => sum + Number(o.total), 0);
+    const activeCount = orders.filter((o) => !o.deletedAt).length;
     const deletedCount = orders.filter((o) => !!o.deletedAt).length;
 
-    return { totalRevenue, totalWeight, byStatus, byService, revenueByService, byMonth, deletedCount, completedCount: completed.length };
+    return { totalRevenue, collectedRevenue, totalWeight, byStatus, byService, revenueByService, byMonth, deletedCount, activeCount, completedCount: completed.length };
   }, [orders]);
 
   if (isLoading) {
@@ -369,7 +379,10 @@ export function Reports() {
                 <p className="text-sm font-medium text-muted-foreground">Total Revenue</p>
               </div>
               <p className="text-2xl font-display font-bold text-foreground">{formatCurrency(analytics.totalRevenue)}</p>
-              <p className="text-xs text-muted-foreground mt-1">From {analytics.completedCount} completed orders</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Collected: <span className="text-green-600 font-semibold">{formatCurrency(analytics.collectedRevenue)}</span>
+                {" · "}Unpaid: <span className="text-amber-600 font-semibold">{formatCurrency(analytics.totalRevenue - analytics.collectedRevenue)}</span>
+              </p>
             </div>
 
             <div className="bg-card border border-border/50 rounded-3xl p-5 sleek-shadow" data-testid="stat-total-orders">
@@ -379,8 +392,8 @@ export function Reports() {
                 </div>
                 <p className="text-sm font-medium text-muted-foreground">Total Orders</p>
               </div>
-              <p className="text-2xl font-display font-bold text-foreground">{orders.length}</p>
-              <p className="text-xs text-muted-foreground mt-1">{analytics.deletedCount} deleted</p>
+              <p className="text-2xl font-display font-bold text-foreground">{analytics.activeCount}</p>
+              <p className="text-xs text-muted-foreground mt-1">{analytics.deletedCount} deleted (not counted)</p>
             </div>
 
             <div className="bg-card border border-border/50 rounded-3xl p-5 sleek-shadow" data-testid="stat-total-weight">
@@ -402,7 +415,7 @@ export function Reports() {
                 <p className="text-sm font-medium text-muted-foreground">Completion Rate</p>
               </div>
               <p className="text-2xl font-display font-bold text-foreground">
-                {orders.length > 0 ? Math.round((analytics.completedCount / orders.filter((o) => !o.deletedAt).length) * 100) : 0}%
+                {analytics.activeCount > 0 ? Math.round((analytics.completedCount / analytics.activeCount) * 100) : 0}%
               </p>
               <p className="text-xs text-muted-foreground mt-1">Of active orders completed</p>
             </div>
