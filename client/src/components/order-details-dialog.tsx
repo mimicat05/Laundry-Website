@@ -1,10 +1,10 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { format } from "date-fns";
-import { Loader2, Trash2, ArrowRight, User, MapPin, Phone, Mail, Scale, DollarSign, Tag, CalendarClock, Pencil, X, Printer, Sticker, CheckCircle2, XCircle, Percent, BadgePercent, ClipboardCheck, ReceiptText, Clock, ImageIcon } from "lucide-react";
+import { Loader2, Trash2, ArrowRight, User, MapPin, Phone, Mail, Scale, DollarSign, Tag, CalendarClock, Pencil, X, Printer, Sticker, CheckCircle2, XCircle, Percent, BadgePercent, ClipboardCheck, ReceiptText, Clock, ImageIcon, ImagePlus } from "lucide-react";
 import { useUpdateOrder, useDeleteOrder } from "@/hooks/use-orders";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -58,6 +58,8 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsPr
   const [showPrintMenu, setShowPrintMenu] = useState(false);
   const [selectedPromoId, setSelectedPromoId] = useState<string>("");
   const [actualWeightInput, setActualWeightInput] = useState("");
+  const [promoPhotoDataUrl, setPromoPhotoDataUrl] = useState<string | null>(null);
+  const promoFileInputRef = useRef<HTMLInputElement>(null);
   const { mutate: updateOrder, isPending: isUpdating } = useUpdateOrder();
   const { mutate: deleteOrder, isPending: isDeleting } = useDeleteOrder();
   const { toast } = useToast();
@@ -71,6 +73,8 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsPr
     if (!open) {
       setSelectedPromoId("");
       setActualWeightInput("");
+      setPromoPhotoDataUrl(null);
+      if (promoFileInputRef.current) promoFileInputRef.current.value = "";
     }
     if (open && order) {
       setActualWeightInput(order.actualWeight ? String(order.actualWeight) : "");
@@ -161,11 +165,13 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsPr
     const discountAmt = previewDiscount.toFixed(2);
     const newTotal = previewTotal.toFixed(2);
     updateOrder(
-      { id: order.id, total: newTotal, promoId: selectedPromo.id, promoName: selectedPromo.name, discountAmount: discountAmt },
+      { id: order.id, total: newTotal, promoId: selectedPromo.id, promoName: selectedPromo.name, discountAmount: discountAmt, ...(promoPhotoDataUrl ? { promoPhoto: promoPhotoDataUrl, promoClaimStatus: "approved" } : {}) },
       {
         onSuccess: () => {
           toast({ title: "Discount Applied", description: `${selectedPromo.name} (${selectedPromo.discount}% off) has been applied.` });
           setSelectedPromoId("");
+          setPromoPhotoDataUrl(null);
+          if (promoFileInputRef.current) promoFileInputRef.current.value = "";
         },
         onError: (err) => toast({ title: "Error", description: err.message, variant: "destructive" }),
       }
@@ -649,6 +655,46 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsPr
                               </div>
                             </div>
                           )}
+
+                          <div className="space-y-1.5">
+                            <p className="text-xs text-muted-foreground">Attach proof photo <span className="text-muted-foreground/60">(optional)</span></p>
+                            <input
+                              ref={promoFileInputRef}
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (!file) return;
+                                if (file.size > 3 * 1024 * 1024) {
+                                  toast({ title: "File too large", description: "Please upload an image under 3MB.", variant: "destructive" });
+                                  return;
+                                }
+                                const reader = new FileReader();
+                                reader.onload = (ev) => setPromoPhotoDataUrl(ev.target?.result as string);
+                                reader.readAsDataURL(file);
+                              }}
+                            />
+                            {promoPhotoDataUrl ? (
+                              <div className="relative rounded-xl overflow-hidden border border-border/50">
+                                <img src={promoPhotoDataUrl} alt="Proof" className="w-full max-h-36 object-cover" />
+                                <button
+                                  onClick={() => { setPromoPhotoDataUrl(null); if (promoFileInputRef.current) promoFileInputRef.current.value = ""; }}
+                                  className="absolute top-2 right-2 bg-black/60 text-white rounded-full p-1 hover:bg-black/80"
+                                >
+                                  <XCircle className="w-4 h-4" />
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => promoFileInputRef.current?.click()}
+                                className="w-full border-2 border-dashed border-border/50 rounded-xl py-4 flex flex-col items-center gap-1.5 text-muted-foreground hover:border-primary/40 hover:text-primary transition-colors"
+                              >
+                                <ImagePlus className="w-5 h-5" />
+                                <span className="text-xs">Upload photo (max 3MB)</span>
+                              </button>
+                            )}
+                          </div>
 
                           <Button
                             data-testid="button-apply-promo"
