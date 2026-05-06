@@ -1,0 +1,62 @@
+PS C:\Users\DELL\Downloads\LavanderiaSunrise\LavanderiaSunrise> .\run-website.ps1
+>> 
+Setting up Laundry Website...
+Setting up database...
+
+> rest-express@1.0.0 db:push
+> drizzle-kit push
+
+No config path provided, using default 'drizzle.config.ts'
+Reading config file 'C:\Users\DELL\Downloads\LavanderiaSunrise\LavanderiaSunrise\drizzle.config.ts'
+Using 'pg' driver for database querying
+[⣷] Pulling schema from database...
+error: password authentication failed for user "postgres"
+    at C:\Users\DELL\Downloads\LavanderiaSunrise\LavanderiaSunrise\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async Object.query (C:\Users\DELL\Downloads\LavanderiaSunrise\LavanderiaSunrise\node_modules\drizzle-kit\bin.cjs:80622:26)
+    at async fromDatabase2 (C:\Users\DELL\Downloads\LavanderiaSunrise\LavanderiaSunrise\node_modules\drizzle-kit\bin.cjs:19276:25) {
+  length: 104,
+  severity: 'FATAL',
+  code: '28P01',
+  detail: undefined,
+  hint: undefined,
+  position: undefined,
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'auth.c',
+  line: '320',
+  routine: 'auth_failed'
+}
+Starting server on http://localhost:5000...
+Press Ctrl+C to stop the server
+10:35:55 PM [express] serving on port 5000
+error: password authentication failed for user "postgres"
+    at C:\Users\DELL\Downloads\LavanderiaSunrise\LavanderiaSunrise\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async <anonymous> (C:\Users\DELL\Downloads\LavanderiaSunrise\LavanderiaSunrise\node_modules\src\node-postgres\session.ts:104:19)
+    at async DatabaseStorage.getServices (C:\Users\DELL\Downloads\LavanderiaSunrise\LavanderiaSunrise\server\storage.ts:188:12)
+    at async seedDatabase (C:\Users\DELL\Downloads\LavanderiaSunrise\LavanderiaSunrise\server\routes.ts:15:28) {
+  length: 104,
+  severity: 'FATAL',
+  code: '28P01',
+  detail: undefined,
+  hint: undefined,
+  position: undefined,
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'auth.c',
+  line: '320',
+  routine: 'auth_failed'
+}
