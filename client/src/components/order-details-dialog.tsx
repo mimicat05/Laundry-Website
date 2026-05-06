@@ -338,7 +338,15 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsPr
                 <FormField control={form.control} name="contactNumber" render={({ field }) => (
                   <FormItem>
                     <FormLabel>Contact Number</FormLabel>
-                    <FormControl><Input className="rounded-xl bg-background/50 border-border/50" {...field} /></FormControl>
+                    <FormControl>
+                      <Input
+                        className="rounded-xl bg-background/50 border-border/50"
+                        inputMode="numeric"
+                        maxLength={11}
+                        {...field}
+                        onChange={(e) => field.onChange(e.target.value.replace(/\D/g, "").slice(0, 11))}
+                      />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />

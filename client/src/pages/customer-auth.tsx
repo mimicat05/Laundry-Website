@@ -282,11 +282,12 @@ export function CustomerAuth() {
                 <Input
                   id="forgot-contact"
                   data-testid="input-forgot-contact"
-                  type="tel"
+                  inputMode="numeric"
+                  maxLength={11}
                   placeholder="09XXXXXXXXX"
                   className="rounded-xl h-11 bg-background/50 border-border/50 focus:bg-background transition-all"
                   value={forgotContact}
-                  onChange={(e) => { setForgotContact(e.target.value); setError(""); }}
+                  onChange={(e) => { setForgotContact(e.target.value.replace(/\D/g, "").slice(0, 11)); setError(""); }}
                 />
               </div>
               <div className="space-y-2">
@@ -434,10 +435,12 @@ export function CustomerAuth() {
                 <Input
                   id="signup-contact"
                   data-testid="input-signup-contact"
+                  inputMode="numeric"
+                  maxLength={11}
                   placeholder="09XXXXXXXXX"
                   className="rounded-xl h-11 bg-background/50 border-border/50 focus:bg-background transition-all"
                   value={signupContact}
-                  onChange={(e) => { setSignupContact(e.target.value); setError(""); }}
+                  onChange={(e) => { setSignupContact(e.target.value.replace(/\D/g, "").slice(0, 11)); setError(""); }}
                 />
               </div>
               <div className="space-y-2">

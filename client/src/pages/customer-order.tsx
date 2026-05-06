@@ -321,20 +321,16 @@ export function CustomerOrder() {
                       <FormLabel>Contact Number</FormLabel>
                       <FormControl>
                         <Input
-                          placeholder="09171234567"
+                          placeholder="09XXXXXXXXX"
                           className="rounded-xl bg-muted/50"
-                          inputMode="tel"
-                          maxLength={13}
+                          inputMode="numeric"
+                          maxLength={11}
                           readOnly={!!customer}
                           data-testid="input-contact-number"
                           {...field}
                           onChange={(e) => {
                             if (customer) return;
-                            const raw = e.target.value;
-                            const cleaned = raw.startsWith("+")
-                              ? "+" + raw.slice(1).replace(/\D/g, "")
-                              : raw.replace(/\D/g, "");
-                            field.onChange(cleaned);
+                            field.onChange(e.target.value.replace(/\D/g, "").slice(0, 11));
                           }}
                         />
                       </FormControl>

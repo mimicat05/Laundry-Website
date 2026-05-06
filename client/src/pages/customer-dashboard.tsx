@@ -190,8 +190,10 @@ function EditProfileDialog({
               <Input
                 id="edit-contact"
                 data-testid="input-edit-contact"
+                inputMode="numeric"
+                maxLength={11}
                 value={form.contactNumber}
-                onChange={(e) => setForm((f) => ({ ...f, contactNumber: e.target.value }))}
+                onChange={(e) => setForm((f) => ({ ...f, contactNumber: e.target.value.replace(/\D/g, "").slice(0, 11) }))}
                 className="rounded-xl"
                 required
               />
