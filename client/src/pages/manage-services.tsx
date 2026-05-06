@@ -259,7 +259,6 @@ export function ManageServices() {
     <div className="space-y-10 animate-in fade-in duration-500 pb-12">
       <div>
         <h1 className="font-display text-3xl font-bold text-foreground">Manage Services</h1>
-        <p className="text-muted-foreground mt-1">Add, edit, or remove the services and promos offered to customers.</p>
       </div>
 
       {/* Services Section */}
