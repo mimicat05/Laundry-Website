@@ -214,7 +214,7 @@ export function CustomerOrder() {
               <h3 className="font-semibold text-foreground">Have a Promo?</h3>
             </div>
             <p className="text-sm text-muted-foreground mb-4">
-              Select the promo you qualify for and upload a photo as proof (e.g. senior ID, student ID, coupon). Our staff will review and apply the discount.
+              Select the promo you qualify for and upload a photo as proof. Our staff will review and apply the discount.
             </p>
 
             {/* Promo selector */}
