@@ -1,60 +1,67 @@
-# Lavanderia Sunrise – Laundry Shop Management System
+# Lavanderia Sunrise
 
-## Overview
-A full-stack laundry shop management system for Lavanderia Sunrise. It handles the complete lifecycle of laundry orders for both staff/owners and customers.
+A laundry service management system for Lavanderia Sunrise in Dacanlao, Calaca, Batangas — covering customer order requests, staff order management, and a customer-facing portal.
 
-## Tech Stack
-- **Frontend**: React + TypeScript, Vite, Tailwind CSS, Radix UI / Shadcn UI, Wouter (routing), TanStack Query
-- **Backend**: Node.js, Express 5
-- **Database**: PostgreSQL via Drizzle ORM
-- **Authentication**: Session-based (express-session + connect-pg-simple); PIN login for staff, email/password for customers
-- **Email**: Nodemailer with Gmail SMTP (optional – app runs without it)
+## Run & Operate
 
-## Project Structure
-```
-client/         React frontend (Vite)
-  src/
-    components/ UI components (Shadcn/UI + business components)
-    hooks/      Custom hooks (auth, orders, etc.)
-    pages/      Page-level components
-server/         Express backend
-  index.ts      App entry point, session setup
-  routes.ts     All API route definitions
-  storage.ts    Database repository layer
-  email.ts      Email notification helpers
-  db.ts         Drizzle + pg pool setup
-  vite.ts       Vite dev middleware setup
-shared/         Shared TypeScript types and Zod schemas
-script/         Build scripts
-```
+- `npm run dev` — start development server (port 5000)
+- `npm run build` — build for production (client + server bundle)
+- `npm run start` — run production build
+- `npm run db:push` — push schema changes to the database
+- `npm run check` — TypeScript type check
 
-## Environment Variables
-| Variable | Required | Description |
-|---|---|---|
-| `DATABASE_URL` | Yes | PostgreSQL connection string (provisioned by Replit) |
-| `SESSION_SECRET` | Yes | Secret for express-session (provisioned by Replit) |
-| `GMAIL_USER` | No | Gmail address for sending emails |
-| `GMAIL_PASSWORD` | No | Gmail App Password for SMTP |
+**Required env (auto-set by Replit):** `DATABASE_URL`, `PGHOST`, `PGPORT`, `PGUSER`, `PGPASSWORD`, `PGDATABASE`
 
-## Key Features
-1. **Order Management** – Full status workflow: requested → pending → received → washing → drying → folding → ready_for_pickup → completed
-2. **Customer Portal** – Registration, login, order tracking, password reset via email
-3. **Staff Dashboard** – Role-based (Owner vs Staff), order CRUD, staff management
-4. **Services & Promos** – Configurable laundry services and discount codes
-5. **Promo Claim with Photo Verification** – Customers upload a proof photo to claim a promo on their active order; staff review, approve (auto-applies discount), or reject from the order details panel. Fields: `promoClaimName`, `promoPhoto` (base64), `promoClaimStatus` on `orders` table.
-6. **Reports** – Sales and order reports for owners
-7. **Email Notifications** – Order status updates, receipts, price updates, password reset
-8. **Threaded Messaging (Continuous Back-and-Forth)** – Full chat-thread system. Customers start a conversation via "Message Us". Both staff and customers can reply any number of times in a thread. Messages show as chat bubbles (customer = right/primary color, staff = left/muted). Staff inbox: click to expand thread, reply box with Enter-to-send. Customer "My Messages": same expandable thread with reply box. `messages` table holds the thread root; `message_replies` table holds all replies with `senderType` ("customer"|"staff"), `senderName`, `body`. Auto-polls every 4s when thread is open. Routes: `POST /api/customer/messages` (start thread), `POST /api/messages/:id/reply` (staff reply), `POST /api/customer/messages/:id/reply` (customer reply), `GET /api/messages/:id/replies` (staff), `GET /api/customer/messages/:id/replies` (customer).
-9. **Customer Feedback & Public Testimonials** – Customers leave star ratings (1–5) and optional comments on completed orders; staff view all feedback in Inbox with average rating stats. Reviews with rating ≥ 4 and a comment are displayed as a testimonials section on the public landing page. Routes: `GET /api/public/feedback` (public, no auth), `GET /api/feedback` (staff auth), `POST /api/customer/feedback`, `GET /api/feedback/order/:orderId`. `feedback` table: id, orderId, customerId, customerName, rating, comment, createdAt.
-10. **Deletion Transparency** – Staff must enter a reason before deleting or declining any order (modal dialog replaces browser `confirm()`). Deleted orders remain visible in the customer's dashboard under a "Removed by Shop" section with the reason displayed. `deletionReason` column added to `orders` table. Customer orders endpoint now returns soft-deleted orders so customers always see their full history.
+**Optional secrets:** `GMAIL_USER`, `GMAIL_PASSWORD` — enables email notifications. Without these, email is silently disabled (logged to console). `SESSION_SECRET` — defaults to a hardcoded fallback if not set.
 
-## Running the App
-- **Dev**: `npm run dev` (starts Express + Vite middleware on port 5000)
-- **Build**: `npm run build`
-- **Production**: `npm start`
-- **DB Push**: `npm run db:push`
+## Stack
 
-## Notes
-- The app uses a single port (5000) in both dev and production – Vite runs as middleware in dev
-- Email features are optional; app logs disabled email actions when credentials are missing
-- Session store uses PostgreSQL (connect-pg-simple) – requires DATABASE_URL
+- **Runtime:** Node.js 20, TypeScript via tsx
+- **Frontend:** React 18, Vite 7, Wouter (routing), TanStack Query, Tailwind CSS v3, shadcn/ui (Radix-based)
+- **Backend:** Express 5, express-session with connect-pg-simple
+- **Database:** PostgreSQL via Drizzle ORM + drizzle-kit
+- **Email:** Nodemailer with Gmail SMTP (optional)
+- **Auth:** Custom session-based — staff use name+PIN, customers use email+password (bcrypt)
+
+## Where things live
+
+- `client/src/` — React frontend (pages, components, hooks, lib)
+- `server/` — Express API (routes.ts, storage.ts, email.ts, db.ts)
+- `shared/` — Shared schema (Drizzle + Zod) and typed API routes
+- `script/build.ts` — Production build script (esbuild)
+- `drizzle.config.ts` — DB config (source of truth for schema location)
+- `shared/schema.ts` — Database schema (source of truth)
+
+## Architecture decisions
+
+- Single Express server serves both API (`/api/*`) and the React SPA (Vite middleware in dev, static in prod) on port 5000
+- Session stored in PostgreSQL (`connect-pg-simple`) with `createTableIfMissing: true`
+- Two separate auth flows share one session: `staffId` for staff, `customerId` for customers
+- Email sending is fully optional — gracefully no-ops when GMAIL credentials are absent
+- Seed data (default services + admin staff + sample orders) runs at startup if tables are empty
+
+## Product
+
+- **Public landing page** — services, promos, contact info, reviews
+- **Customer portal** — register/login, place order requests, track orders, cancel pending orders, claim promos
+- **Staff dashboard** — manage orders through status pipeline (requested → pending → received → washing → drying → folding → ready_for_pickup → completed)
+- **Owner features** — manage staff (PIN-based), services, promos, shop settings, reports, order logs, recently deleted orders
+- **Email notifications** — order confirmations, status updates, receipts, password reset (Gmail SMTP)
+
+## User preferences
+
+_Populate as you build_
+
+## Gotchas
+
+- `/order` redirects unauthenticated customers to `/customer/login` — this is intentional
+- Staff login is at `/staff` (not `/staff/login`)
+- `trust proxy` is set to `1` for correct IP detection behind Replit's proxy
+- Session cookie `secure: true` only in production (required for Replit deployed apps)
+
+## Pointers
+
+- Drizzle schema: `shared/schema.ts`
+- API routes: `server/routes.ts`
+- Replit DB skill: `.local/skills/database/SKILL.md`
+- Replit secrets skill: `.local/skills/environment-secrets/SKILL.md`
