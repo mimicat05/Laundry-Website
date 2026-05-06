@@ -112,7 +112,6 @@ export function ShopSettingsPage() {
                         }}
                       />
                     </FormControl>
-                    <FormDescription>Philippine mobile (09XX XXX XXXX) or landline (0XX XXXX XXXX). Customers can tap this to call you.</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
