@@ -72,6 +72,21 @@ export function OrdersView({ status, title }: OrdersViewProps) {
 
   const handleBulkUpdate = async () => {
     if (!nextStatus || selectedCount === 0) return;
+
+    if (nextStatus === "completed") {
+      const selectedOrders = (orders || []).filter((o) => selectedIds.has(o.id));
+      const unpaidOrders = selectedOrders.filter((o) => !o.paid);
+      if (unpaidOrders.length > 0) {
+        const names = unpaidOrders.map((o) => o.orderId).join(", ");
+        toast({
+          title: "Cannot Mark as Completed",
+          description: `${unpaidOrders.length === 1 ? "Order" : "Orders"} ${names} ${unpaidOrders.length === 1 ? "is" : "are"} unpaid. Please mark ${unpaidOrders.length === 1 ? "it" : "them"} as paid before completing.`,
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
     setIsBulkUpdating(true);
     try {
       await Promise.all(
