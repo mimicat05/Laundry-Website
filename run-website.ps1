@@ -15,6 +15,17 @@ if (!(Test-Path "node_modules")) {
     npm install
 }
 
+# Free up port 5000 if something is already using it
+$port = 5000
+$existing = Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue
+if ($existing) {
+    $procId = $existing.OwningProcess
+    Write-Host "Port $port is in use (PID $procId). Stopping it..." -ForegroundColor Yellow
+    Stop-Process -Id $procId -Force -ErrorAction SilentlyContinue
+    Start-Sleep -Seconds 1
+    Write-Host "Port $port is now free." -ForegroundColor Green
+}
+
 # Push database schema
 Write-Host "Setting up database..." -ForegroundColor Yellow
 npm run db:push
@@ -26,7 +37,7 @@ if ($LASTEXITCODE -ne 0) {
 
 # Start the server (reads .env.local automatically)
 Write-Host ""
-Write-Host "Server starting at http://localhost:5000" -ForegroundColor Green
+Write-Host "Server starting at http://localhost:$port" -ForegroundColor Green
 Write-Host "Press Ctrl+C to stop" -ForegroundColor Cyan
 Write-Host ""
 npm run dev
