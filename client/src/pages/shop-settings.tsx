@@ -101,14 +101,15 @@ export function ShopSettingsPage() {
                     <FormLabel>Phone</FormLabel>
                     <FormControl>
                       <Input
-                        placeholder="09XX XXX XXXX or 0XX XXXX XXXX"
+                        placeholder="09XXXXXXXXX"
                         className="rounded-xl"
+                        inputMode="numeric"
                         data-testid="input-settings-phone"
-                        maxLength={16}
+                        maxLength={11}
                         {...field}
                         onChange={(e) => {
-                          const filtered = e.target.value.replace(/[^\d\s\-+().]/g, "");
-                          field.onChange(filtered);
+                          const digits = e.target.value.replace(/\D/g, "").slice(0, 11);
+                          field.onChange(digits);
                         }}
                       />
                     </FormControl>
