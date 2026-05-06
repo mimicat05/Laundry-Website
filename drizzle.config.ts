@@ -1,12 +1,8 @@
 import { defineConfig } from "drizzle-kit";
-import { config } from "dotenv";
-import { resolve } from "path";
-import { fileURLToPath } from "url";
-import { dirname } from "path";
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-config({ path: resolve(__dirname, ".env.local") });
-config({ path: resolve(__dirname, ".env") });
+// Load .env.local / .env using Node.js built-in (v20.12+). No imports needed.
+try { (process as any).loadEnvFile(".env.local"); } catch {}
+try { (process as any).loadEnvFile(".env"); } catch {}
 
 if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL, ensure the database is provisioned");
