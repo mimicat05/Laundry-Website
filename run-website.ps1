@@ -1,33 +1,15 @@
-# Laundry Website Runner Script
-Write-Host "Setting up Laundry Website..." -ForegroundColor Green
+Write-Host "Starting Lavanderia Sunrise..." -ForegroundColor Green
 
-# Set environment variables — fill these in before running locally
-$env:DATABASE_URL = 'postgresql://postgres:YOUR_PASSWORD@localhost:5432/laundry_shop_db'
-$env:NODE_ENV = 'development'
-$env:GMAIL_USER = 'your_gmail@gmail.com'
-$env:GMAIL_PASSWORD = 'your_gmail_app_password'
-
-# Pick an available port so the script can run even if 5000 is already in use
-function Get-FreePort {
-    param(
-        [int]$StartPort = 5000,
-        [int]$EndPort = 5010
-    )
-
-    for ($p = $StartPort; $p -le $EndPort; $p++) {
-        $inUse = Get-NetTCPConnection -LocalPort $p -State Listen -ErrorAction SilentlyContinue
-        if (-not $inUse) {
-            return $p
-        }
-    }
-
-    throw "No free port found between $StartPort and $EndPort."
+# Check .env.local exists
+if (!(Test-Path ".env.local")) {
+    Write-Host ""
+    Write-Host "ERROR: .env.local not found." -ForegroundColor Red
+    Write-Host "Copy .env.example to .env.local and fill in your database credentials." -ForegroundColor Yellow
+    Write-Host "  copy .env.example .env.local" -ForegroundColor Cyan
+    exit 1
 }
 
-$freePort = Get-FreePort
-$env:PORT = $freePort
-
-# Check if dependencies are installed
+# Install dependencies if missing
 if (!(Test-Path "node_modules")) {
     Write-Host "Installing dependencies..." -ForegroundColor Yellow
     npm install
@@ -36,8 +18,15 @@ if (!(Test-Path "node_modules")) {
 # Push database schema
 Write-Host "Setting up database..." -ForegroundColor Yellow
 npm run db:push
+if ($LASTEXITCODE -ne 0) {
+    Write-Host ""
+    Write-Host "ERROR: Database setup failed. Check your DATABASE_URL in .env.local." -ForegroundColor Red
+    exit 1
+}
 
-# Start the server
-Write-Host "Starting server on http://localhost:$freePort..." -ForegroundColor Green
-Write-Host "Press Ctrl+C to stop the server" -ForegroundColor Cyan
-npx tsx server/index.ts
+# Start the server (reads .env.local automatically)
+Write-Host ""
+Write-Host "Server starting at http://localhost:5000" -ForegroundColor Green
+Write-Host "Press Ctrl+C to stop" -ForegroundColor Cyan
+Write-Host ""
+npm run dev
