@@ -16,6 +16,14 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 import { type Order } from "@shared/schema";
 
 function RequestRow({
@@ -32,6 +40,8 @@ function RequestRow({
   const { mutate: updateOrder, isPending: isAccepting } = useUpdateOrder();
   const { mutate: deleteOrder, isPending: isDeclining } = useDeleteOrder();
   const { toast } = useToast();
+  const [showDeclineDialog, setShowDeclineDialog] = useState(false);
+  const [declineReason, setDeclineReason] = useState("");
 
   const handleAccept = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -46,14 +56,57 @@ function RequestRow({
 
   const handleDecline = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!confirm(`Decline and remove order ${order.orderId}?`)) return;
-    deleteOrder(order.id, {
-      onSuccess: () => toast({ title: "Order Declined", description: `${order.orderId} has been removed.` }),
+    setDeclineReason("");
+    setShowDeclineDialog(true);
+  };
+
+  const handleConfirmDecline = () => {
+    if (!declineReason.trim()) return;
+    deleteOrder({ id: order.id, reason: declineReason.trim() }, {
+      onSuccess: () => {
+        setShowDeclineDialog(false);
+        toast({ title: "Order Declined", description: `${order.orderId} has been removed.` });
+      },
       onError: (err) => toast({ title: "Error", description: err.message, variant: "destructive" }),
     });
   };
 
   return (
+    <>
+    <Dialog open={showDeclineDialog} onOpenChange={(v) => { if (!v) setShowDeclineDialog(false); }}>
+      <DialogContent className="max-w-sm rounded-3xl">
+        <DialogHeader>
+          <DialogTitle className="font-display text-lg">Decline Request</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3 py-1">
+          <p className="text-sm text-muted-foreground">
+            Provide a reason for declining <span className="font-semibold text-foreground">{order.orderId}</span>. The customer will see this reason.
+          </p>
+          <Textarea
+            placeholder="e.g. Outside service area, order details incomplete…"
+            value={declineReason}
+            onChange={(e) => setDeclineReason(e.target.value)}
+            className="rounded-xl resize-none min-h-[90px] text-sm"
+            data-testid={`input-decline-reason-${order.id}`}
+          />
+        </div>
+        <DialogFooter className="gap-2">
+          <Button variant="outline" className="rounded-xl" onClick={() => setShowDeclineDialog(false)} disabled={isDeclining}>
+            Cancel
+          </Button>
+          <Button
+            variant="destructive"
+            className="rounded-xl"
+            onClick={handleConfirmDecline}
+            disabled={!declineReason.trim() || isDeclining}
+            data-testid={`button-confirm-decline-${order.id}`}
+          >
+            {isDeclining ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+            Decline Order
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
     <TableRow
       className="hover:bg-muted/30 transition-colors cursor-pointer border-border/50"
       onClick={() => onView(order)}
@@ -114,6 +167,7 @@ function RequestRow({
         </div>
       </TableCell>
     </TableRow>
+    </>
   );
 }
 
@@ -122,8 +176,10 @@ export function RequestsView() {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [search, setSearch] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [showBulkDeclineDialog, setShowBulkDeclineDialog] = useState(false);
+  const [bulkDeclineReason, setBulkDeclineReason] = useState("");
   const { mutate: updateOrder } = useUpdateOrder();
-  const { mutate: deleteOrder } = useDeleteOrder();
+  const { mutate: deleteOrder, isPending: isBulkDeclining } = useDeleteOrder();
   const { toast } = useToast();
 
   const query = search.toLowerCase();
@@ -190,16 +246,22 @@ export function RequestsView() {
   };
 
   const handleBulkDecline = () => {
+    setBulkDeclineReason("");
+    setShowBulkDeclineDialog(true);
+  };
+
+  const handleConfirmBulkDecline = () => {
+    if (!bulkDeclineReason.trim()) return;
     const total = visibleSelectedIds.length;
-    if (!confirm(`Decline and remove ${total} selected order${total > 1 ? "s" : ""}?`)) return;
     let completed = 0;
     visibleSelectedIds.forEach((id) => {
-      deleteOrder(id, {
+      deleteOrder({ id, reason: bulkDeclineReason.trim() }, {
         onSuccess: () => {
           completed++;
           if (completed === total) {
             toast({ title: "Orders Declined", description: `${total} order${total > 1 ? "s" : ""} have been removed.` });
             setSelectedIds(new Set());
+            setShowBulkDeclineDialog(false);
           }
         },
         onError: (err) => toast({ title: "Error", description: err.message, variant: "destructive" }),
@@ -316,6 +378,41 @@ export function RequestsView() {
         open={!!selectedOrder}
         onOpenChange={(open) => !open && setSelectedOrder(null)}
       />
+
+      <Dialog open={showBulkDeclineDialog} onOpenChange={(v) => { if (!v) setShowBulkDeclineDialog(false); }}>
+        <DialogContent className="max-w-sm rounded-3xl">
+          <DialogHeader>
+            <DialogTitle className="font-display text-lg">Decline {visibleSelectedIds.length} Request{visibleSelectedIds.length > 1 ? "s" : ""}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-1">
+            <p className="text-sm text-muted-foreground">
+              Provide a reason for declining these {visibleSelectedIds.length} order{visibleSelectedIds.length > 1 ? "s" : ""}. Each customer will see this reason.
+            </p>
+            <Textarea
+              placeholder="e.g. Outside service area, incomplete order details…"
+              value={bulkDeclineReason}
+              onChange={(e) => setBulkDeclineReason(e.target.value)}
+              className="rounded-xl resize-none min-h-[90px] text-sm"
+              data-testid="input-bulk-decline-reason"
+            />
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" className="rounded-xl" onClick={() => setShowBulkDeclineDialog(false)} disabled={isBulkDeclining}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              className="rounded-xl"
+              onClick={handleConfirmBulkDecline}
+              disabled={!bulkDeclineReason.trim() || isBulkDeclining}
+              data-testid="button-confirm-bulk-decline"
+            >
+              {isBulkDeclining ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+              Decline All
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

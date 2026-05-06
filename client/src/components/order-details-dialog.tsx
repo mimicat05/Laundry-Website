@@ -24,7 +24,9 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { type Order, type Service, type Promo } from "@shared/schema";
 import { printSticker, printReceipt } from "@/lib/print-receipt";
@@ -60,6 +62,8 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsPr
   const [actualWeightInput, setActualWeightInput] = useState("");
   const [promoPhotoDataUrl, setPromoPhotoDataUrl] = useState<string | null>(null);
   const promoFileInputRef = useRef<HTMLInputElement>(null);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [deleteReason, setDeleteReason] = useState("");
   const { mutate: updateOrder, isPending: isUpdating } = useUpdateOrder();
   const { mutate: deleteOrder, isPending: isDeleting } = useDeleteOrder();
   const { toast } = useToast();
@@ -216,15 +220,20 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsPr
   };
 
   const handleDelete = () => {
-    if (confirm("Are you sure you want to delete this order?")) {
-      deleteOrder(order.id, {
-        onSuccess: () => {
-          toast({ title: "Deleted", description: "Order has been removed." });
-          onOpenChange(false);
-        },
-        onError: (err) => toast({ title: "Error", description: err.message, variant: "destructive" }),
-      });
-    }
+    setDeleteReason("");
+    setShowDeleteDialog(true);
+  };
+
+  const handleConfirmDelete = () => {
+    if (!order || !deleteReason.trim()) return;
+    deleteOrder({ id: order.id, reason: deleteReason.trim() }, {
+      onSuccess: () => {
+        toast({ title: "Deleted", description: "Order has been removed." });
+        setShowDeleteDialog(false);
+        onOpenChange(false);
+      },
+      onError: (err) => toast({ title: "Error", description: err.message, variant: "destructive" }),
+    });
   };
 
   const handleSaveEdit = (data: EditValues) => {
@@ -846,6 +855,41 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsPr
         </DialogContent>
       </Dialog>
     )}
+
+    <Dialog open={showDeleteDialog} onOpenChange={(v) => { if (!v) setShowDeleteDialog(false); }}>
+      <DialogContent className="max-w-sm rounded-3xl">
+        <DialogHeader>
+          <DialogTitle className="font-display text-lg">Remove Order</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3 py-1">
+          <p className="text-sm text-muted-foreground">
+            Please provide a reason for removing <span className="font-semibold text-foreground">{order?.orderId}</span>. The customer will be able to see this reason.
+          </p>
+          <Textarea
+            placeholder="e.g. Duplicate submission, customer requested removal…"
+            value={deleteReason}
+            onChange={(e) => setDeleteReason(e.target.value)}
+            className="rounded-xl resize-none min-h-[90px] text-sm"
+            data-testid="input-delete-reason"
+          />
+        </div>
+        <DialogFooter className="gap-2">
+          <Button variant="outline" className="rounded-xl" onClick={() => setShowDeleteDialog(false)} disabled={isDeleting}>
+            Cancel
+          </Button>
+          <Button
+            variant="destructive"
+            className="rounded-xl"
+            onClick={handleConfirmDelete}
+            disabled={!deleteReason.trim() || isDeleting}
+            data-testid="button-confirm-delete"
+          >
+            {isDeleting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+            Remove Order
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
     </>
   );
 }

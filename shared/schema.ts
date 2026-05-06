@@ -96,6 +96,7 @@ export const orders = pgTable("orders", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   completedAt: timestamp("completed_at"),
   deletedAt: timestamp("deleted_at"),
+  deletionReason: text("deletion_reason"),
 });
 
 export const insertOrderSchema = createInsertSchema(orders).omit({ id: true, createdAt: true });

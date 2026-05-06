@@ -227,8 +227,7 @@ export async function registerRoutes(
       const customer = await storage.getCustomerById(req.session.customerId!);
       if (!customer) return res.status(401).json({ message: "Not authenticated" });
       const customerOrders = await storage.getOrdersByEmail(customer.email);
-      const visible = customerOrders.filter((o) => !o.deletedAt);
-      res.json(visible);
+      res.json(customerOrders);
     } catch {
       res.status(500).json({ message: "Failed to fetch orders" });
     }
@@ -718,7 +717,11 @@ export async function registerRoutes(
       if (!existing) {
         return res.status(404).json({ message: "Order not found" });
       }
-      await storage.deleteOrder(id, req.session.staffName);
+      const parseResult = z.object({ reason: z.string().min(1, "A reason is required") }).safeParse(req.body);
+      if (!parseResult.success) {
+        return res.status(400).json({ message: parseResult.error.errors[0].message });
+      }
+      await storage.deleteOrder(id, req.session.staffName, parseResult.data.reason);
       res.status(204).send();
     } catch (err) {
       res.status(500).json({ message: "Failed to delete order" });

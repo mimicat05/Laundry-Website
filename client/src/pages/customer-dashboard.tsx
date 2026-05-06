@@ -508,9 +508,10 @@ function OrderTrackingDialog({
 
   if (!order) return null;
 
+  const isRemovedByShop = !!order.deletedAt;
   const isCancelled = order.status === "cancelled";
-  const canCancel = CANCELLABLE.includes(order.status);
-  const canClaimPromo = ["requested", "pending"].includes(order.status) && !order.promoId && !order.promoClaimStatus;
+  const canCancel = CANCELLABLE.includes(order.status) && !isRemovedByShop;
+  const canClaimPromo = ["requested", "pending"].includes(order.status) && !order.promoId && !order.promoClaimStatus && !isRemovedByShop;
   const currentIdx = STAGE_KEYS.indexOf(order.status);
 
   return (
@@ -525,18 +526,34 @@ function OrderTrackingDialog({
 
           {/* Status & payment */}
           <div className="flex items-center gap-2 flex-wrap">
-            <Badge variant="outline" className={`text-xs px-2.5 py-1 ${STATUS_BADGE[order.status] ?? ""}`}>
-              {STATUS_LABEL[order.status] ?? order.status}
-            </Badge>
-            {!isCancelled && (order.paid ? (
+            {isRemovedByShop ? (
+              <Badge variant="outline" className="text-xs px-2.5 py-1 bg-red-100 text-red-700 border-red-200">
+                Removed by Shop
+              </Badge>
+            ) : (
+              <Badge variant="outline" className={`text-xs px-2.5 py-1 ${STATUS_BADGE[order.status] ?? ""}`}>
+                {STATUS_LABEL[order.status] ?? order.status}
+              </Badge>
+            )}
+            {!isCancelled && !isRemovedByShop && (order.paid ? (
               <span className="text-xs font-medium text-green-600 bg-green-50 border border-green-200 px-2.5 py-1 rounded-lg">Paid</span>
             ) : (
               <span className="text-xs font-medium text-amber-600 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-lg">Payment Pending</span>
             ))}
           </div>
 
-          {/* Cancelled notice */}
-          {isCancelled ? (
+          {/* Removed by shop notice */}
+          {isRemovedByShop ? (
+            <div className="flex items-start gap-3 bg-red-50 border border-red-200 rounded-2xl px-4 py-3 mt-1">
+              <XCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-semibold text-red-800">This order was removed by the shop.</p>
+                {order.deletionReason && (
+                  <p className="text-xs text-red-600 mt-1">Reason: {order.deletionReason}</p>
+                )}
+              </div>
+            </div>
+          ) : isCancelled ? (
             <div className="flex items-center gap-3 bg-red-50 border border-red-200 rounded-2xl px-4 py-3 mt-1">
               <XCircle className="w-5 h-5 text-red-500 shrink-0" />
               <p className="text-sm text-red-700">This order was cancelled and will not be processed.</p>
@@ -838,8 +855,9 @@ function OrderTrackingDialog({
 }
 
 function OrderCard({ order, onClick }: { order: Order; onClick: () => void }) {
-  const statusLabel = STATUS_LABEL[order.status] ?? order.status;
-  const badgeClass = STATUS_BADGE[order.status] ?? "bg-gray-100 text-gray-700";
+  const isRemoved = !!order.deletedAt;
+  const displayLabel = isRemoved ? "Removed by Shop" : (STATUS_LABEL[order.status] ?? order.status);
+  const badgeClass = isRemoved ? "bg-red-100 text-red-700 border-red-200" : (STATUS_BADGE[order.status] ?? "bg-gray-100 text-gray-700");
 
   return (
     <button
@@ -847,15 +865,15 @@ function OrderCard({ order, onClick }: { order: Order; onClick: () => void }) {
       className="w-full text-left group"
       data-testid={`card-order-${order.id}`}
     >
-      <Card className="border border-border/50 rounded-2xl p-5 hover:shadow-md hover:border-primary/20 transition-all bg-card">
+      <Card className={`border rounded-2xl p-5 hover:shadow-md transition-all bg-card ${isRemoved ? "border-red-200/60 opacity-75" : "border-border/50 hover:border-primary/20"}`}>
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1.5 flex-wrap">
               <span className="font-display font-bold text-foreground text-sm" data-testid={`text-order-id-${order.id}`}>{order.orderId}</span>
               <Badge variant="outline" className={`text-xs px-2 py-0.5 ${badgeClass}`} data-testid={`badge-status-${order.id}`}>
-                {statusLabel}
+                {displayLabel}
               </Badge>
-              {order.status !== "cancelled" && (
+              {!isRemoved && order.status !== "cancelled" && (
                 order.paid
                   ? <span className="text-xs font-medium text-green-600 bg-green-50 border border-green-200 px-2 py-0.5 rounded-lg" data-testid={`badge-paid-${order.id}`}>Paid</span>
                   : <span className="text-xs font-medium text-red-600 bg-red-50 border border-red-200 px-2 py-0.5 rounded-lg" data-testid={`badge-unpaid-${order.id}`}>Unpaid</span>
@@ -901,9 +919,10 @@ export function CustomerDashboard() {
     setLocation("/");
   };
 
-  const activeOrders = (orders || []).filter((o) => o.status !== "completed" && o.status !== "cancelled");
-  const completedOrders = (orders || []).filter((o) => o.status === "completed");
-  const cancelledOrders = (orders || []).filter((o) => o.status === "cancelled");
+  const activeOrders = (orders || []).filter((o) => !o.deletedAt && o.status !== "completed" && o.status !== "cancelled");
+  const completedOrders = (orders || []).filter((o) => !o.deletedAt && o.status === "completed");
+  const cancelledOrders = (orders || []).filter((o) => !o.deletedAt && o.status === "cancelled");
+  const removedOrders = (orders || []).filter((o) => !!o.deletedAt);
 
   return (
     <div className="min-h-screen bg-background">
@@ -1040,6 +1059,18 @@ export function CustomerDashboard() {
                   Cancelled Orders
                 </h2>
                 {cancelledOrders.map((order) => (
+                  <OrderCard key={order.id} order={order} onClick={() => setSelectedOrder(order)} />
+                ))}
+              </>
+            )}
+
+            {/* Removed by shop orders */}
+            {removedOrders.length > 0 && (
+              <>
+                <h2 className={`font-display font-semibold text-sm uppercase tracking-wide text-muted-foreground mb-3 ${(activeOrders.length > 0 || completedOrders.length > 0 || cancelledOrders.length > 0) ? "mt-6" : ""}`}>
+                  Removed by Shop
+                </h2>
+                {removedOrders.map((order) => (
                   <OrderCard key={order.id} order={order} onClick={() => setSelectedOrder(order)} />
                 ))}
               </>

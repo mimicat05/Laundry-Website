@@ -43,7 +43,7 @@ export interface IStorage {
   getOrder(id: number): Promise<Order | undefined>;
   createOrder(order: InsertOrder): Promise<Order>;
   updateOrder(id: number, updates: UpdateOrderRequest): Promise<Order>;
-  deleteOrder(id: number, staffName?: string): Promise<void>;
+  deleteOrder(id: number, staffName?: string, reason?: string): Promise<void>;
   restoreOrder(id: number, staffName?: string): Promise<Order>;
   permanentDeleteOrder(id: number, staffName?: string): Promise<void>;
   getOrderLogs(): Promise<OrderLog[]>;
@@ -157,10 +157,10 @@ export class DatabaseStorage implements IStorage {
     await logOrder(order, action, staffName);
   }
 
-  async deleteOrder(id: number, staffName?: string): Promise<void> {
+  async deleteOrder(id: number, staffName?: string, reason?: string): Promise<void> {
     const order = await this.getOrder(id);
     await db.update(orders)
-      .set({ deletedAt: new Date() })
+      .set({ deletedAt: new Date(), ...(reason ? { deletionReason: reason } : {}) })
       .where(eq(orders.id, id));
     if (order) await logOrder(order, "deleted", staffName);
   }

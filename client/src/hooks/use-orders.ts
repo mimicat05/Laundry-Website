@@ -82,13 +82,18 @@ export function useUpdateOrder() {
 export function useDeleteOrder() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (id: number) => {
+    mutationFn: async ({ id, reason }: { id: number; reason: string }) => {
       const url = buildUrl(api.orders.delete.path, { id });
       const res = await fetch(url, {
         method: api.orders.delete.method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason }),
         credentials: "include",
       });
-      if (!res.ok) throw new Error("Failed to delete order");
+      if (!res.ok) {
+        const error = await res.json().catch(() => ({ message: "Failed to delete order" }));
+        throw new Error(error.message || "Failed to delete order");
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [api.orders.list.path] });
