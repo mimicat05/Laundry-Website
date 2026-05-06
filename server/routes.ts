@@ -214,7 +214,7 @@ export async function registerRoutes(
           return res.status(400).json({ message: "Email already in use." });
         }
       }
-      const updated = await storage.updateCustomer(req.session.customerId, data);
+      const updated = await storage.updateCustomer(req.session.customerId!, data);
       const { password: _, ...safe } = updated;
       res.json(safe);
     } catch (err: any) {
@@ -224,7 +224,7 @@ export async function registerRoutes(
 
   app.get("/api/customer/orders", requireCustomer, async (req, res) => {
     try {
-      const customer = await storage.getCustomerById(req.session.customerId);
+      const customer = await storage.getCustomerById(req.session.customerId!);
       if (!customer) return res.status(401).json({ message: "Not authenticated" });
       const customerOrders = await storage.getOrdersByEmail(customer.email);
       const visible = customerOrders.filter((o) => !o.deletedAt);
@@ -237,7 +237,7 @@ export async function registerRoutes(
   app.post("/api/customer/orders/:id/cancel", requireCustomer, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const customer = await storage.getCustomerById(req.session.customerId);
+      const customer = await storage.getCustomerById(req.session.customerId!);
       if (!customer) return res.status(401).json({ message: "Not authenticated" });
       const order = await storage.getOrder(id);
       if (!order) return res.status(404).json({ message: "Order not found" });
@@ -257,7 +257,7 @@ export async function registerRoutes(
   app.post("/api/customer/orders/:id/promo-claim", requireCustomer, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const customer = await storage.getCustomerById(req.session.customerId);
+      const customer = await storage.getCustomerById(req.session.customerId!);
       if (!customer) return res.status(401).json({ message: "Not authenticated" });
       const order = await storage.getOrder(id);
       if (!order) return res.status(404).json({ message: "Order not found" });

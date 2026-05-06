@@ -99,7 +99,7 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsPr
   const watchedWeight = form.watch("weight");
 
   useEffect(() => {
-    if (!isEditing) return;
+    if (!isEditing || !order) return;
     const svc = activeServices.find((s) => s.name === watchedService);
     const pricePerKg = svc ? Number(svc.pricePerKg) : 0;
     const kg = parseFloat(watchedWeight);
@@ -228,6 +228,7 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsPr
   };
 
   const handleSaveEdit = (data: EditValues) => {
+    if (!order) return;
     // If a promo discount is active, recalculate discountAmount proportionally to the new weight/service
     let extraUpdates: Record<string, any> = {};
     if (order.discountAmount && Number(order.discountAmount) > 0) {

@@ -1,11 +1,11 @@
 # Laundry Website Runner Script
 Write-Host "Setting up Laundry Website..." -ForegroundColor Green
 
-# Set environment variables
-$env:DATABASE_URL = 'postgresql://postgres:02091981zen@localhost:5432/laundry_shop_db'
+# Set environment variables — fill these in before running locally
+$env:DATABASE_URL = 'postgresql://postgres:YOUR_PASSWORD@localhost:5432/laundry_shop_db'
 $env:NODE_ENV = 'development'
-$env:GMAIL_USER = 'zeninmaejalique05@gmail.com'
-$env:GMAIL_PASSWORD = 'ncjdrcglunldzptc'
+$env:GMAIL_USER = 'your_gmail@gmail.com'
+$env:GMAIL_PASSWORD = 'your_gmail_app_password'
 
 # Pick an available port so the script can run even if 5000 is already in use
 function Get-FreePort {
