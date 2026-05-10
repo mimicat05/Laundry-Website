@@ -29,8 +29,11 @@ const REJECTION_REASONS = [
   "Fully booked",
   "Outside service area",
   "Service unavailable",
-  "Incorrect information",
+  "Exceeds weight limit",
+  "Shop temporarily closed",
   "Duplicate order",
+  "Unable to process order",
+  "Incorrect information",
   "Other",
 ];
 
@@ -48,15 +51,20 @@ function DeclineReasonDialog({
   title?: string;
 }) {
   const [selected, setSelected] = useState("");
+  const [customReason, setCustomReason] = useState("");
+
+  const effectiveReason = selected === "Other" ? customReason.trim() : selected;
 
   const handleConfirm = () => {
-    if (!selected) return;
-    onConfirm(selected);
+    if (!effectiveReason) return;
+    onConfirm(effectiveReason);
     setSelected("");
+    setCustomReason("");
   };
 
   const handleClose = () => {
     setSelected("");
+    setCustomReason("");
     onClose();
   };
 
@@ -86,6 +94,19 @@ function DeclineReasonDialog({
             </button>
           ))}
         </div>
+        {selected === "Other" && (
+          <div className="mt-1">
+            <textarea
+              autoFocus
+              rows={3}
+              placeholder="Please describe the reason..."
+              value={customReason}
+              onChange={(e) => setCustomReason(e.target.value)}
+              className="w-full rounded-xl border border-red-200 bg-red-50/40 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-300 resize-none"
+              data-testid="input-other-reason"
+            />
+          </div>
+        )}
         <DialogFooter className="pt-2">
           <Button variant="outline" className="rounded-xl" onClick={handleClose}>
             Cancel
@@ -93,7 +114,7 @@ function DeclineReasonDialog({
           <Button
             variant="destructive"
             className="rounded-xl"
-            disabled={!selected || isPending}
+            disabled={!effectiveReason || isPending}
             onClick={handleConfirm}
             data-testid="button-confirm-decline"
           >
