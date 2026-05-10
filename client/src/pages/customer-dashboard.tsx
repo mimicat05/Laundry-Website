@@ -566,7 +566,9 @@ function OrderTrackingDialog({
               <XCircle className="w-5 h-5 text-orange-500 shrink-0 mt-0.5" />
               <div>
                 <p className="text-sm font-semibold text-orange-800">Your request was not accepted by the shop.</p>
-                <p className="text-xs text-orange-600 mt-1">Please contact us if you have any questions.</p>
+                {order.rejectionReason && (
+                  <p className="text-xs text-orange-600 mt-1">Reason: {order.rejectionReason}</p>
+                )}
               </div>
             </div>
           ) : (

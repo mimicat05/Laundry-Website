@@ -9,6 +9,13 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
   Table,
   TableBody,
   TableCell,
@@ -17,6 +24,87 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { type Order } from "@shared/schema";
+
+const REJECTION_REASONS = [
+  "Fully booked",
+  "Outside service area",
+  "Service unavailable",
+  "Incorrect information",
+  "Duplicate order",
+  "Other",
+];
+
+function DeclineReasonDialog({
+  open,
+  onClose,
+  onConfirm,
+  isPending,
+  title,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onConfirm: (reason: string) => void;
+  isPending: boolean;
+  title?: string;
+}) {
+  const [selected, setSelected] = useState("");
+
+  const handleConfirm = () => {
+    if (!selected) return;
+    onConfirm(selected);
+    setSelected("");
+  };
+
+  const handleClose = () => {
+    setSelected("");
+    onClose();
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => { if (!v) handleClose(); }}>
+      <DialogContent className="max-w-sm rounded-3xl">
+        <DialogHeader>
+          <DialogTitle className="font-display text-lg">
+            {title ?? "Decline Request"}
+          </DialogTitle>
+        </DialogHeader>
+        <p className="text-sm text-muted-foreground -mt-1">Select a reason for declining:</p>
+        <div className="space-y-2 mt-1">
+          {REJECTION_REASONS.map((reason) => (
+            <button
+              key={reason}
+              type="button"
+              onClick={() => setSelected(reason)}
+              data-testid={`reason-${reason.toLowerCase().replace(/\s+/g, "-")}`}
+              className={`w-full text-left text-sm px-4 py-2.5 rounded-xl border transition-colors ${
+                selected === reason
+                  ? "bg-red-50 border-red-300 text-red-700 font-medium"
+                  : "border-border/60 hover:border-border text-foreground hover:bg-muted/40"
+              }`}
+            >
+              {reason}
+            </button>
+          ))}
+        </div>
+        <DialogFooter className="pt-2">
+          <Button variant="outline" className="rounded-xl" onClick={handleClose}>
+            Cancel
+          </Button>
+          <Button
+            variant="destructive"
+            className="rounded-xl"
+            disabled={!selected || isPending}
+            onClick={handleConfirm}
+            data-testid="button-confirm-decline"
+          >
+            {isPending ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
+            Decline
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 function RequestRow({
   order,
@@ -31,6 +119,7 @@ function RequestRow({
 }) {
   const { mutate: updateOrder, isPending } = useUpdateOrder();
   const { toast } = useToast();
+  const [declineOpen, setDeclineOpen] = useState(false);
 
   const handleAccept = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -43,78 +132,89 @@ function RequestRow({
     );
   };
 
-  const handleDecline = (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleDeclineConfirm = (reason: string) => {
     updateOrder(
-      { id: order.id, status: "rejected" },
+      { id: order.id, status: "rejected", rejectionReason: reason },
       {
-        onSuccess: () => toast({ title: "Request Rejected", description: `${order.orderId} has been rejected.` }),
+        onSuccess: () => {
+          toast({ title: "Request Declined", description: `${order.orderId} has been declined.` });
+          setDeclineOpen(false);
+        },
         onError: (err) => toast({ title: "Error", description: err.message, variant: "destructive" }),
       }
     );
   };
 
   return (
-    <TableRow
-      className="hover:bg-muted/30 transition-colors cursor-pointer border-border/50"
-      onClick={() => onView(order)}
-      data-testid={`row-request-${order.id}`}
-    >
-      <TableCell onClick={(e) => e.stopPropagation()} className="w-10">
-        <Checkbox
-          checked={selected}
-          onCheckedChange={() => onToggle(order.id)}
-          data-testid={`checkbox-request-${order.id}`}
-        />
-      </TableCell>
-      <TableCell className="font-medium text-foreground">{order.orderId}</TableCell>
-      <TableCell>
-        <div className="flex flex-col">
-          <span className="font-medium text-foreground">{order.customerName}</span>
-          <span className="text-xs text-muted-foreground">{order.contactNumber}</span>
-        </div>
-      </TableCell>
-      <TableCell className="text-muted-foreground">{order.service}</TableCell>
-      <TableCell className="text-muted-foreground text-sm">{order.email}</TableCell>
-      <TableCell className="text-muted-foreground">
-        {format(new Date(order.createdAt), "MMM dd, h:mm a")}
-      </TableCell>
-      <TableCell className="text-right">
-        <div className="flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="rounded-full hover:bg-primary/10 hover:text-primary"
-            onClick={() => onView(order)}
-            data-testid={`button-view-${order.id}`}
-          >
-            <Eye className="w-4 h-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="rounded-xl gap-1.5 text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700"
-            onClick={handleAccept}
-            disabled={isPending}
-            data-testid={`button-accept-${order.id}`}
-          >
-            {isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
-            Accept
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="rounded-xl gap-1.5 text-red-500 hover:bg-red-50 hover:text-red-600"
-            onClick={handleDecline}
-            disabled={isPending}
-            data-testid={`button-decline-${order.id}`}
-          >
-            {isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4" />}
-            Decline
-          </Button>
-        </div>
-      </TableCell>
-    </TableRow>
+    <>
+      <TableRow
+        className="hover:bg-muted/30 transition-colors cursor-pointer border-border/50"
+        onClick={() => onView(order)}
+        data-testid={`row-request-${order.id}`}
+      >
+        <TableCell onClick={(e) => e.stopPropagation()} className="w-10">
+          <Checkbox
+            checked={selected}
+            onCheckedChange={() => onToggle(order.id)}
+            data-testid={`checkbox-request-${order.id}`}
+          />
+        </TableCell>
+        <TableCell className="font-medium text-foreground">{order.orderId}</TableCell>
+        <TableCell>
+          <div className="flex flex-col">
+            <span className="font-medium text-foreground">{order.customerName}</span>
+            <span className="text-xs text-muted-foreground">{order.contactNumber}</span>
+          </div>
+        </TableCell>
+        <TableCell className="text-muted-foreground">{order.service}</TableCell>
+        <TableCell className="text-muted-foreground text-sm">{order.email}</TableCell>
+        <TableCell className="text-muted-foreground">
+          {format(new Date(order.createdAt), "MMM dd, h:mm a")}
+        </TableCell>
+        <TableCell className="text-right">
+          <div className="flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="rounded-full hover:bg-primary/10 hover:text-primary"
+              onClick={() => onView(order)}
+              data-testid={`button-view-${order.id}`}
+            >
+              <Eye className="w-4 h-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="rounded-xl gap-1.5 text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700"
+              onClick={handleAccept}
+              disabled={isPending}
+              data-testid={`button-accept-${order.id}`}
+            >
+              {isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+              Accept
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="rounded-xl gap-1.5 text-red-500 hover:bg-red-50 hover:text-red-600"
+              onClick={(e) => { e.stopPropagation(); setDeclineOpen(true); }}
+              disabled={isPending}
+              data-testid={`button-decline-${order.id}`}
+            >
+              {isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4" />}
+              Decline
+            </Button>
+          </div>
+        </TableCell>
+      </TableRow>
+
+      <DeclineReasonDialog
+        open={declineOpen}
+        onClose={() => setDeclineOpen(false)}
+        onConfirm={handleDeclineConfirm}
+        isPending={isPending}
+      />
+    </>
   );
 }
 
@@ -123,6 +223,7 @@ export function RequestsView() {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [search, setSearch] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [bulkDeclineOpen, setBulkDeclineOpen] = useState(false);
   const { mutate: updateOrder, isPending: isBulkPending } = useUpdateOrder();
   const { toast } = useToast();
 
@@ -189,18 +290,19 @@ export function RequestsView() {
     });
   };
 
-  const handleBulkDecline = () => {
+  const handleBulkDeclineConfirm = (reason: string) => {
     const total = visibleSelectedIds.length;
     let completed = 0;
     visibleSelectedIds.forEach((id) => {
       updateOrder(
-        { id, status: "rejected" },
+        { id, status: "rejected", rejectionReason: reason },
         {
           onSuccess: () => {
             completed++;
             if (completed === total) {
-              toast({ title: "Requests Rejected", description: `${total} request${total > 1 ? "s" : ""} have been rejected.` });
+              toast({ title: "Requests Declined", description: `${total} request${total > 1 ? "s" : ""} have been declined.` });
               setSelectedIds(new Set());
+              setBulkDeclineOpen(false);
             }
           },
           onError: (err) => toast({ title: "Error", description: err.message, variant: "destructive" }),
@@ -260,7 +362,7 @@ export function RequestsView() {
               size="sm"
               variant="ghost"
               className="rounded-xl gap-1.5 text-red-500 hover:bg-red-50 hover:text-red-600"
-              onClick={handleBulkDecline}
+              onClick={() => setBulkDeclineOpen(true)}
               disabled={isBulkPending}
               data-testid="button-bulk-decline"
             >
@@ -319,6 +421,14 @@ export function RequestsView() {
         order={selectedOrder}
         open={!!selectedOrder}
         onOpenChange={(open) => !open && setSelectedOrder(null)}
+      />
+
+      <DeclineReasonDialog
+        open={bulkDeclineOpen}
+        onClose={() => setBulkDeclineOpen(false)}
+        onConfirm={handleBulkDeclineConfirm}
+        isPending={isBulkPending}
+        title={`Decline ${visibleSelectedIds.length} Request${visibleSelectedIds.length > 1 ? "s" : ""}`}
       />
     </div>
   );

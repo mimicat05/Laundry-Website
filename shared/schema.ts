@@ -94,6 +94,7 @@ export const orders = pgTable("orders", {
   promoPhoto: text("promo_photo"),
   promoClaimStatus: text("promo_claim_status"), // "pending" | "approved" | "rejected"
   cancellationReason: text("cancellation_reason"),
+  rejectionReason: text("rejection_reason"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   completedAt: timestamp("completed_at"),
   deletedAt: timestamp("deleted_at"),
