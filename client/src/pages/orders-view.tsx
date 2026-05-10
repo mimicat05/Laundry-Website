@@ -102,7 +102,7 @@ export function OrdersView({ status, title }: OrdersViewProps) {
         });
         toast({
           title: "Promo Review Required",
-          description: `${ordersWithPendingPromo.length} order${ordersWithPendingPromo.length > 1 ? "s have" : " has"} a pending promo claim that must be accepted or rejected before marking as Received.`,
+          description: `${ordersWithPendingPromo.length} order${ordersWithPendingPromo.length > 1 ? "s have" : " has"} a pending promo. Resolve it before moving to Received.`,
           variant: "destructive",
         });
         return;
