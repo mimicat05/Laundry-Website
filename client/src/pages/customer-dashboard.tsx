@@ -954,8 +954,16 @@ function OrderCard({ order, onClick }: { order: Order; onClick: () => void }) {
               )}
             </div>
             <p className="text-sm text-muted-foreground">{order.service}</p>
-            {!isRemoved && order.status === "rejected" && order.rejectionReason && (
-              <p className="text-xs text-orange-600 mt-1">Reason: {order.rejectionReason}</p>
+            {!isRemoved && order.status === "rejected" && (
+              <div className="flex items-start gap-1.5 mt-2 bg-orange-50 border border-orange-200 rounded-xl px-3 py-2">
+                <XCircle className="w-3.5 h-3.5 text-orange-500 shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-xs font-semibold text-orange-800">Request not accepted by the shop</p>
+                  {order.rejectionReason && (
+                    <p className="text-xs text-orange-700 mt-0.5">{order.rejectionReason}</p>
+                  )}
+                </div>
+              </div>
             )}
             {!isRemoved && order.status === "cancelled" && order.cancellationReason && (
               <p className="text-xs text-red-500 mt-1">Reason: {order.cancellationReason}</p>
