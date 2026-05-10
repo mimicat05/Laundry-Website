@@ -1064,28 +1064,19 @@ export function CustomerDashboard() {
             <h2 className="font-display font-semibold text-foreground text-lg">Orders</h2>
           </div>
 
-          {/* Tabs */}
-          <div className="flex gap-1 bg-muted rounded-xl p-1 mb-5">
-            {(["all", "active", "completed", "removed"] as OrderTab[]).map((tab) => {
-              const count = tabOrders[tab].length;
-              const labels: Record<OrderTab, string> = { all: "All", active: "Active", completed: "Completed", removed: "Removed" };
-              return (
-                <button
-                  key={tab}
-                  type="button"
-                  onClick={() => setOrderTab(tab)}
-                  data-testid={`tab-orders-${tab}`}
-                  className={`flex-1 text-sm font-medium py-1.5 rounded-lg transition-colors flex items-center justify-center gap-1.5 ${orderTab === tab ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
-                >
-                  {labels[tab]}
-                  {count > 0 && (
-                    <span className={`text-xs px-1.5 py-0.5 rounded-full font-semibold leading-none ${orderTab === tab ? "bg-primary/10 text-primary" : "bg-muted-foreground/15 text-muted-foreground"}`}>
-                      {count}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
+          {/* Filter dropdown */}
+          <div className="mb-5">
+            <Select value={orderTab} onValueChange={(v) => setOrderTab(v as OrderTab)}>
+              <SelectTrigger className="w-44 rounded-full border border-border bg-background text-sm" data-testid="select-order-filter">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Statuses</SelectItem>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="completed">Completed</SelectItem>
+                <SelectItem value="removed">Removed</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           {isLoading ? (
