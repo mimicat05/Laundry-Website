@@ -87,7 +87,7 @@ export function OrdersView({ status, title }: OrdersViewProps) {
       }
     }
 
-    if (nextStatus === "washing") {
+    if (nextStatus === "received") {
       const selectedOrders = (orders || []).filter((o) => selectedIds.has(o.id));
       const ordersWithPendingPromo = selectedOrders.filter((o) => o.promoClaimStatus === "pending");
 
@@ -102,7 +102,7 @@ export function OrdersView({ status, title }: OrdersViewProps) {
         });
         toast({
           title: "Promo Review Required",
-          description: `${ordersWithPendingPromo.length} order${ordersWithPendingPromo.length > 1 ? "s have" : " has"} a pending promo claim that must be accepted or rejected before moving to Washing.`,
+          description: `${ordersWithPendingPromo.length} order${ordersWithPendingPromo.length > 1 ? "s have" : " has"} a pending promo claim that must be accepted or rejected before marking as Received.`,
           variant: "destructive",
         });
         return;
