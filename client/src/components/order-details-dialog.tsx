@@ -63,6 +63,7 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsPr
   const [promoPhotoDataUrl, setPromoPhotoDataUrl] = useState<string | null>(null);
   const promoFileInputRef = useRef<HTMLInputElement>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [deleteSelectedReason, setDeleteSelectedReason] = useState("");
   const [deleteReason, setDeleteReason] = useState("");
   const { mutate: updateOrder, isPending: isUpdating } = useUpdateOrder();
   const { mutate: deleteOrder, isPending: isDeleting } = useDeleteOrder();
@@ -225,8 +226,10 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsPr
   };
 
   const handleConfirmDelete = () => {
-    if (!order || !deleteReason.trim()) return;
-    deleteOrder({ id: order.id, reason: deleteReason.trim() }, {
+    if (!order) return;
+    const reason = deleteSelectedReason === "Other" ? deleteReason.trim() : deleteSelectedReason;
+    if (!reason) return;
+    deleteOrder({ id: order.id, reason }, {
       onSuccess: () => {
         toast({ title: "Deleted", description: "Order has been removed." });
         setShowDeleteDialog(false);
@@ -875,32 +878,66 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsPr
       </Dialog>
     )}
 
-    <Dialog open={showDeleteDialog} onOpenChange={(v) => { if (!v) setShowDeleteDialog(false); }}>
+    <Dialog open={showDeleteDialog} onOpenChange={(v) => { if (!v) { setShowDeleteDialog(false); setDeleteSelectedReason(""); setDeleteReason(""); } }}>
       <DialogContent className="max-w-sm rounded-3xl">
         <DialogHeader>
           <DialogTitle className="font-display text-lg">Remove Order</DialogTitle>
         </DialogHeader>
         <div className="space-y-3 py-1">
           <p className="text-sm text-muted-foreground">
-            Please provide a reason for removing <span className="font-semibold text-foreground">{order?.orderId}</span>. The customer will be able to see this reason.
+            Select a reason for removing <span className="font-semibold text-foreground">{order?.orderId}</span>. The customer will be able to see this reason.
           </p>
-          <Textarea
-            placeholder="e.g. Duplicate submission, customer requested removal…"
-            value={deleteReason}
-            onChange={(e) => setDeleteReason(e.target.value)}
-            className="rounded-xl resize-none min-h-[90px] text-sm"
-            data-testid="input-delete-reason"
-          />
+          <div className="space-y-2">
+            {[
+              "Duplicate order",
+              "Invalid order",
+              "Fake order",
+              "Customer request",
+              "System error",
+              "Unresponsive customer",
+              "Incomplete information",
+              "Violates shop policy",
+              "Expired order",
+              "Other",
+            ].map((reason) => (
+              <button
+                key={reason}
+                type="button"
+                onClick={() => { setDeleteSelectedReason(reason); setDeleteReason(""); }}
+                className={`w-full text-left text-sm px-4 py-2.5 rounded-xl border transition-colors ${
+                  deleteSelectedReason === reason
+                    ? "bg-red-50 border-red-300 text-red-700 font-medium"
+                    : "border-border/60 hover:border-border text-foreground hover:bg-muted/40"
+                }`}
+              >
+                {reason}
+              </button>
+            ))}
+          </div>
+          {deleteSelectedReason === "Other" && (
+            <Textarea
+              autoFocus
+              placeholder="Please describe the reason…"
+              value={deleteReason}
+              onChange={(e) => setDeleteReason(e.target.value)}
+              className="rounded-xl resize-none min-h-[80px] text-sm border-red-200 bg-red-50/40 focus-visible:ring-red-300"
+              data-testid="input-delete-reason"
+            />
+          )}
         </div>
         <DialogFooter className="gap-2">
-          <Button variant="outline" className="rounded-xl" onClick={() => setShowDeleteDialog(false)} disabled={isDeleting}>
+          <Button variant="outline" className="rounded-xl" onClick={() => { setShowDeleteDialog(false); setDeleteSelectedReason(""); setDeleteReason(""); }} disabled={isDeleting}>
             Cancel
           </Button>
           <Button
             variant="destructive"
             className="rounded-xl"
             onClick={handleConfirmDelete}
-            disabled={!deleteReason.trim() || isDeleting}
+            disabled={
+              !deleteSelectedReason ||
+              (deleteSelectedReason === "Other" && !deleteReason.trim()) ||
+              isDeleting
+            }
             data-testid="button-confirm-delete"
           >
             {isDeleting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
