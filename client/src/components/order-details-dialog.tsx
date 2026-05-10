@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -65,6 +65,8 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsPr
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deleteSelectedReason, setDeleteSelectedReason] = useState("");
   const [deleteReason, setDeleteReason] = useState("");
+  const [showPromoWarning, setShowPromoWarning] = useState(false);
+  const promoClaimRef = useRef<HTMLDivElement>(null);
   const { mutate: updateOrder, isPending: isUpdating } = useUpdateOrder();
   const { mutate: deleteOrder, isPending: isDeleting } = useDeleteOrder();
   const { toast } = useToast();
@@ -196,6 +198,14 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsPr
   };
 
   const handleStatusChange = (newStatus: string) => {
+    if (newStatus === "washing" && order.promoClaimStatus === "pending") {
+      setShowPromoWarning(true);
+      setTimeout(() => {
+        promoClaimRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 50);
+      setTimeout(() => setShowPromoWarning(false), 3000);
+      return;
+    }
     updateOrder(
       { id: order.id, status: newStatus },
       {
@@ -566,7 +576,7 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsPr
 
               {/* Promo Claim Review Section — visible when customer has submitted a pending claim (requested/pending/received) */}
               {order.promoClaimStatus === "pending" && order.promoPhoto && ["requested", "pending", "received"].includes(order.status) && (
-                <div className="bg-amber-50/80 rounded-2xl p-5 border border-amber-200">
+                <div ref={promoClaimRef} className={`rounded-2xl p-5 border transition-all duration-300 ${showPromoWarning ? "bg-amber-100 border-amber-400 ring-2 ring-amber-400 ring-offset-1" : "bg-amber-50/80 border-amber-200"}`}>
                   <div className="flex items-center gap-2 mb-3">
                     <Clock className="w-4 h-4 text-amber-600" />
                     <h4 className="text-xs font-semibold text-amber-800 uppercase tracking-wider">Promo Claim — Awaiting Review</h4>
@@ -831,6 +841,12 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsPr
                     Payment required before completing this order.
                   </p>
                 )}
+                {action?.next === "washing" && order.promoClaimStatus === "pending" && (
+                  <div className={`flex items-start gap-2 px-4 py-3 rounded-xl border text-sm mb-2 transition-all duration-300 ${showPromoWarning ? "bg-amber-100 border-amber-400 text-amber-900" : "bg-amber-50 border-amber-200 text-amber-800"}`}>
+                    <Clock className="w-4 h-4 shrink-0 mt-0.5 text-amber-600" />
+                    <span>A promo claim is awaiting review. Please <strong>accept or reject</strong> it above before proceeding to Washing.</span>
+                  </div>
+                )}
                 <div className="flex items-center gap-2">
                   {revertAction && (
                     <Button
@@ -850,8 +866,14 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsPr
                       data-testid="button-advance-status"
                       className="rounded-xl shadow-lg shadow-primary/20"
                       onClick={() => handleStatusChange(action.next)}
-                      disabled={isUpdating || (action.next === "completed" && !order.paid)}
-                      title={action.next === "completed" && !order.paid ? "Mark the order as paid first" : undefined}
+                      disabled={isUpdating || (action.next === "completed" && !order.paid) || (action.next === "washing" && order.promoClaimStatus === "pending")}
+                      title={
+                        action.next === "completed" && !order.paid
+                          ? "Mark the order as paid first"
+                          : action.next === "washing" && order.promoClaimStatus === "pending"
+                          ? "Resolve the promo claim first"
+                          : undefined
+                      }
                     >
                       {isUpdating ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
                       {action.label}
