@@ -934,12 +934,15 @@ function OrderCard({ order, onClick }: { order: Order; onClick: () => void }) {
   );
 }
 
+type OrderTab = "all" | "active" | "completed" | "removed";
+
 export function CustomerDashboard() {
   const [_, setLocation] = useLocation();
   const { customer, logoutCustomer, loginCustomer } = useCustomerAuth();
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [editProfileOpen, setEditProfileOpen] = useState(false);
   const [conversationOpen, setConversationOpen] = useState(false);
+  const [orderTab, setOrderTab] = useState<OrderTab>("all");
 
   const { data: orders, isLoading } = useQuery<Order[]>({
     queryKey: ["/api/customer/orders"],
@@ -958,10 +961,18 @@ export function CustomerDashboard() {
     setLocation("/");
   };
 
-  const activeOrders = (orders || []).filter((o) => !o.deletedAt && o.status !== "completed" && o.status !== "cancelled");
-  const completedOrders = (orders || []).filter((o) => !o.deletedAt && o.status === "completed");
-  const cancelledOrders = (orders || []).filter((o) => !o.deletedAt && o.status === "cancelled");
-  const removedOrders = (orders || []).filter((o) => !!o.deletedAt);
+  const allOrders = orders || [];
+  const activeOrders = allOrders.filter((o) => !o.deletedAt && o.status !== "completed" && o.status !== "cancelled" && o.status !== "rejected");
+  const completedOrders = allOrders.filter((o) => !o.deletedAt && o.status === "completed");
+  const removedOrders = allOrders.filter((o) => !!o.deletedAt || o.status === "cancelled" || o.status === "rejected");
+
+  const tabOrders: Record<OrderTab, typeof allOrders> = {
+    all: allOrders,
+    active: activeOrders,
+    completed: completedOrders,
+    removed: removedOrders,
+  };
+  const visibleOrders = tabOrders[orderTab];
 
   return (
     <div className="min-h-screen bg-background">
@@ -1034,7 +1045,7 @@ export function CustomerDashboard() {
         {/* Stats */}
         <div className="grid grid-cols-3 gap-4 mb-8">
           <Card className="rounded-2xl border border-border/50 p-5 text-center" data-testid="card-stat-total">
-            <p className="text-2xl font-bold text-foreground font-display">{activeOrders.length + completedOrders.length}</p>
+            <p className="text-2xl font-bold text-foreground font-display">{allOrders.length}</p>
             <p className="text-xs text-muted-foreground mt-1">Total Orders</p>
           </Card>
           <Card className="rounded-2xl border border-border/50 p-5 text-center" data-testid="card-stat-active">
@@ -1048,74 +1059,64 @@ export function CustomerDashboard() {
         </div>
 
         {/* Orders */}
-        {isLoading ? (
-          <div className="space-y-4">
-            {[1, 2, 3].map((i) => <Skeleton key={i} className="h-24 rounded-2xl" />)}
+        <div>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-display font-semibold text-foreground text-lg">Orders</h2>
           </div>
-        ) : (orders || []).length === 0 ? (
-          <Card className="rounded-3xl border border-border/50 p-12 text-center">
-            <div className="w-14 h-14 rounded-2xl bg-muted flex items-center justify-center mx-auto mb-4">
-              <Package className="w-7 h-7 text-muted-foreground" />
+
+          {/* Tabs */}
+          <div className="flex gap-1 bg-muted rounded-xl p-1 mb-5">
+            {(["all", "active", "completed", "removed"] as OrderTab[]).map((tab) => {
+              const count = tabOrders[tab].length;
+              const labels: Record<OrderTab, string> = { all: "All", active: "Active", completed: "Completed", removed: "Removed" };
+              return (
+                <button
+                  key={tab}
+                  type="button"
+                  onClick={() => setOrderTab(tab)}
+                  data-testid={`tab-orders-${tab}`}
+                  className={`flex-1 text-sm font-medium py-1.5 rounded-lg transition-colors flex items-center justify-center gap-1.5 ${orderTab === tab ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                >
+                  {labels[tab]}
+                  {count > 0 && (
+                    <span className={`text-xs px-1.5 py-0.5 rounded-full font-semibold leading-none ${orderTab === tab ? "bg-primary/10 text-primary" : "bg-muted-foreground/15 text-muted-foreground"}`}>
+                      {count}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {isLoading ? (
+            <div className="space-y-4">
+              {[1, 2, 3].map((i) => <Skeleton key={i} className="h-24 rounded-2xl" />)}
             </div>
-            <h3 className="font-display font-semibold text-foreground mb-2">No orders yet</h3>
-            <p className="text-sm text-muted-foreground mb-6">Place your first laundry order to get started.</p>
-            <Link href="/order">
-              <Button className="rounded-xl gap-2" data-testid="button-first-order">
-                <Plus className="w-4 h-4" /> Place an Order
-              </Button>
-            </Link>
-          </Card>
-        ) : (
-          <div className="space-y-3">
-            {/* Active orders */}
-            {activeOrders.length > 0 && (
-              <>
-                <h2 className="font-display font-semibold text-foreground text-sm uppercase tracking-wide text-muted-foreground mb-3">
-                  Active Orders
-                </h2>
-                {activeOrders.map((order) => (
-                  <OrderCard key={order.id} order={order} onClick={() => setSelectedOrder(order)} />
-                ))}
-              </>
-            )}
-
-            {/* Completed orders */}
-            {completedOrders.length > 0 && (
-              <>
-                <h2 className={`font-display font-semibold text-sm uppercase tracking-wide text-muted-foreground mb-3 ${activeOrders.length > 0 ? "mt-6" : ""}`}>
-                  Completed Orders
-                </h2>
-                {completedOrders.map((order) => (
-                  <OrderCard key={order.id} order={order} onClick={() => setSelectedOrder(order)} />
-                ))}
-              </>
-            )}
-
-            {/* Cancelled orders */}
-            {cancelledOrders.length > 0 && (
-              <>
-                <h2 className={`font-display font-semibold text-sm uppercase tracking-wide text-muted-foreground mb-3 ${(activeOrders.length > 0 || completedOrders.length > 0) ? "mt-6" : ""}`}>
-                  Cancelled Orders
-                </h2>
-                {cancelledOrders.map((order) => (
-                  <OrderCard key={order.id} order={order} onClick={() => setSelectedOrder(order)} />
-                ))}
-              </>
-            )}
-
-            {/* Removed by shop orders */}
-            {removedOrders.length > 0 && (
-              <>
-                <h2 className={`font-display font-semibold text-sm uppercase tracking-wide text-muted-foreground mb-3 ${(activeOrders.length > 0 || completedOrders.length > 0 || cancelledOrders.length > 0) ? "mt-6" : ""}`}>
-                  Removed by Shop
-                </h2>
-                {removedOrders.map((order) => (
-                  <OrderCard key={order.id} order={order} onClick={() => setSelectedOrder(order)} />
-                ))}
-              </>
-            )}
-          </div>
-        )}
+          ) : allOrders.length === 0 ? (
+            <Card className="rounded-3xl border border-border/50 p-12 text-center">
+              <div className="w-14 h-14 rounded-2xl bg-muted flex items-center justify-center mx-auto mb-4">
+                <Package className="w-7 h-7 text-muted-foreground" />
+              </div>
+              <h3 className="font-display font-semibold text-foreground mb-2">No orders yet</h3>
+              <p className="text-sm text-muted-foreground mb-6">Place your first laundry order to get started.</p>
+              <Link href="/order">
+                <Button className="rounded-xl gap-2" data-testid="button-first-order">
+                  <Plus className="w-4 h-4" /> Place an Order
+                </Button>
+              </Link>
+            </Card>
+          ) : visibleOrders.length === 0 ? (
+            <div className="py-10 text-center">
+              <p className="text-sm text-muted-foreground">No {orderTab === "all" ? "" : orderTab} orders to show.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {visibleOrders.map((order) => (
+                <OrderCard key={order.id} order={order} onClick={() => setSelectedOrder(order)} />
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       <OrderTrackingDialog
