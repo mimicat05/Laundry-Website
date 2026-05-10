@@ -416,6 +416,7 @@ function OrderTrackingDialog({
 }) {
   const { toast } = useToast();
   const [confirmCancel, setConfirmCancel] = useState(false);
+  const [cancelSelectedReason, setCancelSelectedReason] = useState("");
   const [cancelReason, setCancelReason] = useState("");
   const [showPromoForm, setShowPromoForm] = useState(false);
   const [selectedPromoId, setSelectedPromoId] = useState("");
@@ -461,6 +462,7 @@ function OrderTrackingDialog({
       queryClient.invalidateQueries({ queryKey: ["/api/customer/orders"] });
       toast({ title: "Order cancelled", description: "Your order has been cancelled." });
       setConfirmCancel(false);
+      setCancelSelectedReason("");
       setCancelReason("");
       onClose();
     },
@@ -843,7 +845,7 @@ function OrderTrackingDialog({
         </DialogContent>
       </Dialog>
 
-      <Dialog open={confirmCancel} onOpenChange={(v) => { if (!v) { setConfirmCancel(false); setCancelReason(""); } }}>
+      <Dialog open={confirmCancel} onOpenChange={(v) => { if (!v) { setConfirmCancel(false); setCancelSelectedReason(""); setCancelReason(""); } }}>
         <DialogContent className="max-w-sm rounded-3xl">
           <DialogHeader>
             <DialogTitle className="font-display text-lg">Cancel this order?</DialogTitle>
@@ -852,23 +854,47 @@ function OrderTrackingDialog({
             <p className="text-sm text-muted-foreground">
               Please tell us why you want to cancel <span className="font-semibold text-foreground">{order.orderId}</span>. This cannot be undone.
             </p>
-            <div className="space-y-1.5">
-              <Label htmlFor="cancel-reason" className="text-xs text-muted-foreground uppercase tracking-wide">Reason for cancellation</Label>
+            <div className="space-y-2">
+              {[
+                "Changed my mind",
+                "Wrong order details",
+                "Ordered by mistake",
+                "Price concern",
+                "No longer needed",
+                "Duplicate order",
+                "Long waiting time",
+                "Other",
+              ].map((reason) => (
+                <button
+                  key={reason}
+                  type="button"
+                  onClick={() => { setCancelSelectedReason(reason); setCancelReason(""); }}
+                  className={`w-full text-left text-sm px-4 py-2.5 rounded-xl border transition-colors ${
+                    cancelSelectedReason === reason
+                      ? "bg-red-50 border-red-300 text-red-700 font-medium"
+                      : "border-border/60 hover:border-border text-foreground hover:bg-muted/40"
+                  }`}
+                >
+                  {reason}
+                </button>
+              ))}
+            </div>
+            {cancelSelectedReason === "Other" && (
               <Textarea
-                id="cancel-reason"
+                autoFocus
                 data-testid="input-cancel-reason"
-                placeholder="e.g. Change of plans, ordered by mistake…"
+                placeholder="Please describe your reason..."
                 value={cancelReason}
                 onChange={(e) => setCancelReason(e.target.value)}
-                className="rounded-xl resize-none min-h-[90px] text-sm"
+                className="rounded-xl resize-none min-h-[80px] text-sm border-red-200 bg-red-50/40 focus-visible:ring-red-300"
               />
-            </div>
+            )}
           </div>
           <DialogFooter className="gap-2">
             <Button
               variant="outline"
               className="rounded-xl"
-              onClick={() => { setConfirmCancel(false); setCancelReason(""); }}
+              onClick={() => { setConfirmCancel(false); setCancelSelectedReason(""); setCancelReason(""); }}
               disabled={cancelMutation.isPending}
               data-testid="button-cancel-no"
             >
@@ -877,8 +903,15 @@ function OrderTrackingDialog({
             <Button
               variant="destructive"
               className="rounded-xl"
-              onClick={() => cancelMutation.mutate({ id: order.id, reason: cancelReason })}
-              disabled={!cancelReason.trim() || cancelMutation.isPending}
+              onClick={() => {
+                const reason = cancelSelectedReason === "Other" ? cancelReason.trim() : cancelSelectedReason;
+                cancelMutation.mutate({ id: order.id, reason });
+              }}
+              disabled={
+                !cancelSelectedReason ||
+                (cancelSelectedReason === "Other" && !cancelReason.trim()) ||
+                cancelMutation.isPending
+              }
               data-testid="button-cancel-confirm"
             >
               {cancelMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
