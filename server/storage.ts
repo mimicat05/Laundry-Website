@@ -34,7 +34,7 @@ import {
   type InsertMessageReply,
   type ConversationEntry,
 } from "@shared/schema";
-import { eq, isNull, isNotNull, desc, asc, lt, inArray } from "drizzle-orm";
+import { eq, isNull, isNotNull, desc, asc, lt, inArray, ilike } from "drizzle-orm";
 
 export interface IStorage {
   getOrders(): Promise<Order[]>;
@@ -60,7 +60,7 @@ export interface IStorage {
   deletePromo(id: number): Promise<void>;
   // Staff
   getStaffList(): Promise<Staff[]>;
-  getStaffByPin(pin: string): Promise<Staff | undefined>;
+  getStaffByName(name: string): Promise<Staff[]>;
   createStaff(data: InsertStaff): Promise<Staff>;
   updateStaff(id: number, data: Partial<InsertStaff>): Promise<Staff>;
   deleteStaff(id: number): Promise<void>;
@@ -90,11 +90,10 @@ export interface IStorage {
   createMessage(data: InsertMessage): Promise<Message>;
   markMessageRead(id: number): Promise<void>;
   markAllMessagesRead(): Promise<void>;
-  replyToMessage(id: number, staffReply: string, repliedByName: string): Promise<Message>;
+  markMessageUnread(id: number): Promise<void>;
   // Message Replies (threaded)
   getMessageReplies(messageId: number): Promise<MessageReply[]>;
   createMessageReply(data: InsertMessageReply): Promise<MessageReply>;
-  markMessageUnread(id: number): Promise<void>;
   // Unified conversation
   getCustomerConversation(customerId: number): Promise<ConversationEntry[]>;
   sendConversationMessage(customerId: number, customerName: string, body: string): Promise<void>;
@@ -224,9 +223,8 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(staff).orderBy(staff.id);
   }
 
-  async getStaffByPin(pin: string): Promise<Staff | undefined> {
-    const [member] = await db.select().from(staff).where(eq(staff.pin, pin));
-    return member;
+  async getStaffByName(name: string): Promise<Staff[]> {
+    return await db.select().from(staff).where(ilike(staff.name, name));
   }
 
   async createStaff(data: InsertStaff): Promise<Staff> {
@@ -353,16 +351,12 @@ export class DatabaseStorage implements IStorage {
     await db.update(messages).set({ isRead: true }).where(eq(messages.isRead, false));
   }
 
-  async getMessagesByCustomerId(customerId: number): Promise<Message[]> {
-    return await db.select().from(messages).where(eq(messages.customerId, customerId)).orderBy(desc(messages.createdAt));
+  async markMessageUnread(id: number): Promise<void> {
+    await db.update(messages).set({ isRead: false }).where(eq(messages.id, id));
   }
 
-  async replyToMessage(id: number, staffReply: string, repliedByName: string): Promise<Message> {
-    const [m] = await db.update(messages)
-      .set({ staffReply, repliedByName, repliedAt: new Date(), isRead: true })
-      .where(eq(messages.id, id))
-      .returning();
-    return m;
+  async getMessagesByCustomerId(customerId: number): Promise<Message[]> {
+    return await db.select().from(messages).where(eq(messages.customerId, customerId)).orderBy(desc(messages.createdAt));
   }
 
   async getMessageReplies(messageId: number): Promise<MessageReply[]> {
@@ -372,10 +366,6 @@ export class DatabaseStorage implements IStorage {
   async createMessageReply(data: InsertMessageReply): Promise<MessageReply> {
     const [r] = await db.insert(messageReplies).values(data).returning();
     return r;
-  }
-
-  async markMessageUnread(id: number): Promise<void> {
-    await db.update(messages).set({ isRead: false }).where(eq(messages.id, id));
   }
 
   async getCustomerConversation(customerId: number): Promise<ConversationEntry[]> {

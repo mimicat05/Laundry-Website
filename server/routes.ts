@@ -11,6 +11,17 @@ const loginAttempts = new Map<string, { count: number; lockedUntil: number }>();
 const MAX_ATTEMPTS = 5;
 const LOCKOUT_MS = 5 * 60 * 1000;
 
+async function migrateStaffPins() {
+  const allStaff = await storage.getStaffList();
+  for (const member of allStaff) {
+    if (!member.pin.startsWith("$2")) {
+      const hashed = await bcrypt.hash(member.pin, 10);
+      await storage.updateStaff(member.id, { pin: hashed });
+      console.log(`[migration] Hashed PIN for staff: ${member.name}`);
+    }
+  }
+}
+
 async function seedDatabase() {
   const existingServices = await storage.getServices();
   if (existingServices.length === 0) {
@@ -20,7 +31,8 @@ async function seedDatabase() {
 
   const existingStaff = await storage.getStaffList();
   if (existingStaff.length === 0) {
-    await storage.createStaff({ name: "Admin", pin: "1234", role: "owner", active: true });
+    const hashedPin = await bcrypt.hash("1234", 10);
+    await storage.createStaff({ name: "Admin", pin: hashedPin, role: "owner", active: true });
   }
 
   const existingOrders = await storage.getOrders();
@@ -80,6 +92,7 @@ export async function registerRoutes(
   app: Express
 ): Promise<Server> {
   seedDatabase().catch(console.error);
+  migrateStaffPins().catch(console.error);
 
   // ── Auth ──────────────────────────────────────────────────────────────────
   const requireAuth = (req: any, res: any, next: any) => {
@@ -105,8 +118,16 @@ export async function registerRoutes(
       }
 
       const { name, pin } = z.object({ name: z.string().min(1), pin: z.string().min(1) }).parse(req.body);
-      const member = await storage.getStaffByPin(pin);
-      if (!member || !member.active || member.name.toLowerCase() !== name.toLowerCase()) {
+      const candidates = await storage.getStaffByName(name);
+      const member = candidates.length > 0
+        ? await (async () => {
+            for (const c of candidates) {
+              if (c.active && await bcrypt.compare(pin, c.pin)) return c;
+            }
+            return undefined;
+          })()
+        : undefined;
+      if (!member) {
         record.count += 1;
         if (record.count >= MAX_ATTEMPTS) {
           record.lockedUntil = now + LOCKOUT_MS;
@@ -391,11 +412,18 @@ export async function registerRoutes(
         active: z.boolean().optional().default(true),
       });
       const data = schema.parse(req.body);
-      const existing = await storage.getStaffByPin(data.pin);
-      if (existing) {
+      const allStaff = await storage.getStaffList();
+      const pinConflict = await (async () => {
+        for (const s of allStaff) {
+          if (await bcrypt.compare(data.pin, s.pin)) return true;
+        }
+        return false;
+      })();
+      if (pinConflict) {
         return res.status(409).json({ message: "That PIN is already in use by another staff member." });
       }
-      const member = await storage.createStaff(data);
+      const hashedPin = await bcrypt.hash(data.pin, 10);
+      const member = await storage.createStaff({ ...data, pin: hashedPin });
       res.status(201).json(member);
     } catch (err) {
       if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors[0].message });
@@ -412,13 +440,21 @@ export async function registerRoutes(
         active: z.boolean().optional(),
       });
       const data = schema.parse(req.body);
+      let updateData: typeof data & { pin?: string } = { ...data };
       if (data.pin) {
-        const existing = await storage.getStaffByPin(data.pin);
-        if (existing && existing.id !== id) {
+        const allStaff = await storage.getStaffList();
+        const pinConflict = await (async () => {
+          for (const s of allStaff) {
+            if (s.id !== id && await bcrypt.compare(data.pin!, s.pin)) return true;
+          }
+          return false;
+        })();
+        if (pinConflict) {
           return res.status(409).json({ message: "That PIN is already in use by another staff member." });
         }
+        updateData = { ...data, pin: await bcrypt.hash(data.pin, 10) };
       }
-      const member = await storage.updateStaff(id, data);
+      const member = await storage.updateStaff(id, updateData);
       res.json(member);
     } catch (err) {
       if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors[0].message });

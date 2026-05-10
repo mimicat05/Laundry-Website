@@ -83,10 +83,10 @@ export const orders = pgTable("orders", {
   service: text("service").notNull(), // Wash & Hang, Dry Cleaning
   weight: numeric("weight", { precision: 10, scale: 2 }).notNull(),
   total: numeric("total", { precision: 10, scale: 2 }).notNull(),
-  status: text("status").notNull().default("pending"), // pending, washed, ready_for_pickup, completed
+  status: text("status").notNull().default("pending"), // requested | pending | received | washing | drying | folding | ready_for_pickup | completed | cancelled
   paid: boolean("paid").notNull().default(false),
   notes: text("notes"),
-  promoId: integer("promo_id"),
+  promoId: integer("promo_id").references(() => promos.id, { onDelete: "set null" }),
   promoName: text("promo_name"),
   discountAmount: numeric("discount_amount", { precision: 10, scale: 2 }),
   actualWeight: numeric("actual_weight", { precision: 10, scale: 2 }),
@@ -124,7 +124,7 @@ export type InsertShopSettings = z.infer<typeof insertShopSettingsSchema>;
 export const passwordResetTokens = pgTable("password_reset_tokens", {
   id: serial("id").primaryKey(),
   token: text("token").notNull().unique(),
-  customerId: integer("customer_id").notNull(),
+  customerId: integer("customer_id").notNull().references(() => customers.id, { onDelete: "cascade" }),
   expiresAt: timestamp("expires_at").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
@@ -134,7 +134,7 @@ export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
 export const feedback = pgTable("feedback", {
   id: serial("id").primaryKey(),
   orderId: text("order_id").notNull(),
-  customerId: integer("customer_id").notNull(),
+  customerId: integer("customer_id").notNull().references(() => customers.id, { onDelete: "cascade" }),
   customerName: text("customer_name").notNull(),
   rating: integer("rating").notNull(), // 1–5
   comment: text("comment"),
@@ -147,24 +147,21 @@ export type InsertFeedback = z.infer<typeof insertFeedbackSchema>;
 
 export const messages = pgTable("messages", {
   id: serial("id").primaryKey(),
-  customerId: integer("customer_id").notNull(),
+  customerId: integer("customer_id").notNull().references(() => customers.id, { onDelete: "cascade" }),
   customerName: text("customer_name").notNull(),
   subject: text("subject").notNull().default(""),
   message: text("message").notNull(),
   isRead: boolean("is_read").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-  staffReply: text("staff_reply"),
-  repliedAt: timestamp("replied_at"),
-  repliedByName: text("replied_by_name"),
 });
 
-export const insertMessageSchema = createInsertSchema(messages).omit({ id: true, createdAt: true, subject: true, staffReply: true, repliedAt: true, repliedByName: true });
+export const insertMessageSchema = createInsertSchema(messages).omit({ id: true, createdAt: true, subject: true });
 export type Message = typeof messages.$inferSelect;
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
 
 export const messageReplies = pgTable("message_replies", {
   id: serial("id").primaryKey(),
-  messageId: integer("message_id").notNull(),
+  messageId: integer("message_id").notNull().references(() => messages.id, { onDelete: "cascade" }),
   senderType: text("sender_type").notNull(), // "customer" | "staff"
   senderName: text("sender_name").notNull(),
   body: text("body").notNull(),

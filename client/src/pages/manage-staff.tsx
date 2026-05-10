@@ -23,7 +23,15 @@ const staffFormSchema = z.object({
   active: z.boolean(),
 });
 
+const staffEditSchema = staffFormSchema.extend({
+  pin: z.union([
+    z.string().length(4, "PIN must be exactly 4 digits").regex(/^\d{4}$/, "PIN must be 4 digits"),
+    z.literal(""),
+  ]),
+});
+
 type StaffForm = z.infer<typeof staffFormSchema>;
+type StaffEditForm = z.infer<typeof staffEditSchema>;
 
 export function ManageStaff() {
   const { staffId: currentStaffId } = useAuth();
@@ -39,9 +47,9 @@ export function ManageStaff() {
     defaultValues: { name: "", pin: "", role: "staff", active: true },
   });
 
-  const editForm = useForm<StaffForm>({
-    resolver: zodResolver(staffFormSchema),
-    values: editTarget ? { name: editTarget.name, pin: editTarget.pin, role: editTarget.role as "owner" | "staff", active: editTarget.active } : undefined,
+  const editForm = useForm<StaffEditForm>({
+    resolver: zodResolver(staffEditSchema),
+    values: editTarget ? { name: editTarget.name, pin: "", role: editTarget.role as "owner" | "staff", active: editTarget.active } : undefined,
   });
 
   const createMutation = useMutation({
@@ -56,8 +64,11 @@ export function ManageStaff() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: Partial<StaffForm> }) =>
-      apiRequest("PUT", `/api/staff/${id}`, data),
+    mutationFn: ({ id, data }: { id: number; data: Partial<StaffEditForm> }) => {
+      const payload: Partial<StaffEditForm> = { ...data };
+      if (!payload.pin) delete payload.pin;
+      return apiRequest("PUT", `/api/staff/${id}`, payload);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/staff"] });
       toast({ title: "Staff Updated", description: "Staff account has been updated." });
@@ -87,7 +98,7 @@ export function ManageStaff() {
     );
   }
 
-  const StaffFormFields = ({ form, isPending }: { form: any; isPending: boolean }) => (
+  const StaffFormFields = ({ form, isPending, isEdit }: { form: any; isPending: boolean; isEdit?: boolean }) => (
     <div className="space-y-4">
       <FormField control={form.control} name="name" render={({ field }) => (
         <FormItem>
@@ -98,11 +109,11 @@ export function ManageStaff() {
       )} />
       <FormField control={form.control} name="pin" render={({ field }) => (
         <FormItem>
-          <FormLabel>4-Digit PIN</FormLabel>
+          <FormLabel>4-Digit PIN{isEdit && <span className="text-muted-foreground font-normal text-xs ml-1">(leave blank to keep current)</span>}</FormLabel>
           <FormControl>
             <Input
               type="password"
-              placeholder="••••"
+              placeholder={isEdit ? "Enter new PIN to change" : "••••"}
               maxLength={4}
               className="rounded-xl tracking-widest text-center text-lg"
               {...field}
@@ -233,7 +244,7 @@ export function ManageStaff() {
           </DialogHeader>
           <Form {...createForm}>
             <form onSubmit={createForm.handleSubmit((d) => createMutation.mutate(d))} className="space-y-5 pt-2">
-              <StaffFormFields form={createForm} isPending={createMutation.isPending} />
+              <StaffFormFields form={createForm} isPending={createMutation.isPending} isEdit={false} />
               <div className="flex justify-end gap-3 pt-2">
                 <Button type="button" variant="ghost" className="rounded-xl" onClick={() => setShowCreate(false)}>Cancel</Button>
                 <Button type="submit" className="rounded-xl px-6" disabled={createMutation.isPending}>
@@ -258,7 +269,7 @@ export function ManageStaff() {
               onSubmit={editForm.handleSubmit((d) => updateMutation.mutate({ id: editTarget!.id, data: d }))}
               className="space-y-5 pt-2"
             >
-              <StaffFormFields form={editForm} isPending={updateMutation.isPending} />
+              <StaffFormFields form={editForm} isPending={updateMutation.isPending} isEdit={true} />
               <div className="flex justify-end gap-3 pt-2">
                 <Button type="button" variant="ghost" className="rounded-xl" onClick={() => setEditTarget(null)}>Cancel</Button>
                 <Button type="submit" className="rounded-xl px-6" disabled={updateMutation.isPending}>
