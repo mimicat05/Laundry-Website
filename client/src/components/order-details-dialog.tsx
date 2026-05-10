@@ -130,6 +130,7 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsPr
     mutationFn: ({ action, promoId, promoName, discount }: { action: "approve" | "reject"; promoId?: number; promoName?: string; discount?: number }) =>
       apiRequest("POST", `/api/orders/${order!.id}/promo-claim-review`, { action, promoId, promoName, discount }).then((r) => r.json()),
     onSuccess: (_, vars) => {
+      setShowPromoWarning(false);
       queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
       toast({
         title: vars.action === "approve" ? "Promo Claim Approved" : "Promo Claim Rejected",
@@ -203,7 +204,6 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsPr
       setTimeout(() => {
         promoClaimRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
       }, 50);
-      setTimeout(() => setShowPromoWarning(false), 3000);
       return;
     }
     updateOrder(

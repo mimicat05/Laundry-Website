@@ -87,6 +87,28 @@ export function OrdersView({ status, title }: OrdersViewProps) {
       }
     }
 
+    if (nextStatus === "washing") {
+      const selectedOrders = (orders || []).filter((o) => selectedIds.has(o.id));
+      const ordersWithPendingPromo = selectedOrders.filter((o) => o.promoClaimStatus === "pending");
+
+      if (ordersWithPendingPromo.length > 0) {
+        // Open the first order with a pending promo claim for review
+        setSelectedOrder(ordersWithPendingPromo[0]);
+        // Remove all orders with pending promos from selection so the rest can be moved after review
+        setSelectedIds((prev) => {
+          const next = new Set(prev);
+          ordersWithPendingPromo.forEach((o) => next.delete(o.id));
+          return next;
+        });
+        toast({
+          title: "Promo Review Required",
+          description: `${ordersWithPendingPromo.length} order${ordersWithPendingPromo.length > 1 ? "s have" : " has"} a pending promo claim that must be accepted or rejected before moving to Washing.`,
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
     setIsBulkUpdating(true);
     try {
       await Promise.all(
