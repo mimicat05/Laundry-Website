@@ -55,6 +55,7 @@ export interface IStorage {
   deleteService(id: number): Promise<void>;
   // Promos
   getPromos(): Promise<Promo[]>;
+  getPromo(id: number): Promise<Promo | undefined>;
   createPromo(data: InsertPromo): Promise<Promo>;
   updatePromo(id: number, data: Partial<InsertPromo>): Promise<Promo>;
   deletePromo(id: number): Promise<void>;
@@ -203,6 +204,11 @@ export class DatabaseStorage implements IStorage {
 
   async getPromos(): Promise<Promo[]> {
     return await db.select().from(promos).orderBy(promos.id);
+  }
+
+  async getPromo(id: number): Promise<Promo | undefined> {
+    const [promo] = await db.select().from(promos).where(eq(promos.id, id));
+    return promo;
   }
 
   async createPromo(data: InsertPromo): Promise<Promo> {

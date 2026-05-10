@@ -655,7 +655,21 @@ export async function registerRoutes(
       const completedAt = input.status === "completed" && existing.status !== "completed"
         ? new Date()
         : undefined;
-      const order = await storage.updateOrder(id, { ...input, ...(completedAt ? { completedAt } : {}) });
+      let order = await storage.updateOrder(id, { ...input, ...(completedAt ? { completedAt } : {}) });
+
+      // If the order has an approved promo claim but the discount was deferred
+      // (because total was 0 when the promo was approved), apply it now that
+      // the total is being set.
+      const totalChanging = input.total !== undefined && Number(input.total) > 0 && Number(existing.total) === 0;
+      if (totalChanging && order.promoId && !order.discountAmount) {
+        const promo = await storage.getPromo(order.promoId);
+        if (promo) {
+          const baseTotal = Number(order.total);
+          const discountAmount = (baseTotal * Number(promo.discount) / 100).toFixed(2);
+          const newTotal = (baseTotal - Number(discountAmount)).toFixed(2);
+          order = await storage.updateOrder(id, { discountAmount, total: newTotal });
+        }
+      }
 
       // Determine what action to log
       const STATUS_ORDER = ["requested", "pending", "received", "washing", "drying", "folding", "ready_for_pickup", "completed"];
@@ -710,15 +724,28 @@ export async function registerRoutes(
         const baseTotal = order.discountAmount
           ? Number(order.total) + Number(order.discountAmount)
           : Number(order.total);
-        const discountAmount = (baseTotal * discount / 100).toFixed(2);
-        const newTotal = (baseTotal - Number(discountAmount)).toFixed(2);
-        updates = {
-          ...updates,
-          promoId,
-          promoName,
-          discountAmount,
-          total: newTotal,
-        };
+
+        if (baseTotal === 0) {
+          // Total is not set yet (weight unknown at request stage).
+          // Store promo metadata now; discount will be calculated automatically
+          // when staff records the actual weight and total.
+          updates = {
+            ...updates,
+            promoId,
+            promoName,
+            discountAmount: null,
+          };
+        } else {
+          const discountAmount = (baseTotal * discount / 100).toFixed(2);
+          const newTotal = (baseTotal - Number(discountAmount)).toFixed(2);
+          updates = {
+            ...updates,
+            promoId,
+            promoName,
+            discountAmount,
+            total: newTotal,
+          };
+        }
       }
 
       const updated = await storage.updateOrder(id, updates);
