@@ -184,7 +184,17 @@ function Router() {
           <OrdersView
             status="cancelled"
             title="Cancelled Orders"
-            description="Orders cancelled by customers or staff."
+            description="Orders cancelled by customers."
+          />
+        )} />}
+      </Route>
+
+      <Route path="/rejected">
+        {() => <ProtectedRoute component={() => (
+          <OrdersView
+            status="rejected"
+            title="Rejected Requests"
+            description="New requests that were not accepted by the shop."
           />
         )} />}
       </Route>

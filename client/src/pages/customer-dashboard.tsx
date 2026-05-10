@@ -17,16 +17,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -59,13 +50,14 @@ const STATUS_BADGE: Record<string, string> = {
   ready_for_pickup: "bg-amber-100 text-amber-700 border-amber-200",
   completed:        "bg-green-100 text-green-700 border-green-200",
   cancelled:        "bg-red-100 text-red-700 border-red-200",
+  rejected:         "bg-orange-100 text-orange-700 border-orange-200",
 };
 
 const STATUS_LABEL: Record<string, string> = {
   requested: "Submitted", pending: "Accepted", received: "Received",
   washing: "Washing", drying: "Drying", folding: "Folding",
   ready_for_pickup: "Ready for Pickup", completed: "Completed",
-  cancelled: "Cancelled",
+  cancelled: "Cancelled", rejected: "Rejected by Shop",
 };
 
 const CANCELLABLE = ["requested", "pending"];
@@ -424,6 +416,7 @@ function OrderTrackingDialog({
 }) {
   const { toast } = useToast();
   const [confirmCancel, setConfirmCancel] = useState(false);
+  const [cancelReason, setCancelReason] = useState("");
   const [showPromoForm, setShowPromoForm] = useState(false);
   const [selectedPromoId, setSelectedPromoId] = useState("");
   const [photoDataUrl, setPhotoDataUrl] = useState<string | null>(null);
@@ -462,11 +455,13 @@ function OrderTrackingDialog({
   const activePromos = (promos || []).filter((p) => p.active);
 
   const cancelMutation = useMutation({
-    mutationFn: (id: number) =>
-      apiRequest("POST", `/api/customer/orders/${id}/cancel`).then((r) => r.json()),
+    mutationFn: ({ id, reason }: { id: number; reason: string }) =>
+      apiRequest("POST", `/api/customer/orders/${id}/cancel`, { reason }).then((r) => r.json()),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/customer/orders"] });
       toast({ title: "Order cancelled", description: "Your order has been cancelled." });
+      setConfirmCancel(false);
+      setCancelReason("");
       onClose();
     },
     onError: (err: any) => {
@@ -512,6 +507,7 @@ function OrderTrackingDialog({
 
   const isRemovedByShop = !!order.deletedAt;
   const isCancelled = order.status === "cancelled";
+  const isRejected = order.status === "rejected";
   const canCancel = CANCELLABLE.includes(order.status) && !isRemovedByShop;
   const canClaimPromo = ["requested", "pending"].includes(order.status) && !order.promoId && !order.promoClaimStatus && !isRemovedByShop;
   const currentIdx = STAGE_KEYS.indexOf(order.status);
@@ -537,7 +533,7 @@ function OrderTrackingDialog({
                 {STATUS_LABEL[order.status] ?? order.status}
               </Badge>
             )}
-            {!isCancelled && !isRemovedByShop && (order.paid ? (
+            {!isCancelled && !isRejected && !isRemovedByShop && (order.paid ? (
               <span className="text-xs font-medium text-green-600 bg-green-50 border border-green-200 px-2.5 py-1 rounded-lg">Paid</span>
             ) : (
               <span className="text-xs font-medium text-amber-600 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-lg">Payment Pending</span>
@@ -556,9 +552,22 @@ function OrderTrackingDialog({
               </div>
             </div>
           ) : isCancelled ? (
-            <div className="flex items-center gap-3 bg-red-50 border border-red-200 rounded-2xl px-4 py-3 mt-1">
-              <XCircle className="w-5 h-5 text-red-500 shrink-0" />
-              <p className="text-sm text-red-700">This order was cancelled and will not be processed.</p>
+            <div className="flex items-start gap-3 bg-red-50 border border-red-200 rounded-2xl px-4 py-3 mt-1">
+              <XCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-semibold text-red-800">This order was cancelled.</p>
+                {order.cancellationReason && (
+                  <p className="text-xs text-red-600 mt-1">Reason: {order.cancellationReason}</p>
+                )}
+              </div>
+            </div>
+          ) : isRejected ? (
+            <div className="flex items-start gap-3 bg-orange-50 border border-orange-200 rounded-2xl px-4 py-3 mt-1">
+              <XCircle className="w-5 h-5 text-orange-500 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-semibold text-orange-800">Your request was not accepted by the shop.</p>
+                <p className="text-xs text-orange-600 mt-1">Please contact us if you have any questions.</p>
+              </div>
             </div>
           ) : (
             /* Progress */
@@ -832,34 +841,62 @@ function OrderTrackingDialog({
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={confirmCancel} onOpenChange={setConfirmCancel}>
-        <AlertDialogContent className="rounded-3xl">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Cancel this order?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to cancel <span className="font-semibold">{order.orderId}</span>? This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="rounded-xl" data-testid="button-cancel-no">Keep Order</AlertDialogCancel>
-            <AlertDialogAction
-              className="rounded-xl bg-red-600 hover:bg-red-700 text-white"
-              onClick={() => cancelMutation.mutate(order.id)}
+      <Dialog open={confirmCancel} onOpenChange={(v) => { if (!v) { setConfirmCancel(false); setCancelReason(""); } }}>
+        <DialogContent className="max-w-sm rounded-3xl">
+          <DialogHeader>
+            <DialogTitle className="font-display text-lg">Cancel this order?</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-1">
+            <p className="text-sm text-muted-foreground">
+              Please tell us why you want to cancel <span className="font-semibold text-foreground">{order.orderId}</span>. This cannot be undone.
+            </p>
+            <div className="space-y-1.5">
+              <Label htmlFor="cancel-reason" className="text-xs text-muted-foreground uppercase tracking-wide">Reason for cancellation</Label>
+              <Textarea
+                id="cancel-reason"
+                data-testid="input-cancel-reason"
+                placeholder="e.g. Change of plans, ordered by mistake…"
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                className="rounded-xl resize-none min-h-[90px] text-sm"
+              />
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              className="rounded-xl"
+              onClick={() => { setConfirmCancel(false); setCancelReason(""); }}
+              disabled={cancelMutation.isPending}
+              data-testid="button-cancel-no"
+            >
+              Keep Order
+            </Button>
+            <Button
+              variant="destructive"
+              className="rounded-xl"
+              onClick={() => cancelMutation.mutate({ id: order.id, reason: cancelReason })}
+              disabled={!cancelReason.trim() || cancelMutation.isPending}
               data-testid="button-cancel-confirm"
             >
+              {cancelMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
               Yes, Cancel Order
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
 
 function OrderCard({ order, onClick }: { order: Order; onClick: () => void }) {
   const isRemoved = !!order.deletedAt;
-  const displayLabel = isRemoved ? "Removed by Shop" : (STATUS_LABEL[order.status] ?? order.status);
-  const badgeClass = isRemoved ? "bg-red-100 text-red-700 border-red-200" : (STATUS_BADGE[order.status] ?? "bg-gray-100 text-gray-700");
+  const displayLabel = isRemoved
+    ? "Removed by Shop"
+    : (STATUS_LABEL[order.status] ?? order.status);
+  const badgeClass = isRemoved
+    ? "bg-red-100 text-red-700 border-red-200"
+    : (STATUS_BADGE[order.status] ?? "bg-gray-100 text-gray-700");
 
   return (
     <button
@@ -875,7 +912,7 @@ function OrderCard({ order, onClick }: { order: Order; onClick: () => void }) {
               <Badge variant="outline" className={`text-xs px-2 py-0.5 ${badgeClass}`} data-testid={`badge-status-${order.id}`}>
                 {displayLabel}
               </Badge>
-              {!isRemoved && order.status !== "cancelled" && (
+              {!isRemoved && order.status !== "cancelled" && order.status !== "rejected" && (
                 order.paid
                   ? <span className="text-xs font-medium text-green-600 bg-green-50 border border-green-200 px-2 py-0.5 rounded-lg" data-testid={`badge-paid-${order.id}`}>Paid</span>
                   : <span className="text-xs font-medium text-red-600 bg-red-50 border border-red-200 px-2 py-0.5 rounded-lg" data-testid={`badge-unpaid-${order.id}`}>Unpaid</span>

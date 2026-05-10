@@ -265,7 +265,10 @@ export async function registerRoutes(
       if (!["requested", "pending"].includes(order.status)) {
         return res.status(400).json({ message: "Order can no longer be cancelled at this stage." });
       }
-      const updated = await storage.updateOrder(id, { status: "cancelled" });
+      const body = req.body as { reason?: string };
+      const reason = (body.reason ?? "").trim();
+      if (!reason) return res.status(400).json({ message: "Please provide a reason for cancelling." });
+      const updated = await storage.updateOrder(id, { status: "cancelled", cancellationReason: reason });
       await storage.logOrderAction(updated, "cancelled", `customer:${customer.name}`);
       res.json(updated);
     } catch {

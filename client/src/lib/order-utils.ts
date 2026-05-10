@@ -8,6 +8,7 @@ export const STATUS_LABELS: Record<string, string> = {
   ready_for_pickup: "Ready for Pickup",
   completed:        "Completed",
   cancelled:        "Cancelled",
+  rejected:         "Rejected",
 };
 
 export function statusLabel(status: string) {

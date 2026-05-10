@@ -38,6 +38,7 @@ const staffNavGroups = [
       { href: "/pickup",    label: "Ready for Pickup", icon: PackageCheck },
       { href: "/history",   label: "Completed",        icon: Archive },
       { href: "/cancelled", label: "Cancelled",        icon: XCircle },
+      { href: "/rejected",  label: "Rejected",         icon: XCircle },
     ],
   },
 ];

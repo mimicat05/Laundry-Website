@@ -301,6 +301,7 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsPr
       case 'ready_for_pickup': return 'bg-indigo-100 text-indigo-800 border-indigo-200';
       case 'completed':        return 'bg-emerald-100 text-emerald-800 border-emerald-200';
       case 'cancelled':        return 'bg-red-100 text-red-800 border-red-200';
+      case 'rejected':         return 'bg-orange-100 text-orange-800 border-orange-200';
       default:                 return 'bg-gray-100 text-gray-800 border-gray-200';
     }
   };
@@ -741,6 +742,16 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsPr
                       )}
                     </div>
                   )}
+                </div>
+              )}
+
+              {order.status === "cancelled" && order.cancellationReason && (
+                <div className="flex items-start gap-3 bg-red-50 border border-red-200 rounded-2xl px-4 py-3">
+                  <XCircle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-xs font-semibold text-red-800 uppercase tracking-wide mb-1">Customer's Cancellation Reason</p>
+                    <p className="text-sm text-red-700">{order.cancellationReason}</p>
+                  </div>
                 </div>
               )}
 
