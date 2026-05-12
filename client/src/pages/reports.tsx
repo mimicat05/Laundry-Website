@@ -54,9 +54,10 @@ function exportToExcel(orders: Order[], from: string, to: string, onSuccess: () 
     const fromDate = from ? new Date(from) : null;
     const toDate = to ? new Date(to + "T23:59:59") : null;
 
+    // Fix 3: Filter by completedAt (when the order was finished), not createdAt
     const filtered = orders.filter((o) => {
       if (o.status !== "completed" || o.deletedAt) return false;
-      const d = new Date(o.createdAt);
+      const d = new Date(o.completedAt ?? o.createdAt);
       if (fromDate && d < fromDate) return false;
       if (toDate && d > toDate) return false;
       return true;
@@ -80,7 +81,8 @@ function exportToExcel(orders: Order[], from: string, to: string, onSuccess: () 
       "Discount (₱)": o.discountAmount ? Number(o.discountAmount) : 0,
       "Total (₱)": Number(o.total),
       "Paid": o.paid ? "Yes" : "No",
-      "Date": new Date(o.createdAt).toLocaleDateString("en-PH"),
+      "Date Placed": new Date(o.createdAt).toLocaleDateString("en-PH"),
+      "Date Completed": o.completedAt ? new Date(o.completedAt).toLocaleDateString("en-PH") : "",
     }));
 
     const ws = XLSX.utils.json_to_sheet(rows);
@@ -145,7 +147,11 @@ export function Reports() {
   const analytics = useMemo(() => {
     const completed = orders.filter((o) => o.status === "completed" && !o.deletedAt);
     const totalRevenue = completed.reduce((sum, o) => sum + Number(o.total), 0);
-    const totalWeight = orders.filter((o) => !o.deletedAt).reduce((sum, o) => sum + Number(o.weight), 0);
+
+    // Fix 1: Use actualWeight when available, fall back to estimated weight
+    const totalWeight = orders
+      .filter((o) => !o.deletedAt)
+      .reduce((sum, o) => sum + Number(o.actualWeight ?? o.weight), 0);
 
     const byStatus: Record<string, number> = {};
     const byService: Record<string, number> = {};
@@ -159,27 +165,38 @@ export function Reports() {
       }
     }
 
-    const byMonthRaw: Record<string, { count: number; revenue: number; paidRevenue: number; ts: number }> = {};
+    // Fix 2: Order counts grouped by createdAt (when order was placed)
+    const byOrderMonthRaw: Record<string, { count: number; ts: number }> = {};
     for (const o of orders.filter((o) => !o.deletedAt)) {
       const d = new Date(o.createdAt);
       const month = d.toLocaleDateString("en-PH", { year: "numeric", month: "short" });
       const ts = new Date(d.getFullYear(), d.getMonth(), 1).getTime();
-      if (!byMonthRaw[month]) byMonthRaw[month] = { count: 0, revenue: 0, paidRevenue: 0, ts };
-      byMonthRaw[month].count += 1;
-      if (o.status === "completed") {
-        byMonthRaw[month].revenue += Number(o.total);
-        if (o.paid) byMonthRaw[month].paidRevenue += Number(o.total);
-      }
+      if (!byOrderMonthRaw[month]) byOrderMonthRaw[month] = { count: 0, ts };
+      byOrderMonthRaw[month].count += 1;
     }
-    const byMonth = Object.fromEntries(
-      Object.entries(byMonthRaw).sort((a, b) => a[1].ts - b[1].ts)
+    const byOrderMonth = Object.fromEntries(
+      Object.entries(byOrderMonthRaw).sort((a, b) => a[1].ts - b[1].ts)
+    );
+
+    // Fix 2: Revenue grouped by completedAt (when revenue was actually earned)
+    const byRevenueMonthRaw: Record<string, { revenue: number; paidRevenue: number; ts: number }> = {};
+    for (const o of completed) {
+      const d = new Date(o.completedAt ?? o.createdAt);
+      const month = d.toLocaleDateString("en-PH", { year: "numeric", month: "short" });
+      const ts = new Date(d.getFullYear(), d.getMonth(), 1).getTime();
+      if (!byRevenueMonthRaw[month]) byRevenueMonthRaw[month] = { revenue: 0, paidRevenue: 0, ts };
+      byRevenueMonthRaw[month].revenue += Number(o.total);
+      if (o.paid) byRevenueMonthRaw[month].paidRevenue += Number(o.total);
+    }
+    const byRevenueMonth = Object.fromEntries(
+      Object.entries(byRevenueMonthRaw).sort((a, b) => a[1].ts - b[1].ts)
     );
 
     const collectedRevenue = completed.filter((o) => o.paid).reduce((sum, o) => sum + Number(o.total), 0);
     const activeCount = orders.filter((o) => !o.deletedAt).length;
     const deletedCount = orders.filter((o) => !!o.deletedAt).length;
 
-    return { totalRevenue, collectedRevenue, totalWeight, byStatus, byService, revenueByService, byMonth, deletedCount, activeCount, completedCount: completed.length };
+    return { totalRevenue, collectedRevenue, totalWeight, byStatus, byService, revenueByService, byOrderMonth, byRevenueMonth, deletedCount, activeCount, completedCount: completed.length };
   }, [orders]);
 
   if (isLoading) {
@@ -194,9 +211,10 @@ export function Reports() {
     );
   }
 
-  const maxMonthCount = Math.max(...Object.values(analytics.byMonth).map((m) => m.count), 1);
-  const maxMonthRevenue = Math.max(...Object.values(analytics.byMonth).map((m) => m.revenue), 1);
-  const months = Object.entries(analytics.byMonth).slice(-6);
+  const maxMonthCount = Math.max(...Object.values(analytics.byOrderMonth).map((m) => m.count), 1);
+  const maxMonthRevenue = Math.max(...Object.values(analytics.byRevenueMonth).map((m) => m.revenue), 1);
+  const orderMonths = Object.entries(analytics.byOrderMonth).slice(-6);
+  const revenueMonths = Object.entries(analytics.byRevenueMonth).slice(-6);
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500 pb-12">
@@ -451,11 +469,12 @@ export function Reports() {
           </div>
 
           {/* Monthly Orders Chart */}
-          {months.length > 0 && (
+          {orderMonths.length > 0 && (
             <div className="bg-card border border-border/50 rounded-3xl p-6 sleek-shadow">
-              <h2 className="font-display text-lg font-bold text-foreground mb-6">Monthly Orders (Last 6 Months)</h2>
+              <h2 className="font-display text-lg font-bold text-foreground mb-1">Monthly Orders (Last 6 Months)</h2>
+              <p className="text-xs text-muted-foreground mb-6">Orders placed per month</p>
               <div className="flex items-end gap-4 h-40">
-                {months.map(([month, data]) => (
+                {orderMonths.map(([month, data]) => (
                   <div key={month} className="flex-1 flex flex-col items-center gap-2">
                     <p className="text-xs font-medium text-foreground">{data.count}</p>
                     <div className="w-full flex flex-col justify-end" style={{ height: "100px" }}>
@@ -523,11 +542,12 @@ export function Reports() {
           </div>
 
           {/* Monthly Revenue */}
-          {months.length > 0 && (
+          {revenueMonths.length > 0 && (
             <div className="bg-card border border-border/50 rounded-3xl p-6 sleek-shadow">
-              <h2 className="font-display text-lg font-bold text-foreground mb-6">Monthly Revenue (Last 6 Months)</h2>
+              <h2 className="font-display text-lg font-bold text-foreground mb-1">Monthly Revenue (Last 6 Months)</h2>
+              <p className="text-xs text-muted-foreground mb-6">Revenue from orders completed per month</p>
               <div className="flex items-end gap-4 h-40">
-                {months.map(([month, data]) => (
+                {revenueMonths.map(([month, data]) => (
                   <div key={month} className="flex-1 flex flex-col items-center gap-2">
                     <p className="text-xs font-medium text-foreground">{data.revenue > 0 ? `₱${data.revenue.toLocaleString()}` : "₱0"}</p>
                     <div className="w-full flex flex-col justify-end" style={{ height: "100px" }}>
@@ -539,6 +559,9 @@ export function Reports() {
                     <p className="text-xs text-muted-foreground text-center leading-tight">{month}</p>
                   </div>
                 ))}
+              </div>
+              <div className="flex items-center gap-4 mt-4 text-xs text-muted-foreground">
+                <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-green-500/80 inline-block" /> Total Revenue</span>
               </div>
             </div>
           )}
