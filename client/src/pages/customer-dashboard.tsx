@@ -954,9 +954,6 @@ function OrderCard({ order, onClick }: { order: Order; onClick: () => void }) {
               )}
             </div>
             <p className="text-sm text-muted-foreground">{order.service}</p>
-            {!isRemoved && order.status === "cancelled" && order.cancellationReason && (
-              <p className="text-xs text-red-500 mt-1">Reason: {order.cancellationReason}</p>
-            )}
             <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
               <span>₱{Number(order.total).toFixed(2)}</span>
               <span>·</span>
