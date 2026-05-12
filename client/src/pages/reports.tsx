@@ -6,18 +6,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { BarChart3, History, TrendingUp, Package, DollarSign, Weight, FileSpreadsheet } from "lucide-react";
 import * as XLSX from "xlsx";
-
-const STATUS_LABELS: Record<string, string> = {
-  requested: "Requested",
-  pending: "Accepted",
-  received: "Received",
-  washing: "Washing",
-  drying: "Drying",
-  folding: "Folding",
-  ready_for_pickup: "Ready for Pickup",
-  completed: "Completed",
-  cancelled: "Cancelled",
-};
+import { STATUS_LABELS } from "@/lib/order-utils";
 
 const STATUS_COLORS: Record<string, string> = {
   requested: "bg-purple-100 text-purple-700 border-purple-200",
