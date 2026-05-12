@@ -833,10 +833,17 @@ export async function registerRoutes(
 
   app.post("/api/services", requireOwner, async (req, res) => {
     try {
-      const data = req.body;
-      const svc = await storage.createService({ ...data, pricePerKg: String(data.pricePerKg), active: data.active ?? true });
+      const schema = z.object({
+        name: z.string().min(2, "Service name must be at least 2 characters"),
+        description: z.string().min(5, "Please provide a description"),
+        pricePerKg: z.coerce.number().positive("Price must be greater than 0"),
+        active: z.boolean().optional().default(true),
+      });
+      const data = schema.parse(req.body);
+      const svc = await storage.createService({ ...data, pricePerKg: String(data.pricePerKg) });
       res.status(201).json(svc);
-    } catch {
+    } catch (err) {
+      if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors[0].message });
       res.status(500).json({ message: "Failed to create service" });
     }
   });
@@ -844,10 +851,20 @@ export async function registerRoutes(
   app.put("/api/services/:id", requireOwner, async (req, res) => {
     try {
       const id = Number(req.params.id);
-      const data = req.body;
-      const svc = await storage.updateService(id, { ...data, pricePerKg: data.pricePerKg !== undefined ? String(data.pricePerKg) : undefined });
+      const schema = z.object({
+        name: z.string().min(2, "Service name must be at least 2 characters").optional(),
+        description: z.string().min(5, "Please provide a description").optional(),
+        pricePerKg: z.coerce.number().positive("Price must be greater than 0").optional(),
+        active: z.boolean().optional(),
+      });
+      const data = schema.parse(req.body);
+      const svc = await storage.updateService(id, {
+        ...data,
+        pricePerKg: data.pricePerKg !== undefined ? String(data.pricePerKg) : undefined,
+      });
       res.json(svc);
-    } catch {
+    } catch (err) {
+      if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors[0].message });
       res.status(500).json({ message: "Failed to update service" });
     }
   });
@@ -872,10 +889,17 @@ export async function registerRoutes(
 
   app.post("/api/promos", requireOwner, async (req, res) => {
     try {
-      const data = req.body;
-      const promo = await storage.createPromo({ ...data, discount: String(data.discount), active: data.active ?? true });
+      const schema = z.object({
+        name: z.string().min(2, "Promo name must be at least 2 characters"),
+        description: z.string().min(5, "Please provide a description"),
+        discount: z.coerce.number().positive("Discount must be greater than 0").max(100, "Discount cannot exceed 100%"),
+        active: z.boolean().optional().default(true),
+      });
+      const data = schema.parse(req.body);
+      const promo = await storage.createPromo({ ...data, discount: String(data.discount) });
       res.status(201).json(promo);
-    } catch {
+    } catch (err) {
+      if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors[0].message });
       res.status(500).json({ message: "Failed to create promo" });
     }
   });
@@ -883,10 +907,20 @@ export async function registerRoutes(
   app.put("/api/promos/:id", requireOwner, async (req, res) => {
     try {
       const id = Number(req.params.id);
-      const data = req.body;
-      const promo = await storage.updatePromo(id, { ...data, discount: data.discount !== undefined ? String(data.discount) : undefined });
+      const schema = z.object({
+        name: z.string().min(2, "Promo name must be at least 2 characters").optional(),
+        description: z.string().min(5, "Please provide a description").optional(),
+        discount: z.coerce.number().positive("Discount must be greater than 0").max(100, "Discount cannot exceed 100%").optional(),
+        active: z.boolean().optional(),
+      });
+      const data = schema.parse(req.body);
+      const promo = await storage.updatePromo(id, {
+        ...data,
+        discount: data.discount !== undefined ? String(data.discount) : undefined,
+      });
       res.json(promo);
-    } catch {
+    } catch (err) {
+      if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors[0].message });
       res.status(500).json({ message: "Failed to update promo" });
     }
   });
