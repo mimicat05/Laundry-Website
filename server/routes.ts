@@ -82,7 +82,8 @@ async function seedDatabase() {
       service: "Dry-cleaning",
       weight: "1.50",
       total: "300.00",
-      status: "completed"
+      status: "completed",
+      completedAt: new Date(),
     });
   }
 }
