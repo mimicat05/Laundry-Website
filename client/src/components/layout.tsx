@@ -37,7 +37,7 @@ const staffNavGroups = [
     items: [
       { href: "/pickup",    label: "Ready for Pickup", icon: PackageCheck },
       { href: "/history",   label: "Completed",        icon: Archive },
-      { href: "/cancelled", label: "Cancelled",        icon: XCircle },
+      { href: "/cancelled", label: "Cancelled",        icon: XCircle, showCancelledBadge: true },
       { href: "/rejected",  label: "Rejected",         icon: XCircle },
     ],
   },
@@ -62,6 +62,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   const { data: orders } = useOrders();
   const requestCount = (orders || []).filter((o) => o.status === "requested").length;
+  const cancelledCount = (orders || []).filter((o) => o.status === "cancelled").length;
   const { data: unreadData } = useQuery<{ count: number }>({
     queryKey: ["/api/messages/unread-count"],
     refetchInterval: 30000,
@@ -82,7 +83,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <div className="space-y-1">
             {section.items.map((item) => {
               const isActive = location === item.href;
-              const count = (item as any).showBadge ? requestCount : (item as any).showMessageBadge ? unreadMessageCount : 0;
+              const count = (item as any).showBadge ? requestCount : (item as any).showMessageBadge ? unreadMessageCount : (item as any).showCancelledBadge ? cancelledCount : 0;
               return (
                 <Link
                   key={item.href}
