@@ -18,6 +18,7 @@ const STATUS_COLORS: Record<string, string> = {
   ready_for_pickup: "bg-indigo-100 text-indigo-700 border-indigo-200",
   completed: "bg-green-100 text-green-700 border-green-200",
   cancelled: "bg-red-100 text-red-700 border-red-200",
+  rejected: "bg-orange-100 text-orange-700 border-orange-200",
 };
 
 const ACTION_LABELS: Record<string, { label: string; color: string }> = {
@@ -288,7 +289,7 @@ export function Reports() {
                 <tbody>
                   {filteredLogs.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="text-center py-12 text-muted-foreground">No records found.</td>
+                      <td colSpan={9} className="text-center py-12 text-muted-foreground">No records found.</td>
                     </tr>
                   ) : (
                     filteredLogs.map((log) => {
