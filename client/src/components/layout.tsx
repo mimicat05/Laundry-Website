@@ -5,7 +5,7 @@ import { useOrders } from "@/hooks/use-orders";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 const staffNavGroups = [
@@ -63,6 +63,17 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const { data: orders } = useOrders();
   const requestCount = (orders || []).filter((o) => o.status === "requested").length;
   const cancelledCount = (orders || []).filter((o) => o.status === "cancelled").length;
+  const [seenCancelledCount, setSeenCancelledCount] = useState<number>(
+    () => parseInt(localStorage.getItem("seenCancelledCount") ?? "0", 10)
+  );
+  const newCancelledCount = Math.max(0, cancelledCount - seenCancelledCount);
+
+  useEffect(() => {
+    if (location === "/cancelled" && cancelledCount > 0) {
+      localStorage.setItem("seenCancelledCount", String(cancelledCount));
+      setSeenCancelledCount(cancelledCount);
+    }
+  }, [location, cancelledCount]);
   const { data: unreadData } = useQuery<{ count: number }>({
     queryKey: ["/api/messages/unread-count"],
     refetchInterval: 30000,
@@ -83,7 +94,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <div className="space-y-1">
             {section.items.map((item) => {
               const isActive = location === item.href;
-              const count = (item as any).showBadge ? requestCount : (item as any).showMessageBadge ? unreadMessageCount : (item as any).showCancelledBadge ? cancelledCount : 0;
+              const count = (item as any).showBadge ? requestCount : (item as any).showMessageBadge ? unreadMessageCount : (item as any).showCancelledBadge ? newCancelledCount : 0;
               return (
                 <Link
                   key={item.href}
