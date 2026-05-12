@@ -70,6 +70,7 @@ export interface IStorage {
   getCustomerByEmail(email: string): Promise<Customer | undefined>;
   createCustomer(data: InsertCustomer): Promise<Customer>;
   updateCustomer(id: number, data: Partial<InsertCustomer>): Promise<Customer>;
+  updateOrdersEmail(oldEmail: string, newEmail: string): Promise<void>;
   getOrdersByEmail(email: string): Promise<Order[]>;
   // Password reset tokens
   createResetToken(customerId: number, token: string, expiresAt: Date): Promise<PasswordResetToken>;
@@ -265,6 +266,10 @@ export class DatabaseStorage implements IStorage {
   async updateCustomer(id: number, data: Partial<InsertCustomer>): Promise<Customer> {
     const [c] = await db.update(customers).set(data).where(eq(customers.id, id)).returning();
     return c;
+  }
+
+  async updateOrdersEmail(oldEmail: string, newEmail: string): Promise<void> {
+    await db.update(orders).set({ email: newEmail }).where(eq(orders.email, oldEmail));
   }
 
   async getOrdersByEmail(email: string): Promise<Order[]> {

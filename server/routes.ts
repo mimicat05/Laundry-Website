@@ -229,13 +229,23 @@ export async function registerRoutes(
     try {
       const updateSchema = insertCustomerSchema.omit({ password: true }).partial();
       const data = updateSchema.parse(req.body);
+
+      const current = await storage.getCustomerById(req.session.customerId!);
+      if (!current) return res.status(401).json({ message: "Not authenticated" });
+
       if (data.email) {
         const existing = await storage.getCustomerByEmail(data.email);
         if (existing && existing.id !== req.session.customerId) {
           return res.status(400).json({ message: "Email already in use." });
         }
       }
+
       const updated = await storage.updateCustomer(req.session.customerId!, data);
+
+      if (data.email && data.email !== current.email) {
+        await storage.updateOrdersEmail(current.email, data.email);
+      }
+
       const { password: _, ...safe } = updated;
       res.json(safe);
     } catch (err: any) {
