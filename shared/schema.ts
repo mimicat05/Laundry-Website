@@ -19,7 +19,7 @@ export type InsertCustomer = z.infer<typeof insertCustomerSchema>;
 
 export const staff = pgTable("staff", {
   id: serial("id").primaryKey(),
-  name: text("name").notNull(),
+  name: text("name").notNull().unique(),
   pin: text("pin").notNull().unique(),
   role: text("role").notNull().default("staff"), // "owner" | "staff"
   active: boolean("active").notNull().default(true),

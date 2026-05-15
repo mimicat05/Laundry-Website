@@ -427,6 +427,10 @@ export async function registerRoutes(
       });
       const data = schema.parse(req.body);
       const allStaff = await storage.getStaffList();
+      const nameConflict = allStaff.some((s) => s.name.toLowerCase() === data.name.toLowerCase());
+      if (nameConflict) {
+        return res.status(409).json({ message: "A staff member with that name already exists." });
+      }
       const pinConflict = await (async () => {
         for (const s of allStaff) {
           if (await bcrypt.compare(data.pin, s.pin)) return true;
@@ -455,8 +459,14 @@ export async function registerRoutes(
       });
       const data = schema.parse(req.body);
       let updateData: typeof data & { pin?: string } = { ...data };
+      const allStaff = await storage.getStaffList();
+      if (data.name) {
+        const nameConflict = allStaff.some((s) => s.id !== id && s.name.toLowerCase() === data.name!.toLowerCase());
+        if (nameConflict) {
+          return res.status(409).json({ message: "A staff member with that name already exists." });
+        }
+      }
       if (data.pin) {
-        const allStaff = await storage.getStaffList();
         const pinConflict = await (async () => {
           for (const s of allStaff) {
             if (s.id !== id && await bcrypt.compare(data.pin!, s.pin)) return true;

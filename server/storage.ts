@@ -270,6 +270,7 @@ export class DatabaseStorage implements IStorage {
 
   async updateOrdersEmail(oldEmail: string, newEmail: string): Promise<void> {
     await db.update(orders).set({ email: newEmail }).where(eq(orders.email, oldEmail));
+    await db.update(orderLogs).set({ email: newEmail }).where(eq(orderLogs.email, oldEmail));
   }
 
   async getOrdersByEmail(email: string): Promise<Order[]> {
