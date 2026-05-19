@@ -9,7 +9,7 @@ export const customers = pgTable("customers", {
   password: text("password").notNull(),
   contactNumber: text("contact_number").notNull(),
   address: text("address").notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
 export const insertCustomerSchema = createInsertSchema(customers).omit({ id: true, createdAt: true });
@@ -68,7 +68,7 @@ export const orderLogs = pgTable("order_logs", {
   action: text("action").notNull(), // created | status_changed | deleted | restored | permanently_deleted | paid | unpaid | discount_applied | discount_removed | edited | cancelled
   notes: text("notes"),
   staffName: text("staff_name"),
-  loggedAt: timestamp("logged_at").defaultNow().notNull(),
+  loggedAt: timestamp("logged_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
 export type OrderLog = typeof orderLogs.$inferSelect;
@@ -95,9 +95,9 @@ export const orders = pgTable("orders", {
   promoClaimStatus: text("promo_claim_status"), // "pending" | "approved" | "rejected"
   cancellationReason: text("cancellation_reason"),
   rejectionReason: text("rejection_reason"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  completedAt: timestamp("completed_at"),
-  deletedAt: timestamp("deleted_at"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  completedAt: timestamp("completed_at", { withTimezone: true }),
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
   deletionReason: text("deletion_reason"),
 });
 
@@ -127,8 +127,8 @@ export const passwordResetTokens = pgTable("password_reset_tokens", {
   id: serial("id").primaryKey(),
   token: text("token").notNull().unique(),
   customerId: integer("customer_id").notNull().references(() => customers.id, { onDelete: "cascade" }),
-  expiresAt: timestamp("expires_at").notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
 export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
@@ -140,7 +140,7 @@ export const feedback = pgTable("feedback", {
   customerName: text("customer_name").notNull(),
   rating: integer("rating").notNull(), // 1–5
   comment: text("comment"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
 export const insertFeedbackSchema = createInsertSchema(feedback).omit({ id: true, createdAt: true });
@@ -154,7 +154,7 @@ export const messages = pgTable("messages", {
   subject: text("subject").notNull().default(""),
   message: text("message").notNull(),
   isRead: boolean("is_read").notNull().default(false),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
 export const insertMessageSchema = createInsertSchema(messages).omit({ id: true, createdAt: true, subject: true });
@@ -167,7 +167,7 @@ export const messageReplies = pgTable("message_replies", {
   senderType: text("sender_type").notNull(), // "customer" | "staff"
   senderName: text("sender_name").notNull(),
   body: text("body").notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
 export const insertMessageReplySchema = createInsertSchema(messageReplies).omit({ id: true, createdAt: true });
