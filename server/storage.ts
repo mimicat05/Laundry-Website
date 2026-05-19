@@ -34,7 +34,7 @@ import {
   type InsertMessageReply,
   type ConversationEntry,
 } from "@shared/schema";
-import { eq, isNull, isNotNull, desc, asc, lt, inArray, ilike } from "drizzle-orm";
+import { eq, isNull, isNotNull, desc, asc, lt, inArray, ilike, and, sql } from "drizzle-orm";
 
 export interface IStorage {
   getOrders(): Promise<Order[]>;
@@ -47,7 +47,8 @@ export interface IStorage {
   restoreOrder(id: number, staffName?: string): Promise<Order>;
   permanentDeleteOrder(id: number, staffName?: string): Promise<void>;
   getOrderLogs(): Promise<OrderLog[]>;
-  logOrderAction(order: Order, action: string, staffName?: string): Promise<void>;
+  logOrderAction(order: Order, action: string, staffName?: string, extraNotes?: string): Promise<void>;
+  getOrderByOrderId(orderId: string): Promise<Order | undefined>;
   // Services
   getServices(): Promise<Service[]>;
   createService(data: InsertService): Promise<Service>;
@@ -101,7 +102,7 @@ export interface IStorage {
   sendConversationMessage(customerId: number, customerName: string, body: string): Promise<void>;
 }
 
-async function logOrder(order: Order, action: string, staffName?: string) {
+async function logOrder(order: Order, action: string, staffName?: string, extraNotes?: string) {
   await db.insert(orderLogs).values({
     orderId: order.orderId,
     customerName: order.customerName,
@@ -114,7 +115,7 @@ async function logOrder(order: Order, action: string, staffName?: string) {
     paid: order.paid,
     status: order.status,
     action,
-    notes: order.notes ?? null,
+    notes: extraNotes ?? order.notes ?? null,
     staffName: staffName ?? null,
   });
 }
@@ -154,8 +155,8 @@ export class DatabaseStorage implements IStorage {
     return updated;
   }
 
-  async logOrderAction(order: Order, action: string, staffName?: string): Promise<void> {
-    await logOrder(order, action, staffName);
+  async logOrderAction(order: Order, action: string, staffName?: string, extraNotes?: string): Promise<void> {
+    await logOrder(order, action, staffName, extraNotes);
   }
 
   async deleteOrder(id: number, staffName?: string, reason?: string): Promise<void> {
@@ -163,7 +164,13 @@ export class DatabaseStorage implements IStorage {
     await db.update(orders)
       .set({ deletedAt: new Date(), ...(reason ? { deletionReason: reason } : {}) })
       .where(eq(orders.id, id));
-    if (order) await logOrder(order, "deleted", staffName);
+    if (order) await logOrder(order, "deleted", staffName, reason ?? undefined);
+  }
+
+  async getOrderByOrderId(orderId: string): Promise<Order | undefined> {
+    const [order] = await db.select().from(orders)
+      .where(and(isNull(orders.deletedAt), sql`lower(${orders.orderId}) = ${orderId.trim().toLowerCase()}`));
+    return order;
   }
 
   async restoreOrder(id: number, staffName?: string): Promise<Order> {
@@ -275,7 +282,7 @@ export class DatabaseStorage implements IStorage {
 
   async getOrdersByEmail(email: string): Promise<Order[]> {
     return await db.select().from(orders)
-      .where(eq(orders.email, email))
+      .where(and(eq(orders.email, email), isNull(orders.deletedAt)))
       .orderBy(desc(orders.id));
   }
 
@@ -346,8 +353,9 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUnreadMessageCount(): Promise<number> {
-    const unread = await db.select().from(messages).where(eq(messages.isRead, false));
-    return unread.length;
+    const [row] = await db.select({ count: sql<number>`cast(count(*) as int)` })
+      .from(messages).where(eq(messages.isRead, false));
+    return row?.count ?? 0;
   }
 
   async createMessage(data: InsertMessage): Promise<Message> {

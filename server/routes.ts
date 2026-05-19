@@ -3,7 +3,7 @@ import type { Server } from "http";
 import { storage } from "./storage";
 import { api, errorSchemas } from "@shared/routes";
 import { insertCustomerSchema, insertFeedbackSchema, insertMessageSchema, insertMessageReplySchema } from "@shared/schema";
-import { sendOrderStatusEmail, sendOrderConfirmedEmail, sendReceiptEmail, sendPasswordResetEmail, sendWalkInOrderEmail } from "./email";
+import { sendOrderStatusEmail, sendOrderConfirmedEmail, sendReceiptEmail, sendPasswordResetEmail, sendWalkInOrderEmail, sendPriceUpdateEmail } from "./email";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
 
@@ -198,14 +198,33 @@ export async function registerRoutes(
 
   app.post("/api/customer/login", async (req, res) => {
     try {
+      const ip = (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() || req.socket.remoteAddress || "unknown";
+      const now = Date.now();
+      const key = `c:${ip}`;
+      const record = loginAttempts.get(key) || { count: 0, lockedUntil: 0 };
+      if (record.lockedUntil > now) {
+        const minutesLeft = Math.ceil((record.lockedUntil - now) / 60000);
+        return res.status(429).json({ message: `Too many failed attempts. Try again in ${minutesLeft} minute${minutesLeft > 1 ? "s" : ""}.` });
+      }
+
       const { email, password } = z.object({
         email: z.string().email(),
         password: z.string().min(1),
       }).parse(req.body);
       const customer = await storage.getCustomerByEmail(email);
-      if (!customer) return res.status(401).json({ message: "Invalid email or password." });
-      const valid = await bcrypt.compare(password, customer.password);
-      if (!valid) return res.status(401).json({ message: "Invalid email or password." });
+      const valid = customer ? await bcrypt.compare(password, customer.password) : false;
+      if (!customer || !valid) {
+        record.count += 1;
+        if (record.count >= MAX_ATTEMPTS) {
+          record.lockedUntil = now + LOCKOUT_MS;
+          record.count = 0;
+          loginAttempts.set(key, record);
+          return res.status(429).json({ message: "Too many failed attempts. You are locked out for 5 minutes." });
+        }
+        loginAttempts.set(key, record);
+        return res.status(401).json({ message: "Invalid email or password." });
+      }
+      loginAttempts.delete(key);
       req.session.customerId = customer.id;
       const { password: _, ...safe } = customer;
       res.json(safe);
@@ -529,16 +548,12 @@ export async function registerRoutes(
         contact: z.string().min(1),
       }).parse(req.body);
 
-      const allOrders = await storage.getAllOrders();
-      const order = allOrders.find(
-        (o) =>
-          !o.deletedAt &&
-          o.orderId.toLowerCase() === orderId.trim().toLowerCase() &&
-          (o.email.toLowerCase() === contact.trim().toLowerCase() ||
-            o.contactNumber === contact.trim())
-      );
-
-      if (!order) {
+      const order = await storage.getOrderByOrderId(orderId.trim());
+      if (
+        !order ||
+        (order.email.toLowerCase() !== contact.trim().toLowerCase() &&
+          order.contactNumber !== contact.trim())
+      ) {
         return res.status(404).json({ message: "Order not found. Please check your Order ID and contact details." });
       }
 
@@ -603,7 +618,13 @@ export async function registerRoutes(
         return res.status(400).json({ message: "Photo is too large. Please upload a smaller image." });
       }
 
-      const orderId = `ORD${Math.floor(1000 + Math.random() * 9000)}`;
+      // Generate a unique Order ID — retry up to 10 times on collision
+      let orderId = `ORD${Math.floor(1000 + Math.random() * 9000)}`;
+      for (let attempt = 0; attempt < 10; attempt++) {
+        const existing = await storage.getOrderByOrderId(orderId);
+        if (!existing) break;
+        orderId = `ORD${Math.floor(1000 + Math.random() * 9000)}`;
+      }
       const order = await storage.createOrder({
         customerName: input.customerName,
         address: input.address,
@@ -636,6 +657,21 @@ export async function registerRoutes(
         total: z.coerce.string(),
       });
       const input = bodySchema.parse(req.body);
+      // If staff didn't supply an orderId (walk-in), generate a unique one
+      if (!input.orderId) {
+        let orderId = `ORD${Math.floor(1000 + Math.random() * 9000)}`;
+        for (let attempt = 0; attempt < 10; attempt++) {
+          const existing = await storage.getOrderByOrderId(orderId);
+          if (!existing) break;
+          orderId = `ORD${Math.floor(1000 + Math.random() * 9000)}`;
+        }
+        input.orderId = orderId;
+      } else {
+        const existing = await storage.getOrderByOrderId(input.orderId);
+        if (existing) {
+          return res.status(409).json({ message: "An order with that Order ID already exists." });
+        }
+      }
       const order = await storage.createOrder(input);
       await storage.logOrderAction(order, "created", req.session.staffName);
 
@@ -693,6 +729,19 @@ export async function registerRoutes(
           const newTotal = (baseTotal - Number(discountAmount)).toFixed(2);
           order = await storage.updateOrder(id, { discountAmount, total: newTotal });
         }
+      }
+
+      // Notify customer when actual weight/total is recorded for the first time
+      const totalUpdated = input.total !== undefined && Number(input.total) > 0 && Number(existing.total) !== Number(input.total);
+      if (totalUpdated && input.actualWeight) {
+        sendPriceUpdateEmail(
+          order.email,
+          order.customerName,
+          order.orderId,
+          existing.total,
+          order.total,
+          String(input.actualWeight)
+        ).catch(() => {});
       }
 
       // Determine what action to log
@@ -821,6 +870,9 @@ export async function registerRoutes(
       const existing = await storage.getOrder(id);
       if (!existing) {
         return res.status(404).json({ message: "Order not found" });
+      }
+      if (!existing.deletedAt) {
+        return res.status(400).json({ message: "Order is not deleted and cannot be restored." });
       }
       const restored = await storage.restoreOrder(id, req.session.staffName);
       res.json(restored);
@@ -1001,6 +1053,14 @@ export async function registerRoutes(
         customerId: customer.id,
         customerName: customer.name,
       });
+      // Verify the order belongs to this customer before allowing feedback
+      const orderForFeedback = await storage.getOrderByOrderId(body.orderId);
+      if (!orderForFeedback || orderForFeedback.email !== customer.email) {
+        return res.status(403).json({ message: "You can only submit feedback for your own orders." });
+      }
+      if (orderForFeedback.status !== "completed") {
+        return res.status(400).json({ message: "Feedback can only be submitted for completed orders." });
+      }
       const existing = await storage.getFeedbackByOrderId(body.orderId);
       if (existing) return res.status(409).json({ message: "Feedback already submitted for this order" });
       const result = await storage.createFeedback(body);
