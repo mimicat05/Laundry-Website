@@ -282,7 +282,7 @@ export class DatabaseStorage implements IStorage {
 
   async getOrdersByEmail(email: string): Promise<Order[]> {
     return await db.select().from(orders)
-      .where(and(eq(orders.email, email), isNull(orders.deletedAt)))
+      .where(eq(orders.email, email))
       .orderBy(desc(orders.id));
   }
 
