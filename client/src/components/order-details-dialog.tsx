@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { format } from "date-fns";
+import { formatPHDateTime } from "@/lib/date";
 import { Loader2, Trash2, ArrowRight, ArrowLeft, User, MapPin, Phone, Mail, Scale, DollarSign, Tag, CalendarClock, Pencil, X, Printer, Sticker, CheckCircle2, XCircle, Percent, BadgePercent, ClipboardCheck, ReceiptText, Clock, ImageIcon, ImagePlus } from "lucide-react";
 import { useUpdateOrder, useDeleteOrder } from "@/hooks/use-orders";
 import { useToast } from "@/hooks/use-toast";
@@ -511,7 +511,7 @@ export function OrderDetailsDialog({ order, open, onOpenChange }: OrderDetailsPr
                   </div>
                   <div className="flex items-center gap-3">
                     <CalendarClock className="w-4 h-4 text-primary" />
-                    <span className="text-sm text-foreground">{format(new Date(order.createdAt), "MMM dd, yyyy h:mm a")}</span>
+                    <span className="text-sm text-foreground">{formatPHDateTime(order.createdAt)}</span>
                   </div>
                 </div>
               </div>

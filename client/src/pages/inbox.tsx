@@ -9,7 +9,7 @@ import { MessageSquare, Star, CheckCheck, Mail, MailOpen, Send, Trash2 } from "l
 import { queryClient } from "@/lib/queryClient";
 import { apiRequest } from "@/lib/queryClient";
 import type { Message, Feedback, MessageReply } from "@shared/schema";
-import { format } from "date-fns";
+import { formatPHFull, formatPHShort, formatPHDate } from "@/lib/date";
 import { useToast } from "@/hooks/use-toast";
 
 function StarRating({ rating }: { rating: number }) {
@@ -99,7 +99,7 @@ function MessageCard({ msg }: { msg: Message }) {
                 <Badge className="bg-blue-500 text-white text-xs px-1.5 py-0 h-4 rounded-full">New</Badge>
               )}
               <span className="text-xs text-muted-foreground ml-auto">
-                {format(new Date(msg.createdAt), "MMM d, yyyy · h:mm a")}
+                {formatPHFull(msg.createdAt)}
               </span>
             </div>
             {!expanded && (
@@ -117,7 +117,7 @@ function MessageCard({ msg }: { msg: Message }) {
             <div className="max-w-[80%] bg-muted rounded-2xl rounded-tl-sm px-3 py-2">
               <p className="text-[11px] font-semibold text-muted-foreground mb-1">{msg.customerName}</p>
               <p className="text-sm text-foreground leading-relaxed">{msg.message}</p>
-              <p className="text-[10px] text-muted-foreground mt-1">{format(new Date(msg.createdAt), "MMM d · h:mm a")}</p>
+              <p className="text-[10px] text-muted-foreground mt-1">{formatPHShort(msg.createdAt)}</p>
             </div>
           </div>
 
@@ -135,7 +135,7 @@ function MessageCard({ msg }: { msg: Message }) {
                   </p>
                   <p className="text-sm leading-relaxed">{r.body}</p>
                   <p className={`text-[10px] mt-1 ${r.senderType === "staff" ? "text-primary-foreground/60" : "text-muted-foreground"}`}>
-                    {format(new Date(r.createdAt), "MMM d · h:mm a")}
+                    {formatPHShort(r.createdAt)}
                   </p>
                 </div>
               </div>
@@ -200,7 +200,7 @@ function FeedbackCard({ fb }: { fb: Feedback }) {
                 Order #{fb.orderId}
               </Badge>
               <span className="text-xs text-muted-foreground ml-auto">
-                {format(new Date(fb.createdAt), "MMM d, yyyy")}
+                {formatPHDate(fb.createdAt)}
               </span>
             </div>
             <div className="mt-1">

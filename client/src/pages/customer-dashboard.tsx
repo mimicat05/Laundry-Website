@@ -24,7 +24,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { type Order, type PublicCustomer, type Promo, type Feedback, type Message, type ConversationEntry } from "@shared/schema";
-import { format } from "date-fns";
+import { formatPHShort, formatPHDate } from "@/lib/date";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
@@ -373,7 +373,7 @@ function ConversationDialog({ open, onClose }: { open: boolean; onClose: () => v
                     )}
                     <p className="text-sm leading-relaxed">{e.body}</p>
                     <p className={`text-[10px] mt-1 ${isMe ? "text-primary-foreground/60" : "text-muted-foreground"}`}>
-                      {format(new Date(e.createdAt), "MMM d · h:mm a")}
+                      {formatPHShort(e.createdAt)}
                     </p>
                   </div>
                 </div>
@@ -626,7 +626,7 @@ function OrderTrackingDialog({
             <div>
               <p className="text-xs text-muted-foreground mb-1 uppercase tracking-wide">Date</p>
               <p className="text-sm font-semibold">
-                {new Date(order.createdAt).toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" })}
+                {formatPHDate(order.createdAt)}
               </p>
             </div>
             {order.promoName && (
@@ -959,7 +959,7 @@ function OrderCard({ order, onClick }: { order: Order; onClick: () => void }) {
               <span>·</span>
               <span>{Number(order.actualWeight ?? order.weight).toFixed(2)} kg</span>
               <span>·</span>
-              <span>{new Date(order.createdAt).toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" })}</span>
+              <span>{formatPHDate(order.createdAt)}</span>
             </div>
           </div>
           <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors shrink-0 mt-1" />

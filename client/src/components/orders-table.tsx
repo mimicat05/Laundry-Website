@@ -1,4 +1,4 @@
-import { format } from "date-fns";
+import { formatPHMonthDay } from "@/lib/date";
 import { Eye } from "lucide-react";
 import { type Order } from "@shared/schema";
 import { Badge } from "@/components/ui/badge";
@@ -132,7 +132,7 @@ export function OrdersTable({
                   </TableCell>
                   <TableCell className="text-muted-foreground">{order.service}</TableCell>
                   <TableCell className="text-muted-foreground">
-                    {format(new Date(order.createdAt), "MMM dd")}
+                    {formatPHMonthDay(order.createdAt)}
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1.5 flex-wrap">

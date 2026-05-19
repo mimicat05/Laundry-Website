@@ -7,6 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { BarChart3, History, TrendingUp, Package, DollarSign, Weight, FileSpreadsheet } from "lucide-react";
 import * as XLSX from "xlsx";
 import { STATUS_LABELS } from "@/lib/order-utils";
+import { formatPHDateTime, formatPHDate, getPHMonthLabel, getPHMonthTimestamp } from "@/lib/date";
 
 const STATUS_COLORS: Record<string, string> = {
   requested: "bg-purple-100 text-purple-700 border-purple-200",
@@ -36,13 +37,7 @@ const ACTION_LABELS: Record<string, { label: string; color: string }> = {
 };
 
 function formatDate(date: string | Date) {
-  return new Date(date).toLocaleString("en-PH", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  return formatPHDateTime(date);
 }
 
 function formatCurrency(amount: string | number) {
@@ -81,8 +76,8 @@ function exportToExcel(orders: Order[], from: string, to: string, onSuccess: () 
       "Discount (₱)": o.discountAmount ? Number(o.discountAmount) : 0,
       "Total (₱)": Number(o.total),
       "Paid": o.paid ? "Yes" : "No",
-      "Date Placed": new Date(o.createdAt).toLocaleDateString("en-PH"),
-      "Date Completed": o.completedAt ? new Date(o.completedAt).toLocaleDateString("en-PH") : "",
+      "Date Placed": formatPHDate(o.createdAt),
+      "Date Completed": o.completedAt ? formatPHDate(o.completedAt) : "",
     }));
 
     const ws = XLSX.utils.json_to_sheet(rows);
@@ -168,9 +163,8 @@ export function Reports() {
     // Fix 2: Order counts grouped by createdAt (when order was placed)
     const byOrderMonthRaw: Record<string, { count: number; ts: number }> = {};
     for (const o of orders.filter((o) => !o.deletedAt)) {
-      const d = new Date(o.createdAt);
-      const month = d.toLocaleDateString("en-PH", { year: "numeric", month: "short" });
-      const ts = new Date(d.getFullYear(), d.getMonth(), 1).getTime();
+      const month = getPHMonthLabel(o.createdAt);
+      const ts = getPHMonthTimestamp(o.createdAt);
       if (!byOrderMonthRaw[month]) byOrderMonthRaw[month] = { count: 0, ts };
       byOrderMonthRaw[month].count += 1;
     }
@@ -181,9 +175,9 @@ export function Reports() {
     // Fix 2: Revenue grouped by completedAt (when revenue was actually earned)
     const byRevenueMonthRaw: Record<string, { revenue: number; paidRevenue: number; ts: number }> = {};
     for (const o of completed) {
-      const d = new Date(o.completedAt ?? o.createdAt);
-      const month = d.toLocaleDateString("en-PH", { year: "numeric", month: "short" });
-      const ts = new Date(d.getFullYear(), d.getMonth(), 1).getTime();
+      const dateKey = o.completedAt ?? o.createdAt;
+      const month = getPHMonthLabel(dateKey);
+      const ts = getPHMonthTimestamp(dateKey);
       if (!byRevenueMonthRaw[month]) byRevenueMonthRaw[month] = { revenue: 0, paidRevenue: 0, ts };
       byRevenueMonthRaw[month].revenue += Number(o.total);
       if (o.paid) byRevenueMonthRaw[month].paidRevenue += Number(o.total);

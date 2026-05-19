@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useDeletedOrders, useRestoreOrder, usePermanentDeleteOrder } from "@/hooks/use-orders";
 import { type Order } from "@shared/schema";
-import { format } from "date-fns";
+import { formatPHDateSearch, formatPHDate } from "@/lib/date";
 
 export function RecentlyDeleted() {
   const { data: orders, isLoading } = useDeletedOrders();
@@ -31,7 +31,7 @@ export function RecentlyDeleted() {
   const query = search.toLowerCase();
   const deletedOrders: Order[] = (orders || []).filter(o => {
     if (!query) return true;
-    const dateStr = format(new Date(o.createdAt), "MMM dd yyyy").toLowerCase();
+    const dateStr = formatPHDateSearch(o.createdAt);
     return (
       o.customerName.toLowerCase().includes(query) ||
       o.orderId.toLowerCase().includes(query) ||
@@ -80,7 +80,7 @@ export function RecentlyDeleted() {
                   </div>
                   <p className="text-sm text-muted-foreground">{order.email}</p>
                   <p className="text-sm text-muted-foreground">
-                    Deleted: {order.deletedAt ? format(new Date(order.deletedAt), "MMM dd, yyyy") : "Unknown"}
+                    Deleted: {order.deletedAt ? formatPHDate(order.deletedAt) : "Unknown"}
                   </p>
                 </div>
 

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Search, ArrowRight, Loader2, X } from "lucide-react";
-import { format } from "date-fns";
+import { formatPHDateSearch } from "@/lib/date";
 import { useOrders } from "@/hooks/use-orders";
 import { useQueryClient } from "@tanstack/react-query";
 import { OrderDetailsDialog } from "@/components/order-details-dialog";
@@ -57,7 +57,7 @@ export function OrdersView({ status, title }: OrdersViewProps) {
     .filter(o => status === 'all' ? true : o.status === status)
     .filter(o => {
       if (!query) return true;
-      const dateStr = format(new Date(o.createdAt), "MMM dd yyyy").toLowerCase();
+      const dateStr = formatPHDateSearch(o.createdAt);
       return (
         o.customerName.toLowerCase().includes(query) ||
         o.orderId.toLowerCase().includes(query) ||

@@ -44,6 +44,7 @@ export async function sendReceiptEmail(order: {
   const paymentText = order.paid ? "✓ PAID" : "✗ UNPAID";
   const totalFormatted = `₱${Number(order.total).toLocaleString("en-PH", { minimumFractionDigits: 2 })}`;
   const dateReceived = new Date(order.createdAt).toLocaleString("en-PH", {
+    timeZone: "Asia/Manila",
     year: "numeric", month: "short", day: "numeric",
     hour: "2-digit", minute: "2-digit",
   });
@@ -138,6 +139,7 @@ export async function sendOrderConfirmedEmail(order: {
   const transport = getTransporter();
   const totalFormatted = `₱${Number(order.total).toLocaleString("en-PH", { minimumFractionDigits: 2 })}`;
   const dateReceived = new Date(order.createdAt).toLocaleString("en-PH", {
+    timeZone: "Asia/Manila",
     year: "numeric", month: "short", day: "numeric",
     hour: "2-digit", minute: "2-digit",
   });

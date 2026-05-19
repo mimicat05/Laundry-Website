@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import { Search, CheckCircle, XCircle, Eye, Loader2 } from "lucide-react";
-import { format } from "date-fns";
+import { formatPHShort } from "@/lib/date";
 import { useOrders, useUpdateOrder } from "@/hooks/use-orders";
 import { OrderDetailsDialog } from "@/components/order-details-dialog";
 import { Button } from "@/components/ui/button";
@@ -190,7 +190,7 @@ function RequestRow({
         <TableCell className="text-muted-foreground">{order.service}</TableCell>
         <TableCell className="text-muted-foreground text-sm">{order.email}</TableCell>
         <TableCell className="text-muted-foreground">
-          {format(new Date(order.createdAt), "MMM dd, h:mm a")}
+          {formatPHShort(order.createdAt)}
         </TableCell>
         <TableCell className="text-right">
           <div className="flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>

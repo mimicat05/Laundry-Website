@@ -15,6 +15,7 @@ function divider() {
 
 function formatDate(d: string | Date) {
   return new Date(d).toLocaleString("en-PH", {
+    timeZone: "Asia/Manila",
     year: "numeric", month: "short", day: "numeric",
     hour: "2-digit", minute: "2-digit",
   });
